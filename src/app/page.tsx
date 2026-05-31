@@ -99,8 +99,8 @@ export default function Home() {
             <span>© 2026 Junction Generator. Open Source under OSCRP.</span>
           </div>
           <div style={{ display: "flex", gap: "24px", fontSize: "14px" }}>
-            <a href="https://junctiongenerator.web3business" target="_blank" rel="noopener noreferrer" className="footer-link">
-              junctiongenerator.web3business
+            <a href="https://junctiongenerator.net" target="_blank" rel="noopener noreferrer" className="footer-link">
+              junctiongenerator.net
             </a>
             <a href="#" className="footer-link">
               Whitepaper
