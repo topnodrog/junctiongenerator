@@ -16,8 +16,28 @@ export default function VibePlayground() {
   const [prompt, setPrompt] = useState("");
   const [compileState, setCompileState] = useState<"idle" | "tokenizing" | "synthesizing" | "auditing" | "compiling" | "completed">("idle");
   const [displayedCode, setDisplayedCode] = useState("");
+  const [copied, setCopied] = useState(false);
   const [logs, setLogs] = useState<string[]>([]);
   const consoleEndRef = useRef<HTMLDivElement>(null);
+
+  const handleCopyCode = async () => {
+    if (!displayedCode) return;
+    try {
+      await navigator.clipboard.writeText(displayedCode);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Fallback for older browsers
+      const textarea = document.createElement("textarea");
+      textarea.value = displayedCode;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
 
   // Granular settings states
   const [tokenName, setTokenName] = useState("VibeMemeCoin");
@@ -39,7 +59,10 @@ export default function VibePlayground() {
 
   useEffect(() => {
     if (consoleEndRef.current) {
-      consoleEndRef.current.scrollIntoView({ behavior: "smooth" });
+      const container = consoleEndRef.current.closest('.console-terminal');
+      if (container) {
+        container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+      }
     }
   }, [logs]);
 
@@ -300,16 +323,19 @@ contract ${tokenName}MultiSig${useReentrancy ? " is ReentrancyGuard" : ""} {
     setCompileState("completed");
     await addLog(`🚀 Compilation Success! Synthesized in 4.12 seconds. Gas optimized: ${security.gasOptimization ? "YES" : "NO"}.`, 200);
 
-    // Dynamic typing effect for contract display
+    // Dynamic typing effect — scales speed to target ~2s total regardless of code length
     let currentIdx = 0;
-    const interval = setInterval(() => {
+    const targetDurationMs = 2000;
+    const chunkSize = 8;
+    const tickInterval = Math.max(8, Math.min(25, Math.floor(targetDurationMs / (codeTemplate.length / chunkSize))));
+    const typingInterval = setInterval(() => {
       if (currentIdx < codeTemplate.length) {
-        setDisplayedCode((prev) => prev + codeTemplate.slice(currentIdx, currentIdx + 12));
-        currentIdx += 12;
+        setDisplayedCode((prev) => prev + codeTemplate.slice(currentIdx, currentIdx + chunkSize));
+        currentIdx += chunkSize;
       } else {
-        clearInterval(interval);
+        clearInterval(typingInterval);
       }
-    }, 15);
+    }, tickInterval);
   };
 
   return (
@@ -594,9 +620,20 @@ contract ${tokenName}MultiSig${useReentrancy ? " is ReentrancyGuard" : ""} {
 
         {/* Generated Source Code Output */}
         <div>
-          <h4 style={{ fontSize: "12px", color: "var(--text-muted)", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-            Generated Smart Contract (.sol)
-          </h4>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+            <h4 style={{ fontSize: "12px", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", margin: 0 }}>
+              Generated Smart Contract (.sol)
+            </h4>
+            {displayedCode && (
+              <button
+                onClick={handleCopyCode}
+                className={copied ? "btn-glow-cyan" : "btn-glow-purple"}
+                style={{ padding: "4px 12px", fontSize: "11px", height: "auto", opacity: 0.8 }}
+              >
+                {copied ? "✓ Copied!" : "📋 Copy"}
+              </button>
+            )}
+          </div>
           <div className="console-terminal" style={{ height: "280px", color: "#34d399", overflowX: "hidden" }}>
             {displayedCode ? (
               <pre style={{ margin: 0, whiteSpace: "pre-wrap", wordBreak: "break-all", fontFamily: "var(--font-mono)", fontSize: "12px", lineHeight: "1.4" }}>

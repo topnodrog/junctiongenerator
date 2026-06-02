@@ -98,15 +98,21 @@ export default function AgentConsole() {
   // Scroll to bottom of terminal when logs change or active agent changes
   useEffect(() => {
     if (consoleEndRef.current) {
-      consoleEndRef.current.scrollIntoView({ behavior: "smooth" });
+      const container = consoleEndRef.current.closest('.console-terminal');
+      if (container) {
+        container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+      }
     }
   }, [activeAgent, agents, typingAgent]);
 
-  // Background passive logs simulator (paused during active user scenario runs)
+  // Background passive logs simulator (paused during active user scenario runs or when tab hidden)
   useEffect(() => {
     if (isProcessing) return;
 
     const interval = setInterval(() => {
+      // Skip if tab is not visible (save resources)
+      if (typeof document !== "undefined" && document.hidden) return;
+      
       const agentNames: AgentName[] = ["helios", "daedalus", "hermes", "midas", "athena"];
       const randomAgent = agentNames[Math.floor(Math.random() * agentNames.length)];
       

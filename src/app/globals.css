@@ -343,6 +343,7 @@ h1, h2, h3, h4 {
   overflow-y: auto;
   color: #e2e8f0;
   position: relative;
+  overflow-anchor: none;
 }
 
 .console-terminal::after {
@@ -408,4 +409,26 @@ h1, h2, h3, h4 {
 
 .footer-link:hover {
   color: #fff !important;
+}
+
+/* Responsive grid layout */
+.section-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  position: relative;
+  z-index: 10;
+}
+
+@media (max-width: 768px) {
+  .section-grid {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  .section-grid > div[style*="gridColumn"] {
+    grid-column: span 1 !important;
+  }
+  .nav-links {
+    display: none !important;
+  }
 }

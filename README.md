@@ -1,36 +1,64 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Junction Generator
+
+**Turn Your Vibe Into Verifiable Web3 Code**
+
+Junction Generator is the world's first AI-operated, mined-compute Web3 factory. Speak in plain English to compile smart contracts, and secure the network using Proof-of-Useful-Compute.
+
+**Live site:** [junctiongenerator.net](https://junctiongenerator.net)
+
+## What It Is
+
+Junction Generator proposes **Proof-of-Useful-Compute (PoUC)** — a protocol that replaces cryptocurrency mining's wasteful hash puzzles with verifiable AI workload completion. GPU miners earn $JGC tokens by running real inference, training, and fine-tuning tasks instead of burning electricity on meaningless computations.
+
+## Tech Stack
+
+- **Framework:** Next.js 16 + React 19
+- **Language:** TypeScript
+- **Styling:** Tailwind CSS 4 + custom CSS design system
+- **Deployment:** Vercel
+- **Fonts:** Outfit + JetBrains Mono (via next/font)
+
+## Project Structure
+
+```
+src/
+├── app/
+│   ├── page.tsx          # Main landing page
+│   ├── layout.tsx        # Root layout with metadata
+│   ├── globals.css       # Design system (colors, glassmorphism, animations)
+│   └── whitepaper/
+│       └── page.tsx      # Concept paper page
+└── components/
+    ├── VibePlayground.tsx    # Interactive smart contract compiler
+    ├── MiningTelemetry.tsx   # PoUC compute grid dashboard + canvas visualizer
+    ├── AgentConsole.tsx      # Multi-agent C-Suite console
+    └── OSCRPCalculator.tsx   # Contributor reward simulator + leaderboard
+```
 
 ## Getting Started
 
-First, run the development server:
-
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Roadmap
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Phase | Status | Description |
+|-------|--------|-------------|
+| 1. Concept & Design | ✅ Complete | Core concept validated |
+| 2. Frontend & Demo | 🔄 In Progress | Interactive demo site |
+| 3. Protocol Spec | ⬜ Planned | Formal PoUC specification |
+| 4. Mining Client MVP | ⬜ Planned | GPU mining client |
+| 5. AI Marketplace | ⬜ Planned | Compute marketplace |
+| 6. Mainnet Launch | ⬜ Planned | $JGC token launch |
 
-## Learn More
+## Contributing
 
-To learn more about Next.js, take a look at the following resources:
+Junction Generator is open source. Every contribution earns OSCRP rewards (Autonomy Equity in the protocol treasury). See the [Whitepaper](/whitepaper) for details.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## License
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Open Source under OSCRP — see [concept-paper.md](docs/concept-paper.md) for the full protocol specification.

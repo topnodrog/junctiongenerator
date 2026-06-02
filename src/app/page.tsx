@@ -21,8 +21,13 @@ export default function Home() {
             <li className="nav-link-item"><a href="#rewards">OSCRP Stake</a></li>
           </ul>
         </nav>
-        <div>
-          <button className="btn-glow-cyan" style={{ padding: "8px 20px", fontSize: "14px" }}>
+        <div style={{ position: "relative" }}>
+          <button 
+            className="btn-glow-cyan" 
+            style={{ padding: "8px 20px", fontSize: "14px" }}
+            title="Wallet integration coming in Phase 6"
+            onClick={() => alert("Wallet connection coming soon! Junction Generator is currently in Phase 2. Mainnet launch with full wallet integration is planned for Phase 6.")}
+          >
             Connect Wallet
           </button>
         </div>
@@ -60,15 +65,7 @@ export default function Home() {
         </section>
 
         {/* Grid Sections */}
-        <div 
-          style={{ 
-            display: "grid", 
-            gridTemplateColumns: "1fr 1fr", 
-            gap: "32px",
-            position: "relative",
-            zIndex: 10
-          }}
-        >
+        <div className="section-grid">
           {/* Section 1: NLP Vibe Playground */}
           <div id="playground" style={{ gridColumn: "span 2", scrollMarginTop: "100px" }}>
             <VibePlayground />
@@ -98,14 +95,14 @@ export default function Home() {
             <div className="nav-logo-symbol" style={{ width: "24px", height: "24px", fontSize: "12px", borderRadius: "4px" }}>JG</div>
             <span>© 2026 Junction Generator. Open Source under OSCRP.</span>
           </div>
-          <div style={{ display: "flex", gap: "24px", fontSize: "14px" }}>
+          <div style={{ display: "flex", gap: "24px", fontSize: "14px", flexWrap: "wrap" }}>
             <a href="https://junctiongenerator.net" target="_blank" rel="noopener noreferrer" className="footer-link">
               junctiongenerator.net
             </a>
-            <a href="#" className="footer-link">
+            <a href="/whitepaper" className="footer-link">
               Whitepaper
             </a>
-            <a href="#" className="footer-link">
+            <a href="https://github.com/topnodrog/Junction_Generator" target="_blank" rel="noopener noreferrer" className="footer-link">
               GitHub
             </a>
           </div>

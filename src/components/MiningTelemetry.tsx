@@ -71,9 +71,9 @@ export default function MiningTelemetry() {
       setWorkloads((prevWorkloads) => {
         return prevWorkloads.map((wl) => {
           if (wl.status === "processing") {
-            const nextProgress = wl.progress + Math.floor(Math.random() * 8) + 2;
+            // Smooth progress: smaller increments (1-4%) at faster ticks
+            const nextProgress = wl.progress + Math.floor(Math.random() * 4) + 1;
             if (nextProgress >= 100) {
-              // 5% chance of being slashed at verification, 95% chance to transition to verifying
               const isSlashed = Math.random() < 0.06;
               return {
                 ...wl,
@@ -85,12 +85,10 @@ export default function MiningTelemetry() {
           }
           
           if (wl.status === "verifying") {
-            // Spend a tick verifying, then mark complete
             return { ...wl, status: "completed" };
           }
           
           if (wl.status === "completed" || wl.status === "slashed") {
-            // Replace completed or slashed tasks with a new random task
             const randomTask = SAMPLE_TASKS[Math.floor(Math.random() * SAMPLE_TASKS.length)];
             const randomMiner = SAMPLE_MINERS[Math.floor(Math.random() * SAMPLE_MINERS.length)];
             const newId = `WL-${Math.floor(Math.random() * 9000) + 1000}`;
@@ -107,7 +105,7 @@ export default function MiningTelemetry() {
           return wl;
         });
       });
-    }, 1500);
+    }, 800);
 
     return () => clearInterval(interval);
   }, []);
@@ -177,6 +175,9 @@ export default function MiningTelemetry() {
       if (!canvas) return;
       width = canvas.width = canvas.offsetWidth;
       height = canvas.height = canvas.offsetHeight;
+      
+      // Clear canvas immediately on resize to prevent ghosting
+      ctx.clearRect(0, 0, width, height);
       
       // Update coordinates based on resized width/height
       nodes[0].x = width * 0.5; nodes[0].y = height * 0.5;
