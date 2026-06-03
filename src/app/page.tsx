@@ -1,4 +1,4 @@
-use client
+"use client";
 import React from "react";
 import VibePlayground from "@/components/VibePlayground";
 import MiningTelemetry from "@/components/MiningTelemetry";
