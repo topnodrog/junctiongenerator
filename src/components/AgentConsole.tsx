@@ -95,12 +95,15 @@ export default function AgentConsole() {
   
   const consoleEndRef = useRef<HTMLDivElement>(null);
 
-  // Scroll to bottom of terminal when logs change or active agent changes
+  // Scroll to bottom of terminal only when new logs arrive AND user is already near bottom
   useEffect(() => {
     if (consoleEndRef.current) {
       const container = consoleEndRef.current.closest('.console-terminal');
       if (container) {
-        container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+        const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 80;
+        if (isNearBottom) {
+          container.scrollTo({ top: container.scrollHeight, behavior: "instant" });
+        }
       }
     }
   }, [activeAgent, agents, typingAgent]);

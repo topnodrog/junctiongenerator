@@ -60,7 +60,7 @@ export default function MiningTelemetry() {
           return { internal, external: 100 - internal };
         });
       }
-    }, 3000);
+    }, 5000);
 
     return () => clearInterval(interval);
   }, []);
@@ -105,7 +105,7 @@ export default function MiningTelemetry() {
           return wl;
         });
       });
-    }, 800);
+    }, 2000);
 
     return () => clearInterval(interval);
   }, []);
