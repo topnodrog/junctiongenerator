@@ -432,3 +432,45 @@ h1, h2, h3, h4 {
     display: none !important;
   }
 }
+
+/* ============================================
+   Attention Mining Section Styles
+   ============================================ */
+
+.mining-pulse {
+  animation: mining-pulse 2s infinite ease-in-out;
+}
+
+@keyframes mining-pulse {
+  0%, 100% { box-shadow: 0 0 15px rgba(57, 255, 20, 0.2); }
+  50% { box-shadow: 0 0 30px rgba(57, 255, 20, 0.4); }
+}
+
+.mining-glow {
+  animation: mining-glow 3s infinite alternate ease-in-out;
+}
+
+@keyframes mining-glow {
+  0% { text-shadow: 0 0 10px rgba(57, 255, 20, 0.3); }
+  100% { text-shadow: 0 0 20px rgba(57, 255, 20, 0.6); }
+}
+
+.ad-progress-bar {
+  background: linear-gradient(90deg, var(--color-cyan), var(--color-purple), var(--color-neon-green));
+  background-size: 200% 100%;
+  animation: ad-progress-shimmer 2s linear infinite;
+}
+
+@keyframes ad-progress-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.cooldown-timer {
+  animation: cooldown-pulse 1s infinite ease-in-out;
+}
+
+@keyframes cooldown-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}

@@ -4,6 +4,7 @@ import VibePlayground from "@/components/VibePlayground";
 import MiningTelemetry from "@/components/MiningTelemetry";
 import AgentConsole from "@/components/AgentConsole";
 import OSCRPCalculator from "@/components/OSCRPCalculator";
+import AttentionMining from "@/components/AttentionMining";
 
 export default function Home() {
   return (
@@ -20,6 +21,7 @@ export default function Home() {
             <li className="nav-link-item"><a href="#telemetry">Compute Grid</a></li>
             <li className="nav-link-item"><a href="#agents">C-Suite Console</a></li>
             <li className="nav-link-item"><a href="#rewards">OSCRP Stake</a></li>
+            <li className="nav-link-item"><a href="#mining">⛏️ Mine JGC</a></li>
           </ul>
         </nav>
         <div style={{ position: "relative" }}>
@@ -85,6 +87,11 @@ export default function Home() {
           {/* Section 4: C-Suite Agent Console */}
           <div id="agents" style={{ gridColumn: "span 2", scrollMarginTop: "100px" }}>
             <AgentConsole />
+          </div>
+
+          {/* Section 5: Attention Mining (Earn JGC by watching ads) */}
+          <div id="mining" style={{ gridColumn: "span 2", scrollMarginTop: "100px" }}>
+            <AttentionMining />
           </div>
         </div>
       </main>
