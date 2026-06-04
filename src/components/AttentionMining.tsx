@@ -6,9 +6,9 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 
 // ============================================================
-// JGC Attention Mining Section
+// JGT Attention Mining Section
 // ============================================================
-// Users connect wallet, watch ads, earn JGC tokens.
+// Users connect wallet, watch ads, earn JGT tokens.
 // Rewards halve with each consecutive ad view per session.
 // 24-hour cooldown per wallet address resets the reward cycle.
 // ============================================================
@@ -23,7 +23,7 @@ const PLACEHOLDER_ADS = [
   {
     id: "ad-1",
     title: "Building the Decentralized Future",
-    description: "JGC powers the next generation of AI-operated smart contracts.",
+    description: "JGT powers the next generation of AI-operated smart contracts.",
     sponsor: "Junction Generator",
     duration: 5,
     cta: "Learn More",
@@ -41,7 +41,7 @@ const PLACEHOLDER_ADS = [
   {
     id: "ad-3",
     title: "Open-Source Contributor Reward Protocol",
-    description: "Earn JGC by contributing to the Junction Generator ecosystem.",
+    description: "Earn JGT by contributing to the Junction Generator ecosystem.",
     sponsor: "Junction Generator",
     duration: 5,
     cta: "Explore OSCRP",
@@ -284,7 +284,7 @@ export default function AttentionMining() {
               fontSize: 14,
             }}
           >
-            Watch advertisements, earn JGC tokens. This section is under active development and will go live soon.
+            Watch advertisements, earn JGT tokens. This section is under active development and will go live soon.
           </p>
           <div
             style={{
@@ -366,7 +366,7 @@ export default function AttentionMining() {
               <span style={{ color: "var(--color-neon-green)" }}>⛏️</span> Attention Mining
             </h3>
             <p style={{ color: "var(--text-secondary)", fontSize: 13, marginTop: 4, lineHeight: 1.5 }}>
-              Watch advertisements to earn JGC tokens. Your attention has value.
+              Watch advertisements to earn JGT tokens. Your attention has value.
             </p>
           </div>
           <button
@@ -405,9 +405,9 @@ export default function AttentionMining() {
               {[
                 { step: "1", title: "Connect Wallet", desc: "Connect your Web3 wallet (MetaMask, Coinbase Wallet, etc.) to start earning." },
                 { step: "2", title: "Watch Advertisements", desc: "Click \"Start Mining\" to watch a short advertisement. You must watch the full duration." },
-                { step: "3", title: "Earn JGC Tokens", desc: "After each completed ad, JGC tokens are credited to your wallet balance." },
+                { step: "3", title: "Earn JGT Tokens", desc: "After each completed ad, JGT tokens are credited to your wallet balance." },
                 { step: "4", title: "Diminishing Returns", desc: "Each consecutive ad in a session earns half the previous reward: 2 → 1 → 0.5 → 0.25 → 0.125 ..." },
-                { step: "5", title: "24-Hour Cooldown", desc: "After your mining session, a 24-hour timer starts. When it expires, your rewards reset to 2 JGC per ad." },
+                { step: "5", title: "24-Hour Cooldown", desc: "After your mining session, a 24-hour timer starts. When it expires, your rewards reset to 2 JGT per ad." },
                 { step: "6", title: "Withdraw Anytime", desc: "Your earned tokens are claimable at any time after the ad is verified." },
               ].map((rule) => (
                 <div key={rule.step} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
@@ -456,7 +456,7 @@ export default function AttentionMining() {
                       fontWeight: 600,
                     }}
                   >
-                    #{i + 1}: {reward} JGC
+                    #{i + 1}: {reward} JGT
                   </span>
                 ))}
                 <span
@@ -483,7 +483,7 @@ export default function AttentionMining() {
             <div style={{ fontSize: 40, marginBottom: 16 }}>🔗</div>
             <h4 style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>Connect Your Wallet</h4>
             <p style={{ color: "var(--text-secondary)", fontSize: 13, marginBottom: 20, maxWidth: 350, margin: "0 auto 20px" }}>
-              Connect your Web3 wallet to start earning JGC tokens by watching advertisements.
+              Connect your Web3 wallet to start earning JGT tokens by watching advertisements.
             </p>
             <button onClick={connectWallet} className="btn-glow-purple" style={{ fontSize: 15 }}>
               Connect Wallet
@@ -523,11 +523,11 @@ export default function AttentionMining() {
               <div style={{ display: "flex", gap: 16 }}>
                 <div style={{ textAlign: "right" }}>
                   <div style={{ fontSize: 10, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Session</div>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: "var(--color-cyan)" }}>{wallet.sessionEarned.toFixed(4)} JGC</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: "var(--color-cyan)" }}>{wallet.sessionEarned.toFixed(4)} JGT</div>
                 </div>
                 <div style={{ textAlign: "right" }}>
                   <div style={{ fontSize: 10, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Total</div>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: "var(--color-neon-green)" }}>{wallet.totalEarned.toFixed(4)} JGC</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: "var(--color-neon-green)" }}>{wallet.totalEarned.toFixed(4)} JGT</div>
                 </div>
               </div>
             </div>
@@ -543,7 +543,7 @@ export default function AttentionMining() {
             >
               <div style={{ background: "rgba(0,0,0,0.2)", borderRadius: 8, padding: "12px 14px", textAlign: "center" }}>
                 <div style={{ fontSize: 10, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Next Reward</div>
-                <div style={{ fontSize: 18, fontWeight: 800, color: "var(--color-neon-green)", marginTop: 2 }}>{nextReward} JGC</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: "var(--color-neon-green)", marginTop: 2 }}>{nextReward} JGT</div>
               </div>
               <div style={{ background: "rgba(0,0,0,0.2)", borderRadius: 8, padding: "12px 14px", textAlign: "center" }}>
                 <div style={{ fontSize: 10, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Ads Watched</div>
@@ -552,7 +552,7 @@ export default function AttentionMining() {
               <div style={{ background: "rgba(0,0,0,0.2)", borderRadius: 8, padding: "12px 14px", textAlign: "center" }}>
                 <div style={{ fontSize: 10, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Est. Session Value</div>
                 <div style={{ fontSize: 18, fontWeight: 800, color: "var(--color-purple)", marginTop: 2 }}>
-                  {rewardBreakdown[0]?.cumulative.toFixed(2)} JGC
+                  {rewardBreakdown[0]?.cumulative.toFixed(2)} JGT
                 </div>
               </div>
             </div>
@@ -575,7 +575,7 @@ export default function AttentionMining() {
                       color: "var(--color-neon-green)",
                     }}
                   >
-                    Ad #{r.ad}: <strong>{r.reward}</strong> JGC
+                    Ad #{r.ad}: <strong>{r.reward}</strong> JGT
                   </div>
                 ))}
               </div>
@@ -675,7 +675,7 @@ export default function AttentionMining() {
                 Sponsored by {currentAd.sponsor}
               </div>
               <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>
-                Ad completes in {Math.max(0, Math.round((100 - adProgress) / 100 * (currentAd.duration || 5)))}s • Earn {nextReward} JGC
+                Ad completes in {Math.max(0, Math.round((100 - adProgress) / 100 * (currentAd.duration || 5)))}s • Earn {nextReward} JGT
               </div>
             </div>
 
@@ -691,10 +691,10 @@ export default function AttentionMining() {
             <div style={{ fontSize: 40, marginBottom: 12 }}>✅</div>
             <h4 style={{ fontSize: 16, fontWeight: 700, marginBottom: 6 }}>Advertisement Complete!</h4>
             <p style={{ color: "var(--text-secondary)", fontSize: 13, marginBottom: 16 }}>
-              You earned <strong style={{ color: "var(--color-neon-green)" }}>{nextReward} JGC</strong> for watching that ad.
+              You earned <strong style={{ color: "var(--color-neon-green)" }}>{nextReward} JGT</strong> for watching that ad.
             </p>
             <button onClick={claimReward} className="btn-glow-cyan" style={{ fontSize: 15 }}>
-              Claim {nextReward} JGC
+              Claim {nextReward} JGT
             </button>
           </div>
         )}
@@ -705,7 +705,7 @@ export default function AttentionMining() {
             <div style={{ fontSize: 40, marginBottom: 12 }}>⏳</div>
             <h4 style={{ fontSize: 16, fontWeight: 700, marginBottom: 6 }}>Mining Session Cooldown</h4>
             <p style={{ color: "var(--text-secondary)", fontSize: 13, marginBottom: 16 }}>
-              Your 24-hour cooldown is active. When it expires, your rewards will reset to 2 JGC per ad.
+              Your 24-hour cooldown is active. When it expires, your rewards will reset to 2 JGT per ad.
             </p>
 
             {/* Countdown timer */}
@@ -745,11 +745,11 @@ export default function AttentionMining() {
             >
               <div style={{ background: "rgba(0,0,0,0.2)", borderRadius: 8, padding: 14 }}>
                 <div style={{ fontSize: 10, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Session Earned</div>
-                <div style={{ fontSize: 20, fontWeight: 800, color: "var(--color-cyan)", marginTop: 2 }}>{wallet.sessionEarned.toFixed(4)} JGC</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: "var(--color-cyan)", marginTop: 2 }}>{wallet.sessionEarned.toFixed(4)} JGT</div>
               </div>
               <div style={{ background: "rgba(0,0,0,0.2)", borderRadius: 8, padding: 14 }}>
                 <div style={{ fontSize: 10, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Total Earned</div>
-                <div style={{ fontSize: 20, fontWeight: 800, color: "var(--color-neon-green)", marginTop: 2 }}>{wallet.totalEarned.toFixed(4)} JGC</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: "var(--color-neon-green)", marginTop: 2 }}>{wallet.totalEarned.toFixed(4)} JGT</div>
               </div>
             </div>
 
@@ -770,7 +770,7 @@ export default function AttentionMining() {
           }}
         >
           <p style={{ fontSize: 10, color: "var(--text-muted)", lineHeight: 1.5 }}>
-            <strong>Disclaimer:</strong> Attention Mining rewards are distributed as JGC tokens on the Base network.
+            <strong>Disclaimer:</strong> Attention Mining rewards are distributed as JGT tokens on the Base network.
             Token values may fluctuate. Advertisements are provided by third-party partners.
             By participating, you agree to the Junction Generator Token Distribution Terms.
             Rewards are subject to a 24-hour cooldown cycle per wallet address.

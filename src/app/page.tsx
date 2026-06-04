@@ -21,7 +21,7 @@ export default function Home() {
             <li className="nav-link-item"><a href="#telemetry">Compute Grid</a></li>
             <li className="nav-link-item"><a href="#agents">C-Suite Console</a></li>
             <li className="nav-link-item"><a href="#rewards">OSCRP Stake</a></li>
-            <li className="nav-link-item"><a href="#mining">⛏️ Mine JGC</a></li>
+            <li className="nav-link-item"><a href="#mining">⛏️ Mine JGT</a></li>
           </ul>
         </nav>
         <div style={{ position: "relative" }}>
@@ -74,7 +74,7 @@ export default function Home() {
             <VibePlayground />
           </div>
 
-          {/* Section 2: JGC Mining Telemetry */}
+          {/* Section 2: JGT Mining Telemetry */}
           <div id="telemetry" style={{ scrollMarginTop: "100px" }}>
             <MiningTelemetry />
           </div>
@@ -89,7 +89,7 @@ export default function Home() {
             <AgentConsole />
           </div>
 
-          {/* Section 5: Attention Mining (Earn JGC by watching ads) */}
+          {/* Section 5: Attention Mining (Earn JGT by watching ads) */}
           <div id="mining" style={{ gridColumn: "span 2", scrollMarginTop: "100px" }}>
             <AttentionMining />
           </div>
