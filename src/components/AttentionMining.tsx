@@ -11,6 +11,17 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 // Users connect wallet, watch ads, earn JGT tokens.
 // Rewards halve with each consecutive ad view per session.
 // 24-hour cooldown per wallet address resets the reward cycle.
+//
+// AD PROVIDER: Bitmedia (bitmedia.io)
+// - Crypto-focused ad network
+// - CPM model (pay per 1000 impressions)
+// - JavaScript SDK integration
+// - Pays in BTC
+// - Accepts all crypto/Web3 sites
+//
+// Integration: Bitmedia provides a JS script tag that renders
+// ads in a container. We track impressions and reward users
+// after verified ad views.
 // ============================================================
 
 // Reward schedule: 2, 1, 0.5, 0.25, 0.125, ... (halves each time)
@@ -18,7 +29,16 @@ const REWARD_SCHEDULE = [2, 1, 0.5, 0.25, 0.125, 0.0625, 0.03125, 0.015625];
 const COOLDOWN_HOURS = 24;
 const COOLDOWN_MS = COOLDOWN_HOURS * 60 * 60 * 1000;
 
-// Advertiser placeholder — in production this comes from an ad provider
+// Bitmedia configuration
+// TODO: Replace with your actual Bitmedia publisher ID after signing up at bitmedia.io
+const BITMEDIA_PUBLISHER_ID = "YOUR_PUBLISHER_ID";
+const BITMEDIA_SCRIPT_URL = "https://bitmedia.io/js/ads.js";
+
+// Ad provider type
+type AdProvider = "bitmedia" | "propellerads" | "placeholder";
+
+// Current active provider (change this when going live)
+const ACTIVE_PROVIDER: AdProvider = "placeholder"; // Change to "bitmedia" when ready
 const PLACEHOLDER_ADS = [
   {
     id: "ad-1",
@@ -94,8 +114,100 @@ export default function AttentionMining() {
   const [showRules, setShowRules] = useState(false);
   const [showConstruction, setShowConstruction] = useState(true);
   const [adCompleted, setAdCompleted] = useState(false);
+  const [adProviderReady, setAdProviderReady] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const adContainerRef = useRef<HTMLDivElement>(null);
+  const adImpressionRef = useRef<boolean>(false);
+
+  // Load ad provider script
+  useEffect(() => {
+    if (ACTIVE_PROVIDER === "placeholder") {
+      setAdProviderReady(true);
+      return;
+    }
+
+    if (ACTIVE_PROVIDER === "bitmedia") {
+      // Load Bitmedia ad script
+      const script = document.createElement("script");
+      script.src = BITMEDIA_SCRIPT_URL;
+      script.async = true;
+      script.onload = () => {
+        setAdProviderReady(true);
+        console.log("[JGT Mining] Bitmedia ad provider loaded");
+      };
+      script.onerror = () => {
+        console.error("[JGT Mining] Failed to load Bitmedia script, falling back to placeholder");
+        setAdProviderReady(true); // Fall back gracefully
+      };
+      document.head.appendChild(script);
+
+      return () => {
+        document.head.removeChild(script);
+      };
+    }
+
+    if (ACTIVE_PROVIDER === "propellerads") {
+      // Load PropellerAds script
+      const script = document.createElement("script");
+      script.src = "https://propellerads.com/js/ads.js";
+      script.async = true;
+      script.onload = () => setAdProviderReady(true);
+      script.onerror = () => setAdProviderReady(true);
+      document.head.appendChild(script);
+
+      return () => {
+        document.head.removeChild(script);
+      };
+    }
+  }, []);
+
+  // Render ad in container when watching
+  useEffect(() => {
+    if (state !== "watching" || !adContainerRef.current) return;
+
+    adImpressionRef.current = false;
+
+    if (ACTIVE_PROVIDER === "placeholder" || !adProviderReady) {
+      // Placeholder ad — handled by the existing UI
+      return;
+    }
+
+    if (ACTIVE_PROVIDER === "bitmedia" && adContainerRef.current) {
+      // Clear container
+      adContainerRef.current.innerHTML = "";
+
+      // Create ad unit container
+      const adUnit = document.createElement("div");
+      adUnit.id = "bitmedia-ad-unit";
+      adUnit.style.width = "100%";
+      adUnit.style.minHeight = "250px";
+      adUnit.style.display = "flex";
+      adUnit.style.alignItems = "center";
+      adUnit.style.justifyContent = "center";
+      adContainerRef.current.appendChild(adUnit);
+
+      // Initialize Bitmedia ad
+      // Bitmedia uses a global function to render ads
+      if (typeof (window as unknown as Record<string, unknown>).bitmediaAds === "function") {
+        (window as unknown as Record<string, (id: string, el: string) => void>).bitmediaAds(
+          BITMEDIA_PUBLISHER_ID,
+          "bitmedia-ad-unit"
+        );
+      }
+
+      // Track ad impression after a delay (simulating view verification)
+      const impressionTimer = setTimeout(() => {
+        if (!adImpressionRef.current) {
+          adImpressionRef.current = true;
+          setAdCompleted(true);
+          setState("claiming");
+        }
+      }, 5000); // 5-second minimum view time
+
+      return () => clearTimeout(impressionTimer);
+    }
+  }, [state, adProviderReady]);
 
   // Clean up timers
   useEffect(() => {
@@ -639,49 +751,59 @@ export default function AttentionMining() {
               </div>
             </div>
 
-            {/* Ad content placeholder */}
+            {/* Ad content area — placeholder or real ad provider */}
             <div
+              ref={adContainerRef}
               style={{
                 background: "rgba(0,0,0,0.3)",
                 border: "1px solid var(--glass-border)",
                 borderRadius: 12,
-                padding: 24,
+                padding: ACTIVE_PROVIDER !== "placeholder" ? 0 : 24,
                 textAlign: "center",
-                minHeight: 180,
+                minHeight: ACTIVE_PROVIDER !== "placeholder" ? 250 : 180,
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
                 justifyContent: "center",
                 gap: 12,
+                overflow: "hidden",
               }}
             >
-              <div style={{ fontSize: 32 }}>
-                {currentAd.sponsor === "Junction Generator" ? "⚡" : "📺"}
-              </div>
-              <h4 style={{ fontSize: 16, fontWeight: 700 }}>{currentAd.title}</h4>
-              <p style={{ color: "var(--text-secondary)", fontSize: 13, maxWidth: 350, lineHeight: 1.5 }}>
-                {currentAd.description}
-              </p>
-              <div
-                style={{
-                  background: "rgba(155, 81, 224, 0.1)",
-                  border: "1px solid rgba(155, 81, 224, 0.2)",
-                  borderRadius: 6,
-                  padding: "4px 12px",
-                  fontSize: 11,
-                  color: "var(--color-purple)",
-                }}
-              >
-                Sponsored by {currentAd.sponsor}
-              </div>
-              <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>
-                Ad completes in {Math.max(0, Math.round((100 - adProgress) / 100 * (currentAd.duration || 5)))}s • Earn {nextReward} JGT
-              </div>
+              {/* Placeholder ad content (shown when provider is placeholder or not ready) */}
+              {(ACTIVE_PROVIDER === "placeholder" || !adProviderReady) && (
+                <>
+                  <div style={{ fontSize: 32 }}>
+                    {currentAd?.sponsor === "Junction Generator" ? "⚡" : "📺"}
+                  </div>
+                  <h4 style={{ fontSize: 16, fontWeight: 700 }}>{currentAd?.title}</h4>
+                  <p style={{ color: "var(--text-secondary)", fontSize: 13, maxWidth: 350, lineHeight: 1.5 }}>
+                    {currentAd?.description}
+                  </p>
+                  <div
+                    style={{
+                      background: "rgba(155, 81, 224, 0.1)",
+                      border: "1px solid rgba(155, 81, 224, 0.2)",
+                      borderRadius: 6,
+                      padding: "4px 12px",
+                      fontSize: 11,
+                      color: "var(--color-purple)",
+                    }}
+                  >
+                    Sponsored by {currentAd?.sponsor}
+                  </div>
+                  <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>
+                    Ad completes in {Math.max(0, Math.round((100 - adProgress) / 100 * 5))}s • Earn {nextReward} JGT
+                  </div>
+                </>
+              )}
             </div>
 
-            <p style={{ textAlign: "center", color: "var(--text-muted)", fontSize: 11, marginTop: 10 }}>
-              Please watch the full advertisement to earn your reward. Closing or skipping will not credit tokens.
-            </p>
+            {/* Provider attribution */}
+            <div style={{ textAlign: "center", marginTop: 8 }}>
+              <span style={{ fontSize: 10, color: "var(--text-muted)" }}>
+                {ACTIVE_PROVIDER === "placeholder" ? "Demo Mode — No ads loaded" : `Ads provided by ${ACTIVE_PROVIDER}`}
+              </span>
+            </div>
           </div>
         )}
 

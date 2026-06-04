@@ -29,6 +29,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${outfit.variable} ${jetbrainsMono.variable} h-full antialiased`}>
+      <head>
+        <meta name="bitmedia-site-verification" content="de4d905aa1e9998048618692a23f7f2b" />
+      </head>
       <body style={{ margin: 0, padding: 0, backgroundColor: "var(--bg-space)", color: "var(--text-primary)" }}>
         {children}
       </body>
