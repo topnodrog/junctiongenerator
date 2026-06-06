@@ -8,7 +8,6 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname;
 
-    // CORS headers
     const corsHeaders = {
       "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
@@ -36,18 +35,35 @@ export default {
         return await handleDispense(request, env, corsHeaders);
       }
       if (path === "/api/health") {
-        return jsonResponse({ status: "ok", service: "JGT Mining API" }, corsHeaders);
+        const dbResult = await tursoQuery(env, "SELECT 1");
+        return jsonResponse({
+          status: "ok",
+          service: "JGT Mining API",
+          database: dbResult ? "connected" : "error",
+        }, corsHeaders);
       }
       return jsonResponse({ error: "Not found" }, corsHeaders, 404);
     } catch (err) {
       console.error("API Error:", err);
-      return jsonResponse({ error: "Internal server error" }, corsHeaders, 500);
+      return jsonResponse({ error: "Internal server error", message: err.message }, corsHeaders, 500);
     }
   },
 };
 
-// Execute a SQL statement via Turso HTTP API
+// Convert a JS value to Turso v3 typed value
+function toTursoValue(v) {
+  if (v === null || v === undefined) return { type: "null" };
+  if (typeof v === "number") {
+    if (Number.isInteger(v)) return { type: "integer", value: String(v) };
+    return { type: "float", value: String(v) };
+  }
+  if (typeof v === "boolean") return { type: "integer", value: v ? "1" : "0" };
+  return { type: "text", value: String(v) };
+}
+
+// Execute SQL via Turso HTTP API
 async function tursoQuery(env, sql, params = []) {
+  const args = params.map(toTursoValue);
   const res = await fetch(env.TURSO_URL + "/v3/pipeline", {
     method: "POST",
     headers: {
@@ -56,13 +72,22 @@ async function tursoQuery(env, sql, params = []) {
     },
     body: JSON.stringify({
       requests: [
-        { type: "execute", stmt: { sql, args: params } },
+        { type: "execute", stmt: { sql, args } },
         { type: "close" },
       ],
     }),
   });
   const data = await res.json();
-  return data;
+  if (data.results && data.results[0] && data.results[0].response) {
+    return data.results[0].response.result;
+  }
+  return null;
+}
+
+// Extract rows from Turso result (returns array of arrays of values)
+function getRows(result) {
+  if (!result || !result.rows) return [];
+  return result.rows.map(row => row.map(cell => cell.value));
 }
 
 // Handle ad view registration
@@ -76,35 +101,26 @@ async function handleAdView(request, env, corsHeaders) {
 
   const wallet = walletAddress.toLowerCase();
   const sid = sessionId || wallet + "-" + Date.now();
+  const now = new Date().toISOString();
 
   // Upsert user
-  await tursoQuery(env, `
-    INSERT INTO users (wallet_address, session_count, last_session_at)
-    VALUES (?, 1, datetime('now'))
-    ON CONFLICT(wallet_address) DO UPDATE SET
-      session_count = session_count + 1,
-      last_session_at = datetime('now')
-  `, [wallet]);
+  await tursoQuery(env, "INSERT OR IGNORE INTO users (wallet_address, session_count, last_session_at) VALUES (?, 1, ?)", [wallet, now]);
+  await tursoQuery(env, "UPDATE users SET session_count = session_count + 1, last_session_at = ? WHERE wallet_address = ?", [now, wallet]);
 
   // Get user ID
   const userResult = await tursoQuery(env, "SELECT id FROM users WHERE wallet_address = ?", [wallet]);
-  const userId = userResult?.results?.[0]?.rows?.[0]?.[0];
+  const userId = getRows(userResult)?.[0]?.[0];
   if (!userId) {
     return jsonResponse({ error: "Failed to get/create user" }, corsHeaders, 500);
   }
 
   // Upsert session
-  await tursoQuery(env, `
-    INSERT INTO sessions (user_id, wallet_address, ads_watched, session_reward, status)
-    VALUES (?, ?, 1, ?, 'active')
-    ON CONFLICT DO UPDATE SET
-      ads_watched = ads_watched + 1,
-      session_reward = session_reward + ?
-  `, [userId, wallet, rewardAmount, rewardAmount]);
+  await tursoQuery(env, "INSERT OR IGNORE INTO sessions (user_id, wallet_address, ads_watched, session_reward, status) VALUES (?, ?, 1, ?, 'active')", [userId, wallet, rewardAmount]);
+  await tursoQuery(env, "UPDATE sessions SET ads_watched = ads_watched + 1, session_reward = session_reward + ? WHERE user_id = ? AND status = 'active'", [rewardAmount, userId]);
 
   // Get session ID
-  const sessionResult = await tursoQuery(env, "SELECT id FROM sessions WHERE user_id = ? AND status = ? ORDER BY created_at DESC LIMIT 1", [userId, "active"]);
-  const sessionIdDb = sessionResult?.results?.[0]?.rows?.[0]?.[0];
+  const sessionResult = await tursoQuery(env, "SELECT id FROM sessions WHERE user_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1", [userId]);
+  const sessionIdDb = getRows(sessionResult)?.[0]?.[0];
 
   // Record ad view
   await tursoQuery(env, "INSERT INTO ad_views (user_id, session_id, ad_index, reward_amount) VALUES (?, ?, ?, ?)", [userId, sessionIdDb, adIndex, rewardAmount]);
@@ -113,7 +129,7 @@ async function handleAdView(request, env, corsHeaders) {
   await tursoQuery(env, "INSERT INTO pending_claims (user_id, wallet_address, amount, status) VALUES (?, ?, ?, 'pending')", [userId, wallet, rewardAmount]);
 
   // Update user totals
-  await tursoQuery(env, "UPDATE users SET total_rewards_earned = total_rewards_earned + ?, updated_at = datetime('now') WHERE id = ?", [rewardAmount, userId]);
+  await tursoQuery(env, "UPDATE users SET total_rewards_earned = total_rewards_earned + ?, updated_at = ? WHERE id = ?", [rewardAmount, now, userId]);
 
   return jsonResponse({
     success: true,
@@ -133,34 +149,27 @@ async function handleGetUser(request, env, corsHeaders) {
   }
 
   const result = await tursoQuery(env, `
-    SELECT
-      u.wallet_address,
-      u.total_rewards_earned,
-      u.total_rewards_claimed,
-      u.session_count,
-      u.email,
-      u.created_at,
-      COALESCE(SUM(pc.amount), 0) as pending_rewards
+    SELECT u.wallet_address, u.total_rewards_earned, u.total_rewards_claimed, u.session_count, u.email, u.created_at, COALESCE(SUM(pc.amount), 0) as pending_rewards
     FROM users u
     LEFT JOIN pending_claims pc ON pc.user_id = u.id AND pc.status = 'pending'
     WHERE u.wallet_address = ?
     GROUP BY u.id
   `, [wallet]);
 
-  const user = result?.results?.[0]?.rows?.[0];
-  if (!user) {
+  const row = getRows(result)?.[0];
+  if (!row) {
     return jsonResponse({ error: "User not found" }, corsHeaders, 404);
   }
 
   return jsonResponse({
     user: {
-      wallet_address: user[0],
-      total_rewards_earned: user[1],
-      total_rewards_claimed: user[2],
-      session_count: user[3],
-      email: user[4],
-      created_at: user[5],
-      pending_rewards: user[6],
+      wallet_address: row[0],
+      total_rewards_earned: parseFloat(row[1]) || 0,
+      total_rewards_claimed: parseFloat(row[2]) || 0,
+      session_count: parseInt(row[3]) || 0,
+      email: row[4],
+      created_at: row[5],
+      pending_rewards: parseFloat(row[6]) || 0,
     },
   }, corsHeaders);
 }
@@ -180,14 +189,7 @@ async function handleSubscribe(request, env, corsHeaders) {
   }
 
   try {
-    await tursoQuery(env, `
-      INSERT INTO newsletter_subscribers (email, wallet_address)
-      VALUES (?, ?)
-      ON CONFLICT(email) DO UPDATE SET
-        wallet_address = COALESCE(?, wallet_address),
-        active = 1
-    `, [email.toLowerCase(), walletAddress?.toLowerCase() || null, walletAddress?.toLowerCase() || null]);
-
+    await tursoQuery(env, "INSERT OR IGNORE INTO newsletter_subscribers (email, wallet_address) VALUES (?, ?)", [email.toLowerCase(), walletAddress?.toLowerCase() || null]);
     return jsonResponse({ success: true, message: "Subscribed to JGT newsletter!" }, corsHeaders);
   } catch (err) {
     return jsonResponse({ error: "Subscription failed" }, corsHeaders, 500);
@@ -196,23 +198,12 @@ async function handleSubscribe(request, env, corsHeaders) {
 
 // Get pending rewards (admin)
 async function handlePendingRewards(request, env, corsHeaders) {
-  const pending = await tursoQuery(env, `
-    SELECT wallet_address, SUM(amount) as total_pending, COUNT(*) as claim_count
-    FROM pending_claims
-    WHERE status = 'pending'
-    GROUP BY wallet_address
-    ORDER BY total_pending DESC
-  `);
-
-  const summary = await tursoQuery(env, `
-    SELECT COUNT(DISTINCT wallet_address) as unique_users, SUM(amount) as total_pending, COUNT(*) as total_claims
-    FROM pending_claims
-    WHERE status = 'pending'
-  `);
+  const pending = await tursoQuery(env, "SELECT wallet_address, SUM(amount) as total_pending, COUNT(*) as claim_count FROM pending_claims WHERE status = 'pending' GROUP BY wallet_address ORDER BY total_pending DESC");
+  const summary = await tursoQuery(env, "SELECT COUNT(DISTINCT wallet_address) as unique_users, SUM(amount) as total_pending, COUNT(*) as total_claims FROM pending_claims WHERE status = 'pending'");
 
   return jsonResponse({
-    summary: summary?.results?.[0]?.rows?.[0],
-    recipients: pending?.results?.[0]?.rows,
+    summary: getRows(summary)?.[0],
+    recipients: getRows(pending),
   }, corsHeaders);
 }
 
@@ -223,21 +214,15 @@ async function handleDispense(request, env, corsHeaders) {
     return jsonResponse({ error: "Unauthorized" }, corsHeaders, 401);
   }
 
-  const pending = await tursoQuery(env, `
-    SELECT wallet_address, SUM(amount) as total_amount, COUNT(*) as claim_count
-    FROM pending_claims
-    WHERE status = 'pending'
-    GROUP BY wallet_address
-    HAVING total_amount > 0
-  `);
+  const pending = await tursoQuery(env, "SELECT wallet_address, SUM(amount) as total_amount, COUNT(*) as claim_count FROM pending_claims WHERE status = 'pending' GROUP BY wallet_address HAVING total_amount > 0");
+  const recipients = getRows(pending);
 
-  const recipients = pending?.results?.[0]?.rows;
   if (!recipients || recipients.length === 0) {
     return jsonResponse({ message: "No pending claims to process" }, corsHeaders);
   }
 
   const batchId = "batch-" + Date.now();
-  const totalAmount = recipients.reduce((sum, r) => sum + r[1], 0);
+  const totalAmount = recipients.reduce((sum, r) => sum + parseFloat(r[1]), 0);
 
   await tursoQuery(env, "INSERT INTO dispense_batches (batch_id, total_amount, recipient_count, status) VALUES (?, ?, ?, 'processing')", [batchId, totalAmount, recipients.length]);
   await tursoQuery(env, "UPDATE pending_claims SET status = 'processing', batch_id = ? WHERE status = 'pending'", [batchId]);
