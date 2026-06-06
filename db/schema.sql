@@ -54,7 +54,7 @@ CREATE TABLE IF NOT EXISTS pending_claims (
 );
 
 -- Batch history table: tracks daily dispense runs
-CREATE TABLE IF NULL EXISTS dispense_batches (
+CREATE TABLE IF NOT EXISTS dispense_batches (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     batch_id TEXT UNIQUE NOT NULL,
     total_amount REAL NOT NULL,
