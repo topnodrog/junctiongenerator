@@ -40,6 +40,12 @@ export default {
       if (path === "/api/ads/campaigns" && request.method === "POST") {
         return await handleCreateCampaign(request, env, corsHeaders);
       }
+      if (path === "/api/airdrop/register" && request.method === "POST") {
+        return await handleAirdropRegister(request, env, corsHeaders);
+      }
+      if (path === "/api/airdrop/status" && request.method === "GET") {
+        return await handleAirdropStatus(request, env, corsHeaders);
+      }
       if (path === "/api/pending-rewards" && request.method === "GET") {
         return await handlePendingRewards(request, env, corsHeaders);
       }
@@ -394,5 +400,76 @@ async function handleCreateCampaign(request, env, corsHeaders) {
     success: true,
     campaignId: id,
     message: "Campaign created successfully!",
+  }, corsHeaders);
+}
+
+// ============================================================
+// AIRDROP REGISTRATION
+// ============================================================
+
+async function handleAirdropRegister(request, env, corsHeaders) {
+  const body = await request.json();
+  const { walletAddress, email } = body;
+
+  if (!walletAddress || !email) {
+    return jsonResponse({ error: "Wallet address and email required" }, corsHeaders, 400);
+  }
+
+  // Validate email
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return jsonResponse({ error: "Invalid email format" }, corsHeaders, 400);
+  }
+
+  // Validate wallet address (basic check)
+  if (!/^0x[a-fA-F0-9]{40}$/.test(walletAddress)) {
+    return jsonResponse({ error: "Invalid wallet address" }, corsHeaders, 400);
+  }
+
+  try {
+    await tursoQuery(env, 
+      "INSERT OR IGNORE INTO airdrop_registrations (wallet_address, email) VALUES (?, ?)",
+      [walletAddress.toLowerCase(), email.toLowerCase()]
+    );
+    
+    // Get registration count
+    const countResult = await tursoQuery(env, "SELECT COUNT(*) FROM airdrop_registrations");
+    const totalRegistered = getRows(countResult)?.[0]?.[0];
+
+    return jsonResponse({
+      success: true,
+      message: "Registered for airdrop! You'll be notified when JGT is distributed.",
+      totalRegistered: parseInt(totalRegistered) || 0,
+    }, corsHeaders);
+  } catch (err) {
+    return jsonResponse({ error: "Registration failed" }, corsHeaders, 500);
+  }
+}
+
+async function handleAirdropStatus(request, env, corsHeaders) {
+  const url = new URL(request.url);
+  const wallet = url.searchParams.get("wallet")?.toLowerCase();
+  
+  if (!wallet) {
+    return jsonResponse({ error: "Wallet address required" }, corsHeaders, 400);
+  }
+
+  const result = await tursoQuery(env, 
+    "SELECT wallet_address, email, registered_at, notified, claimed FROM airdrop_registrations WHERE wallet_address = ?",
+    [wallet]
+  );
+  const row = getRows(result)?.[0];
+
+  if (!row) {
+    return jsonResponse({ registered: false }, corsHeaders);
+  }
+
+  return jsonResponse({
+    registered: true,
+    walletAddress: row[0],
+    email: row[1],
+    registeredAt: row[2],
+    notified: row[3] === "1",
+    claimed: row[4] === "1",
   }, corsHeaders);
 }
