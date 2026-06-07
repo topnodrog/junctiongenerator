@@ -28,6 +28,18 @@ export default {
       if (path === "/api/subscribe" && request.method === "POST") {
         return await handleSubscribe(request, env, corsHeaders);
       }
+      if (path === "/api/referral" && request.method === "GET") {
+        return await handleGetReferral(request, env, corsHeaders);
+      }
+      if (path === "/api/referral/claim" && request.method === "POST") {
+        return await handleClaimReferral(request, env, corsHeaders);
+      }
+      if (path === "/api/ads/campaigns" && request.method === "GET") {
+        return await handleGetCampaigns(request, env, corsHeaders);
+      }
+      if (path === "/api/ads/campaigns" && request.method === "POST") {
+        return await handleCreateCampaign(request, env, corsHeaders);
+      }
       if (path === "/api/pending-rewards" && request.method === "GET") {
         return await handlePendingRewards(request, env, corsHeaders);
       }
@@ -244,4 +256,143 @@ function jsonResponse(data, headers = {}, status = 200) {
     status,
     headers: { "Content-Type": "application/json", ...headers },
   });
+}
+
+// ============================================================
+// REFERRAL SYSTEM
+// ============================================================
+
+// Generate a referral code from wallet address
+function generateReferralCode(wallet) {
+  // Simple hash: first 8 chars of base64-encoded address
+  const hash = btoa(wallet.toLowerCase()).replace(/[^a-zA-Z0-9]/g, '').slice(0, 8);
+  return hash.toUpperCase();
+}
+
+// Get referral info for a user
+async function handleGetReferral(request, env, corsHeaders) {
+  const url = new URL(request.url);
+  const wallet = url.searchParams.get("wallet")?.toLowerCase();
+  if (!wallet) {
+    return jsonResponse({ error: "Wallet address required" }, corsHeaders, 400);
+  }
+
+  const referralCode = generateReferralCode(wallet);
+
+  // Get referrer info
+  const userResult = await tursoQuery(env, "SELECT referrer_code FROM users WHERE wallet_address = ?", [wallet]);
+  const referrerCode = getRows(userResult)?.[0]?.[0];
+
+  // Get referral count and earnings
+  const refCountResult = await tursoQuery(env, "SELECT COUNT(*), COALESCE(SUM(referral_reward), 0) FROM users WHERE referrer_code = ?", [referralCode]);
+  const refStats = getRows(refCountResult)?.[0];
+
+  return jsonResponse({
+    referralCode,
+    referralUrl: `https://junctiongenerator.net?ref=${referralCode}`,
+    referrerCode: referrerCode || null,
+    referralsCount: parseInt(refStats?.[0]) || 0,
+    referralEarnings: parseFloat(refStats?.[1]) || 0,
+  }, corsHeaders);
+}
+
+// Claim a referral (called when a new user signs up with a referral code)
+async function handleClaimReferral(request, env, corsHeaders) {
+  const body = await request.json();
+  const { walletAddress, referralCode } = body;
+
+  if (!walletAddress || !referralCode) {
+    return jsonResponse({ error: "Wallet address and referral code required" }, corsHeaders, 400);
+  }
+
+  const wallet = walletAddress.toLowerCase();
+  const now = new Date().toISOString();
+
+  // Check if user already has a referrer
+  const existingResult = await tursoQuery(env, "SELECT referrer_code FROM users WHERE wallet_address = ?", [wallet]);
+  if (getRows(existingResult)?.[0]?.[0]) {
+    return jsonResponse({ error: "User already has a referrer" }, corsHeaders, 400);
+  }
+
+  // Check if referral code exists (is a valid user)
+  const referrerResult = await tursoQuery(env, "SELECT wallet_address FROM users WHERE wallet_address = ?", [referralCode.toLowerCase()]);
+  if (!getRows(referrerResult)?.[0]) {
+    return jsonResponse({ error: "Invalid referral code" }, corsHeaders, 400);
+  }
+
+  // Can't refer yourself
+  if (referralCode.toLowerCase() === wallet) {
+    return jsonResponse({ error: "Cannot refer yourself" }, corsHeaders, 400);
+  }
+
+  // Update user with referrer
+  await tursoQuery(env, "UPDATE users SET referrer_code = ? WHERE wallet_address = ?", [referralCode, wallet]);
+
+  // Add referral reward to referrer (0.5 JGT bonus)
+  const referralReward = 0.5;
+  await tursoQuery(env, "INSERT INTO pending_claims (user_id, wallet_address, amount, status) SELECT id, wallet_address, ?, 'pending' FROM users WHERE wallet_address = ?", [referralReward, referralCode.toLowerCase()]);
+
+  return jsonResponse({
+    success: true,
+    message: `Referral claimed! ${referralReward} JGT bonus added to referrer.`,
+  }, corsHeaders);
+}
+
+// ============================================================
+// AD CAMPAIGNS (Self-serve)
+// ============================================================
+
+async function handleGetCampaigns(request, env, corsHeaders) {
+  const url = new URL(request.url);
+  const status = url.searchParams.get("status") || "active";
+
+  const result = await tursoQuery(env, `
+    SELECT id, title, description, cta, cta_url, sponsor, image_url, budget, total_budget, impressions, clicks, status, created_at, wallet_address
+    FROM ad_campaigns
+    WHERE status = ?
+    ORDER BY created_at DESC
+    LIMIT 50
+  `, [status]);
+
+  const campaigns = (getRows(result) || []).map(row => ({
+    id: row[0],
+    title: row[1],
+    description: row[2],
+    cta: row[3],
+    ctaUrl: row[4],
+    sponsor: row[5],
+    imageUrl: row[6],
+    budget: parseFloat(row[7]) || 0,
+    totalBudget: parseFloat(row[8]) || 0,
+    impressions: parseInt(row[9]) || 0,
+    clicks: parseInt(row[10]) || 0,
+    status: row[11],
+    createdAt: row[12],
+    walletAddress: row[13],
+  }));
+
+  return jsonResponse({ campaigns }, corsHeaders);
+}
+
+async function handleCreateCampaign(request, env, corsHeaders) {
+  const body = await request.json();
+  const { title, description, cta, ctaUrl, sponsor, imageUrl, budget, dailyBudget, walletAddress } = body;
+
+  if (!title || !description || !ctaUrl || !sponsor || !budget || !walletAddress) {
+    return jsonResponse({ error: "Missing required fields" }, corsHeaders, 400);
+  }
+
+  const id = "camp-" + Date.now();
+  const now = new Date().toISOString();
+
+  await tursoQuery(env, `
+    INSERT INTO ad_campaigns (id, title, description, cta, cta_url, sponsor, image_url, budget, total_budget, daily_budget, impressions, clicks, status, created_at, wallet_address)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 'active', ?, ?)
+  `, [id, title, description, cta, ctaUrl, sponsor, imageUrl || null, budget, budget, dailyBudget || null, now, walletAddress.toLowerCase()]);
+
+  return jsonResponse({
+    success: true,
+    campaignId: id,
+    message: "Campaign created successfully!",
+  }, corsHeaders);
 }
