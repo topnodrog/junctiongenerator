@@ -63,8 +63,9 @@ function toTursoValue(v) {
 
 // Execute SQL via Turso HTTP API
 async function tursoQuery(env, sql, params = []) {
+  const tursoUrl = env.TURSO_URL || "https://jgt-mining-topnodrog.aws-us-east-2.turso.io";
   const args = params.map(toTursoValue);
-  const res = await fetch(env.TURSO_URL + "/v3/pipeline", {
+  const res = await fetch(tursoUrl + "/v3/pipeline", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
