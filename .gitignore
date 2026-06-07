@@ -49,3 +49,5 @@ next-env.d.ts
 .turso-url
 api/.dev.vars
 api/.wrangler
+deployment-base.json
+.deployment_wallet.json
