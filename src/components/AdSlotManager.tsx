@@ -4,7 +4,9 @@
 // Crypto projects pay to feature their ads in the attention mining section
 // Payments accepted in ETH on Base network
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
+import { useAccount, useConnect } from "wagmi";
+import { injected } from "wagmi/connectors";
 
 // ============================================================
 // CONFIGURATION
@@ -44,9 +46,13 @@ interface AdCampaign {
 // ============================================================
 
 export default function AdSlotManager() {
+  const { address, isConnected } = useAccount();
+  const { connect } = useConnect();
+
   const [campaigns, setCampaigns] = useState<AdCampaign[]>([]);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [walletError, setWalletError] = useState("");
 
   // Form state
   const [formData, setFormData] = useState({
@@ -81,8 +87,12 @@ export default function AdSlotManager() {
 
   const handleCreateCampaign = async (e: React.FormEvent) => {
     e.preventDefault();
-    // In production: connect wallet, sign transaction, pay ETH
-    // For now, create a pending campaign
+    if (!isConnected || !address) {
+      setWalletError("Connect your wallet first to create a campaign");
+      return;
+    }
+    setWalletError("");
+    // In production: sign transaction, pay ETH on Base
     const newCampaign: AdCampaign = {
       id: `camp-${Date.now()}`,
       title: formData.title,
@@ -97,7 +107,7 @@ export default function AdSlotManager() {
       clicks: 0,
       status: "active",
       createdAt: new Date().toISOString(),
-      walletAddress: "0x...", // Would be connected wallet
+      walletAddress: address,
     };
 
     setCampaigns((prev) => [newCampaign, ...prev]);

@@ -4,6 +4,8 @@
 // Last updated: 2026-06-06
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useAccount, useConnect, useDisconnect } from "wagmi";
+import { injected } from "wagmi/connectors";
 
 // ============================================================
 // CONFIGURATION
@@ -132,8 +134,25 @@ async function recordAdView(
 // ============================================================
 
 export default function AttentionMining() {
+  const { address, isConnected } = useAccount();
+  const { connect } = useConnect();
+  const { disconnect } = useDisconnect();
+
   const [state, setState] = useState<MiningState>("disconnected");
   const [wallet, setWallet] = useState<WalletData | null>(null);
+
+  // Sync wagmi address with local wallet state
+  useEffect(() => {
+    if (isConnected && address) {
+      if (!wallet) {
+        setWallet({ address, totalEarned: 0, sessionEarned: 0, adsWatched: 0, lastSessionStart: null, cooldownEnd: null });
+      }
+      if (state === "disconnected") setState("ready");
+    } else {
+      setWallet(null);
+      setState("disconnected");
+    }
+  }, [isConnected, address]);
   const [currentAd, setCurrentAd] = useState<typeof PLACEHOLDER_ADS[0] | null>(null);
   const [adProgress, setAdProgress] = useState(0);
   const [adIndex, setAdIndex] = useState(0);
@@ -269,28 +288,10 @@ export default function AttentionMining() {
     };
   }, [state, wallet]);
 
-  // Connect wallet
-  const connectWallet = useCallback(async () => {
-    if (typeof window === "undefined") return;
-    const eth = (window as unknown as Record<string, unknown>).ethereum as {
-      request: (args: { method: string }) => Promise<string[]>;
-    } | undefined;
-    if (eth) {
-      try {
-        const accounts = await eth.request({ method: "eth_requestAccounts" });
-        if (accounts && accounts.length > 0) {
-          setWallet({ address: accounts[0], totalEarned: 0, sessionEarned: 0, adsWatched: 0, lastSessionStart: null, cooldownEnd: null });
-          setState("ready");
-        }
-      } catch {
-        setWallet({ address: "0x7a23...f4e9", totalEarned: 0, sessionEarned: 0, adsWatched: 0, lastSessionStart: null, cooldownEnd: null });
-        setState("ready");
-      }
-    } else {
-      setWallet({ address: "0x7a23...f4e9", totalEarned: 0, sessionEarned: 0, adsWatched: 0, lastSessionStart: null, cooldownEnd: null });
-      setState("ready");
-    }
-  }, []);
+  // Connect wallet via wagmi
+  const connectWallet = useCallback(() => {
+    connect({ connector: injected() });
+  }, [connect]);
 
   // Start watching an ad
   const startAd = useCallback(() => {

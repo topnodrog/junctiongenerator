@@ -4,6 +4,8 @@
 // Users stake JGT to earn rewards and get platform benefits
 
 import React, { useState, useEffect, useCallback } from "react";
+import { useAccount, useConnect, useDisconnect } from "wagmi";
+import { injected } from "wagmi/connectors";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
 const JGT_TOKEN_ADDRESS = "0x7Fe2E89075F570ABcCf5451A00Bf780787FEc587";
@@ -23,28 +25,22 @@ interface PoolInfo {
 }
 
 export default function JGTStaking() {
+  const { address, isConnected } = useAccount();
+  const { connect } = useConnect();
+  const { disconnect } = useDisconnect();
+
   const [stakeInfo, setStakeInfo] = useState<StakeInfo | null>(null);
   const [poolInfo, setPoolInfo] = useState<PoolInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [stakeAmount, setStakeAmount] = useState("");
-  const [wallet, setWallet] = useState<string | null>(null);
   const [jgtBalance, setJgtBalance] = useState("0");
   const [actionLoading, setActionLoading] = useState(false);
 
-  const connectWallet = useCallback(async () => {
-    if (typeof window === "undefined") return;
-    const eth = (window as any).ethereum;
-    if (!eth) {
-      alert("Please install MetaMask or another Web3 wallet");
-      return;
-    }
-    try {
-      const accounts = await eth.request({ method: "eth_requestAccounts" });
-      setWallet(accounts[0]);
-    } catch (err) {
-      console.error("Wallet connection failed:", err);
-    }
-  }, []);
+  const wallet = address || null;
+
+  const handleConnect = () => {
+    connect({ connector: injected() });
+  };
 
   const fetchStakeInfo = useCallback(async () => {
     if (!wallet) return;
@@ -101,7 +97,7 @@ export default function JGTStaking() {
     }
   };
 
-  if (!wallet) {
+  if (!isConnected) {
     return (
       <div className="glass-container" style={{ textAlign: "center", padding: "32px" }}>
         <div style={{ fontSize: 40, marginBottom: 16 }}>🔒</div>
@@ -109,7 +105,7 @@ export default function JGTStaking() {
         <p style={{ color: "var(--text-secondary)", fontSize: 13, marginBottom: 20 }}>
           Connect your wallet to stake JGT and earn rewards.
         </p>
-        <button onClick={connectWallet} className="btn-glow-purple">Connect Wallet</button>
+        <button onClick={handleConnect} className="btn-glow-purple">Connect Wallet</button>
       </div>
     );
   }
@@ -129,7 +125,7 @@ export default function JGTStaking() {
           <span style={{ color: "var(--color-neon-green)" }}>🔒</span> JGT Staking
         </h3>
         <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--text-muted)" }}>
-          {wallet.slice(0, 6)}...{wallet.slice(-4)}
+          {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : ""}
         </span>
       </div>
 
