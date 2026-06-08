@@ -5,6 +5,9 @@ import MiningTelemetry from "@/components/MiningTelemetry";
 import AgentConsole from "@/components/AgentConsole";
 import OSCRPCalculator from "@/components/OSCRPCalculator";
 import AttentionMining from "@/components/AttentionMining";
+import JGTRevenueHub from "@/components/JGTRevenueHub";
+import JGTStaking from "@/components/JGTStaking";
+import AdSlotManager from "@/components/AdSlotManager";
 
 export default function Home() {
   return (
@@ -22,7 +25,10 @@ export default function Home() {
             <li className="nav-link-item"><a href="#agents">C-Suite Console</a></li>
             <li className="nav-link-item"><a href="#rewards">OSCRP Stake</a></li>
             <li className="nav-link-item"><a href="#mining">⛏️ Mine JGT</a></li>
-          </ul>
+            <li className="nav-link-item"><a href="#revenue">💰 Revenue</a></li>
+            <li className="nav-link-item"><a href="#staking">🔒 Stake</a></li>
+            <li className="nav-link-item"><a href="#adslots">📢 Ad Slots</a></li>
+            </ul>
         </nav>
         <div style={{ position: "relative" }}>
           <button 
@@ -93,6 +99,21 @@ export default function Home() {
           <div id="mining" style={{ gridColumn: "span 2", scrollMarginTop: "100px" }}>
             <AttentionMining />
           </div>
+
+          {/* Section 6: JGT Revenue Hub (Airdrop + Buy + Donate) */}
+          <div id="revenue" style={{ gridColumn: "span 2", scrollMarginTop: "100px" }}>
+            <JGTRevenueHub />
+          </div>
+
+          {/* Section 7: JGT Staking */}
+          <div id="staking" style={{ gridColumn: "span 2", scrollMarginTop: "100px" }}>
+            <JGTStaking />
+          </div>
+
+          {/* Section 8: Ad Slot Manager (Self-Serve Ads) */}
+          <div id="adslots" style={{ gridColumn: "span 2", scrollMarginTop: "100px" }}>
+            <AdSlotManager />
+          </div>
         </div>
       </main>
 
@@ -110,7 +131,7 @@ export default function Home() {
             <a href="/whitepaper" className="footer-link">
               Whitepaper
             </a>
-            <a href="https://github.com/topnodrog/Junction_Generator" target="_blank" rel="noopener noreferrer" className="footer-link">
+            <a href="https://github.com/topnodrog/junctiongenerator" target="_blank" rel="noopener noreferrer" className="footer-link">
               GitHub
             </a>
           </div>
