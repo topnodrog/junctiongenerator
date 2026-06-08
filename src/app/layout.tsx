@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Outfit, JetBrains_Mono } from "next/font/google";
+import { WalletProvider } from "@/components/WalletProvider";
 import "./globals.css";
 
 const outfit = Outfit({
@@ -33,7 +34,9 @@ export default function RootLayout({
         <meta name="bitmedia-site-verification" content="de4d905aa1e9998048618692a23f7f2b" />
       </head>
       <body style={{ margin: 0, padding: 0, backgroundColor: "var(--bg-space)", color: "var(--text-primary)" }}>
-        {children}
+        <WalletProvider>
+          {children}
+        </WalletProvider>
       </body>
     </html>
   );
