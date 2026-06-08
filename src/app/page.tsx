@@ -1,5 +1,6 @@
 "use client";
 import React from "react";
+import ConnectButton from "@/components/ConnectButton";
 import VibePlayground from "@/components/VibePlayground";
 import MiningTelemetry from "@/components/MiningTelemetry";
 import AgentConsole from "@/components/AgentConsole";
@@ -31,14 +32,7 @@ export default function Home() {
             </ul>
         </nav>
         <div style={{ position: "relative" }}>
-          <button 
-            className="btn-glow-cyan" 
-            style={{ padding: "8px 20px", fontSize: "14px" }}
-            title="Wallet integration coming in Phase 6"
-            onClick={() => alert("Wallet connection coming soon! Junction Generator is currently in Phase 2. Mainnet launch with full wallet integration is planned for Phase 6.")}
-          >
-            Connect Wallet
-          </button>
+          <ConnectButton />
         </div>
       </header>
 

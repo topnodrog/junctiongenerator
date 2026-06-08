@@ -1,409 +1,199 @@
 "use client";
 
-// Airdrop + Buy JGT + Donation Component
-// Combines airdrop registration, JGT purchase, and donation info
-
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState } from "react";
+import { useAccount, useConnect, useDisconnect } from "wagmi";
+import { injected } from "wagmi/connectors";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
 const DEPLOYER_ADDRESS = "0x5f89d06E0D4dBe3C125a49FD9213624aD8a991d4";
-const JGT_TOKEN_ADDRESS="0x7F...t = {
-  wallet: "",
-  email: "",
-};
+const JGT_TOKEN_ADDRESS = "0x7Fe2E89075F570ABcCf5451A00Bf780787FEc587";
 
 export default function JGTRevenueHub() {
+  const { address, isConnected } = useAccount();
+  const { connect } = useConnect();
+  const { disconnect } = useDisconnect();
+
   const [activeTab, setActiveTab] = useState<"airdrop" | "buy" | "donate">("airdrop");
-  const [wallet, setWallet] = useState<string | null>(null);
   const [airdropForm, setAirdropForm] = useState({ wallet: "", email: "" });
   const [buyAmount, setBuyAmount] = useState("");
   const [airdropStatus, setAirdropStatus] = useState<any>(null);
-  const [totalRegistered, setTotalRegistered] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [msg, setMsg] = useState("");
 
-  const connectWallet = useCallback(async () => {
-    if (typeof window === "undefined") return;
-    const eth = (window as any).ethereum;
-    if (!eth) {
-      alert("Please install MetaMask or another Web3 wallet");
-      return;
-    }
-    try {
-      const accounts = await eth.request({ method: "eth_requestAccounts" });
-      setWallet(accounts[0]);
-      setAirdropForm(prev => ({ ...prev, wallet: accounts[0] }));
-    } catch (err) {
-      console.error("Wallet connection failed:", err);
-    }
-  }, []);
-
-  // Check airdrop status on wallet connect
-  useEffect(() => {
-    if (wallet) {
-      checkAirdropStatus(wallet);
-    }
-  }, [wallet]);
-
-  const checkAirdropStatus = async (walletAddr: string) => {
-    try {
-      const res = await fetch(`${API_BASE}/api/airdrop/status?wallet=${walletAddr}`);
-      if (res.ok) setAirdropStatus(await res.json());
-    } catch (err) {
-      console.error("Failed to check airdrop status:", err);
-    }
+  const handleConnect = () => {
+    connect({ connector: injected() });
   };
 
-  const handleAirdropRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!airdropForm.wallet || !airdropForm.email) return;
-    
+  const checkAirdrop = async () => {
+    if (!address) return;
     setLoading(true);
-    setMessage(null);
-    
+    try {
+      const res = await fetch(`${API_BASE}/api/airdrop/status?wallet=${address}`);
+      const data = await res.json();
+      setAirdropStatus(data);
+    } catch {
+      setAirdropStatus({ error: "API unavailable" });
+    }
+    setLoading(false);
+  };
+
+  const registerAirdrop = async () => {
+    if (!address) {
+      setMsg("Connect wallet first");
+      return;
+    }
+    setLoading(true);
+    setMsg("");
     try {
       const res = await fetch(`${API_BASE}/api/airdrop/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          walletAddress: airdropForm.wallet,
-          email: airdropForm.email,
-        }),
+        body: JSON.stringify({ wallet: address, email: airdropForm.email }),
       });
-      
       const data = await res.json();
-      if (res.ok) {
-        setMessage({ type: "success", text: `Registered! ${data.totalRegistered} people on the list.` });
-        setTotalRegistered(data.totalRegistered);
-        checkAirdropStatus(airdropForm.wallet);
-      } else {
-        setMessage({ type: "error", text: data.error || "Registration failed" });
-      }
-    } catch (err) {
-      setMessage({ type: "error", text: "Registration failed. Try again." });
-    } finally {
-      setLoading(false);
+      setMsg(data.message || "Registered!");
+      checkAirdrop();
+    } catch {
+      setMsg("Registration failed");
     }
-  };
-
-  const handleBuyJgt = async () => {
-    if (!wallet || !buyAmount) return;
-    
-    const ethAmount = parseFloat(buyAmount);
-    if (ethAmount < 0.001 || ethAmount > 10) {
-      setMessage({ type: "error", text: "Amount must be between 0.001 and 10 ETH" });
-      return;
-    }
-
-    const jgtAmount = Math.floor(ethAmount * 10000);
-    
-    setMessage({ type: "success", text: `Ready to buy ${jgtAmount.toLocaleString()} JGT for ${buyAmount} ETH. Confirm in your wallet.` });
-    
-    try {
-      const eth = (window as any).ethereum;
-      if (!eth) {
-        setMessage({ type: "error", text: "Please connect a Web3 wallet" });
-        return;
-      }
-      
-      // In production: call the JGTMarket contract's buy() function
-      // For now, show instructions
-      alert(`To buy JGT:\n\n1. Send ${buyAmount} ETH to the JGT Market contract\n2. You'll receive ${jgtAmount.toLocaleString()} JGT\n\nContract deployment pending. Coming soon!`);
-    } catch (err) {
-      setMessage({ type: "error", text: "Transaction failed" });
-    }
+    setLoading(false);
   };
 
   const copyAddress = (addr: string) => {
     navigator.clipboard.writeText(addr);
-    setMessage({ type: "success", text: "Address copied!" });
   };
 
-  const jgtAmount = buyAmount ? Math.floor(parseFloat(buyAmount) * 10000).toLocaleString() : "—";
-
   return (
-    <div className="glass-container">
-      {/* Tab Navigation */}
-      <div style={{ display: "flex", gap: 4, marginBottom: 20, background: "rgba(0,0,0,0.2)", borderRadius: 10, padding: 4 }}>
-        {[
-          { key: "airdrop" as const, label: "🪂 Airdrop", },
-          { key: "buy" as const, label: "💰 Buy JGT" },
-          { key: "donate" as const, label: "❤️ Donate" },
-        ].map((tab) => (
+    <div style={{ background: "var(--glass-bg)", border: "1px solid var(--glass-border)", borderRadius: 16, padding: 24 }}>
+      <h2 style={{ fontSize: 20, fontWeight: 800, marginBottom: 4 }}>💰 JGT Revenue Hub</h2>
+      <p style={{ color: "var(--text-secondary)", fontSize: 13, marginBottom: 16 }}>
+        Register for airdrops, buy JGT, or support the project
+      </p>
+
+      {/* Wallet Status */}
+      <div style={{ marginBottom: 16, padding: 12, background: "rgba(0,0,0,0.2)", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div>
+          {isConnected ? (
+            <span style={{ color: "var(--color-cyan)", fontSize: 13 }}>
+              ✓ Connected: {address?.slice(0, 6)}...{address?.slice(-4)}
+            </span>
+          ) : (
+            <span style={{ color: "var(--text-muted)", fontSize: 13 }}>No wallet connected</span>
+          )}
+        </div>
+        {isConnected ? (
+          <button onClick={() => disconnect()} style={{ background: "rgba(255,100,100,0.1)", border: "1px solid rgba(255,100,100,0.3)", color: "#ff6464", padding: "4px 12px", borderRadius: 6, fontSize: 12, cursor: "pointer" }}>
+            Disconnect
+          </button>
+        ) : (
+          <button onClick={handleConnect} className="btn-glow-cyan" style={{ padding: "6px 16px", fontSize: 13 }}>
+            Connect Wallet
+          </button>
+        )}
+      </div>
+
+      {/* Tabs */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+        {(["airdrop", "buy", "donate"] as const).map((tab) => (
           <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
+            key={tab}
+            onClick={() => setActiveTab(tab)}
             style={{
-              flex: 1,
-              padding: "10px 16px",
-              borderRadius: 8,
-              border: "none",
-              background: activeTab === tab.key ? "rgba(155, 81, 224, 0.3)" : "transparent",
-              color: activeTab === tab.key ? "var(--color-purple)" : "var(--text-muted)",
-              cursor: "pointer",
-              fontSize: 13,
-              fontWeight: 600,
-              transition: "all 0.2s",
+              padding: "6px 16px", borderRadius: 8, fontSize: 13, cursor: "pointer",
+              background: activeTab === tab ? "rgba(155,81,224,0.2)" : "rgba(0,0,0,0.2)",
+              border: activeTab === tab ? "1px solid rgba(155,81,224,0.4)" : "1px solid transparent",
+              color: activeTab === tab ? "var(--color-purple)" : "var(--text-secondary)",
             }}
           >
-            {tab.label}
+            {tab === "airdrop" ? "🪂 Airdrop" : tab === "buy" ? "💰 Buy JGT" : "❤️ Donate"}
           </button>
         ))}
       </div>
 
-      {/* Message */}
-      {message && (
-        <div
-          style={{
-            background: message.type === "success" ? "rgba(57, 255, 20, 0.1)" : "rgba(255, 100, 100, 0.1)",
-            border: `1px solid ${message.type === "success" ? "rgba(57, 255, 20, 0.3)" : "rgba(255, 100, 100, 0.3)"}`,
-            borderRadius: 8,
-            padding: "10px 14px",
-            marginBottom: 16,
-            fontSize: 13,
-            color: message.type === "success" ? "var(--color-neon-green)" : "#ff6464",
-          }}
-        >
-          {message.text}
-        </div>
-      )}
-
-      {/* AIRDROP TAB */}
+      {/* Airdrop Tab */}
       {activeTab === "airdrop" && (
         <div>
-          <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>🪂 JGT Airdrop Registration</h3>
-          <p style={{ color: "var(--text-secondary)", fontSize: 13, marginBottom: 16 }}>
-            Register your wallet and email to receive free JGT tokens when we launch the airdrop. Early registrants get a bonus multiplier.
+          <p style={{ color: "var(--text-secondary)", fontSize: 13, marginBottom: 12 }}>
+            Register your wallet for the JGT airdrop. One registration per wallet.
           </p>
-
-          {airdropStatus?.registered ? (
-            <div style={{ background: "rgba(57, 255, 20, 0.05)", border: "1px solid rgba(57, 255, 20, 0.2)", borderRadius: 10, padding: 16 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                <span style={{ fontSize: 24 }}>✅</span>
-                <div>
-                  <div style={{ fontWeight: 700, color: "var(--color-neon-green)" }}>You're registered!</div>
-                  <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                    Wallet: {airdropStatus.walletAddress.slice(0, 6)}...{airdropStatus.walletAddress.slice(-4)}
-                  </div>
-                </div>
-              </div>
-              <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                Registered at: {new Date(airdropStatus.registeredAt).toLocaleString()}
-              </div>
+          <div style={{ display: "grid", gap: 12 }}>
+            <input
+              type="email"
+              placeholder="Email (optional)"
+              value={airdropForm.email}
+              onChange={(e) => setAirdropForm({ ...airdropForm, email: e.target.value })}
+              style={{ background: "rgba(0,0,0,0.3)", border: "1px solid var(--glass-border)", borderRadius: 8, padding: "10px 14px", color: "var(--text-primary)", fontSize: 14 }}
+            />
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={registerAirdrop} disabled={loading} className="btn-glow-purple" style={{ padding: "8px 20px", fontSize: 13, opacity: loading ? 0.5 : 1 }}>
+                {loading ? "..." : "Register for Airdrop"}
+              </button>
+              <button onClick={checkAirdrop} disabled={loading || !isConnected} style={{ padding: "8px 20px", fontSize: 13, background: "rgba(0,0,0,0.3)", border: "1px solid var(--glass-border)", borderRadius: 8, color: "var(--text-secondary)", cursor: "pointer" }}>
+                Check Status
+              </button>
             </div>
-          ) : (
-            <form onSubmit={handleAirdropRegister}>
-              <div style={{ display: "grid", gap: 12 }}>
-                <div>
-                  <label style={{ fontSize: 12, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Wallet Address (Base)</label>
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <input
-                      type="text"
-                      value={airdropForm.wallet}
-                      onChange={(e) => setAirdropForm({ ...airdropForm, wallet: e.target.value })}
-                      placeholder="0x..."
-                      required
-                      style={{
-                        flex: 1, background: "rgba(0,0,0,0.3)", border: "1px solid var(--glass-border)",
-                        borderRadius: 8, color: "var(--text-primary)", padding: "10px 12px", fontSize: 13, outline: "none",
-                        fontFamily: "var(--font-mono)",
-                      }}
-                    />
-                    {!wallet && (
-                      <button type="button" onClick={connectWallet} className="btn-glow-purple" style={{ fontSize: 12, padding: "8px 14px", whiteSpace: "nowrap" }}>
-                        Connect
-                      </button>
-                    )}
-                  </div>
-                </div>
-                <div>
-                  <label style={{ fontSize: 12, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Email Address</label>
-                  <input
-                    type="email"
-                    value={airdropForm.email}
-                    onChange={(e) => setAirdropForm({ ...airdropForm, email: e.target.value })}
-                    placeholder="you@example.com"
-                    required
-                    style={{
-                      width: "100%", background: "rgba(0,0,0,0.3)", border: "1px solid var(--glass-border)",
-                      borderRadius: 8, color: "var(--text-primary)", padding: "10px 12px", fontSize: 13, outline: "none",
-                      boxSizing: "border-box",
-                    }}
-                  />
-                </div>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="btn-glow-purple"
-                  style={{ fontSize: 14, padding: "12px 24px" }}
-                >
-                  {loading ? "Registering..." : "Register for Airdrop"}
-                </button>
+            {msg && <p style={{ fontSize: 13, color: msg.includes("failed") || msg.includes("Connect") ? "#ff6464" : "var(--color-cyan)" }}>{msg}</p>}
+            {airdropStatus && (
+              <div style={{ background: "rgba(0,0,0,0.2)", borderRadius: 8, padding: 12, fontSize: 13 }}>
+                <pre style={{ margin: 0, color: "var(--text-secondary)" }}>{JSON.stringify(airdropStatus, null, 2)}</pre>
               </div>
-            </form>
-          )}
-
-          {totalRegistered > 0 && (
-            <div style={{ marginTop: 12, textAlign: "center", fontSize: 12, color: "var(--text-muted)" }}>
-              {totalRegistered.toLocaleString()} people registered
-            </div>
-          )}
+            )}
+          </div>
         </div>
       )}
 
-      {/* BUY TAB */}
+      {/* Buy Tab */}
       {activeTab === "buy" && (
         <div>
-          <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>💰 Buy JGT</h3>
-          <p style={{ color: "var(--text-secondary)", fontSize: 13, marginBottom: 16 }}>
-            Purchase JGT tokens directly. 1 ETH = 10,000 JGT. Minimum 0.001 ETH.
+          <p style={{ color: "var(--text-secondary)", fontSize: 13, marginBottom: 12 }}>
+            Buy JGT with ETH on Base. Rate: 1 ETH = 10,000 JGT.
           </p>
-
-          {!wallet ? (
-            <div style={{ textAlign: "center", padding: "24px 0" }}>
-              <p style={{ color: "var(--text-muted)", marginBottom: 12 }}>Connect your wallet to buy JGT</p>
-              <button onClick={connectWallet} className="btn-glow-purple">Connect Wallet</button>
-            </div>
-          ) : (
-            <div style={{ display: "grid", gap: 12 }}>
-              <div>
-                <label style={{ fontSize: 12, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>ETH Amount</label>
-                <input
-                  type="number"
-                  step="0.001"
-                  min="0.001"
-                  max="10"
-                  value={buyAmount}
-                  onChange={(e) => setBuyAmount(e.target.value)}
-                  placeholder="0.01"
-                  style={{
-                    width: "100%", background: "rgba(0,0,0,0.3)", border: "1px solid var(--glass-border)",
-                    borderRadius: 8, color: "var(--text-primary)", padding: "10px 12px", fontSize: 16, outline: "none",
-                    boxSizing: "border-box",
-                  }}
-                />
-              </div>
-
-              <div style={{ background: "rgba(0,0,0,0.2)", borderRadius: 8, padding: 14, textAlign: "center" }}>
-                <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 4 }}>You receive</div>
-                <div style={{ fontSize: 24, fontWeight: 800, color: "var(--color-neon-green)" }}>
-                  {jgtAmount} <span style={{ fontSize: 14, color: "var(--text-secondary)" }}>JGT</span>
-                </div>
-                <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>
-                  Rate: 1 ETH = 10,000 JGT
-                </div>
-              </div>
-
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                {[0.001, 0.01, 0.05, 0.1, 0.5, 1].map((amt) => (
-                  <button
-                    key={amt}
-                    type="button"
-                    onClick={() => setBuyAmount(amt.toString())}
-                    style={{
-                      background: buyAmount === amt.toString() ? "rgba(155, 81, 224, 0.3)" : "rgba(255,255,255,0.05)",
-                      border: `1px solid ${buyAmount === amt.toString() ? "var(--color-purple)" : "var(--glass-border)"}`,
-                      borderRadius: 6,
-                      color: buyAmount === amt.toString() ? "var(--color-purple)" : "var(--text-secondary)",
-                      padding: "6px 12px",
-                      cursor: "pointer",
-                      fontSize: 12,
-                      fontWeight: 600,
-                    }}
-                  >
-                    {amt} ETH
-                  </button>
-                ))}
-              </div>
-
-              <button
-                onClick={handleBuyJgt}
-                disabled={!buyAmount || parseFloat(buyAmount) < 0.001}
-                className="btn-glow-cyan"
-                style={{ fontSize: 14, padding: "12px 24px" }}
-              >
-                Buy JGT with ETH
-              </button>
-
-              <p style={{ fontSize: 10, color: "var(--text-muted)", textAlign: "center" }}>
-                Gas fees are covered by the buyer. Contract deployment coming soon.
-              </p>
-            </div>
-          )}
+          <div style={{ display: "grid", gap: 12 }}>
+            <input
+              type="number"
+              placeholder="ETH amount (min 0.001)"
+              value={buyAmount}
+              onChange={(e) => setBuyAmount(e.target.value)}
+              style={{ background: "rgba(0,0,0,0.3)", border: "1px solid var(--glass-border)", borderRadius: 8, padding: "10px 14px", color: "var(--text-primary)", fontSize: 14 }}
+            />
+            <button disabled={!isConnected || !buyAmount} className="btn-glow-purple" style={{ padding: "8px 20px", fontSize: 13, opacity: !isConnected || !buyAmount ? 0.5 : 1 }}>
+              {!isConnected ? "Connect Wallet First" : "Buy JGT"}
+            </button>
+            <p style={{ fontSize: 11, color: "var(--text-muted)" }}>
+              JGT Token: <code style={{ color: "var(--color-cyan)" }}>{JGT_TOKEN_ADDRESS}</code>
+            </p>
+          </div>
         </div>
       )}
 
-      {/* DONATE TAB */}
+      {/* Donate Tab */}
       {activeTab === "donate" && (
         <div>
-          <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>❤️ Support the Project</h3>
-          <p style={{ color: "var(--text-secondary)", fontSize: 13, marginBottom: 16 }}>
-            Donations help fund development, marketing, and ecosystem growth. All donations go directly to the project treasury on Base.
+          <p style={{ color: "var(--text-secondary)", fontSize: 13, marginBottom: 12 }}>
+            Donations fund development, marketing, and ecosystem growth. All donations go to the project treasury on Base.
           </p>
-
-          <div style={{ display: "grid", gap: 12}>
+          <div style={{ display: "grid", gap: 12 }}>
             <div style={{ background: "rgba(0,0,0,0.2)", borderRadius: 10, padding: 16 }}>
               <div style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 8 }}>Donation Address (Base)</div>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <code style={{
-                  flex: 1, fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--color-cyan)",
-                  background: "rgba(0,0,0,0.3)", padding: "8px 12px", borderRadius: 6, wordBreak: "break-all",
-                }}>
+                <code style={{ flex: 1, fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--color-cyan)", background: "rgba(0,0,0,0.3)", padding: "8px 12px", borderRadius: 6, wordBreak: "break-all" }}>
                   {DEPLOYER_ADDRESS}
                 </code>
-                <button
-                  onClick={() => copyAddress(DEPLOYER_ADDRESS)}
-                  style={{
-                    background: "rgba(0, 242, 254, 0.1)", border: "1px solid rgba(0, 242, 254, 0.3)",
-                    borderRadius: 6, color: "var(--color-cyan)", padding: "8px 12px",
-                    cursor: "pointer", fontSize: 12, fontWeight: 600, whiteSpace: "nowrap",
-                  }}
-                >
+                <button onClick={() => copyAddress(DEPLOYER_ADDRESS)} style={{ background: "rgba(155,81,224,0.1)", border: "1px solid rgba(155,81,224,0.3)", color: "var(--color-purple)", padding: "6px 12px", borderRadius: 6, fontSize: 12, cursor: "pointer" }}>
                   Copy
                 </button>
               </div>
             </div>
-
             <div style={{ background: "rgba(0,0,0,0.2)", borderRadius: 10, padding: 16 }}>
-              <div style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 8 }}>JGT Token Contract</div>
+              <div style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 8 }}>JGT Token Address</div>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <code style={{
-                  flex: 1, fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--color-purple)",
-                  background: "rgba(0,0,0,0.3)", padding: "8px 12px", borderRadius: 6, wordBreak: "break-all",
-                }}>
+                <code style={{ flex: 1, fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--color-cyan)", background: "rgba(0,0,0,0.3)", padding: "8px 12px", borderRadius: 6, wordBreak: "break-all" }}>
                   {JGT_TOKEN_ADDRESS}
                 </code>
-                <button
-                  onClick={() => copyAddress(JGT_TOKEN_ADDRESS)}
-                  style={{
-                    background: "rgba(155, 81, 224, 0.1)", border: "1px solid rgba(155, 81, 224, 0.3)",
-                    borderRadius: 6, color: "var(--color-purple)", padding: "8px 12px",
-                    cursor: "pointer", fontSize: 12, fontWeight: 600, whiteSpace: "nowrap",
-                  }}
-                >
+                <button onClick={() => copyAddress(JGT_TOKEN_ADDRESS)} style={{ background: "rgba(155,81,224,0.1)", border: "1px solid rgba(155,81,224,0.3)", color: "var(--color-purple)", padding: "6px 12px", borderRadius: 6, fontSize: 12, cursor: "pointer" }}>
                   Copy
                 </button>
               </div>
-            </div>
-
-            <div style={{ background: "rgba(0,0,0,0.2)", borderRadius: 10, padding: 16 }}>
-              <div style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 8 }}>Scan to Donate</div>
-              <div style={{ textAlign: "center" }}>
-                <div style={{
-                  width: 120, height: 120, background: "white", borderRadius: 12, margin: "0 auto",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                }}>
-                  <span style={{ fontSize: 48 }}>📱</span>
-                </div>
-                <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 8 }}>
-                  Scan with any Base-compatible wallet
-                </p>
-              </div>
-            </div>
-
-            <div style={{ fontSize: 11, color: "var(--text-muted)", textAlign: "center", lineHeight: 1.6 }}>
-              Accepting: ETH on Base, USDC on Base<br/>
-              All funds go directly to the project treasury
             </div>
           </div>
         </div>
