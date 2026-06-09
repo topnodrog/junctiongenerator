@@ -170,24 +170,103 @@ export default function JGTRevenueHub() {
       {activeTab === "donate" && (
         <div>
           <p style={{ color: "var(--text-secondary)", fontSize: 13, marginBottom: 12 }}>
-            Donations fund development, marketing, and ecosystem growth. All donations go to the project treasury on Base.
+            Support the project with donations on any chain. All funds go to the project treasury.
           </p>
           <div style={{ display: "grid", gap: 12 }}>
+            {/* Ethereum */}
             <div style={{ background: "rgba(0,0,0,0.2)", borderRadius: 10, padding: 16 }}>
-              <div style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 8 }}>Donation Address (Base)</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                <span style={{ fontSize: 18 }}>⟠</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>Ethereum</span>
+                <span style={{ fontSize: 11, color: "var(--text-muted)", background: "rgba(98,126,234,0.1)", padding: "2px 8px", borderRadius: 4 }}>ETH</span>
+              </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <code style={{ flex: 1, fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--color-cyan)", background: "rgba(0,0,0,0.3)", padding: "8px 12px", borderRadius: 6, wordBreak: "break-all" }}>
-                  {DEPLOYER_ADDRESS}
+                <code style={{ flex: 1, fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--color-cyan)", background: "rgba(0,0,0,0.3)", padding: "8px 12px", borderRadius: 6, wordBreak: "break-all" }}>
+                  0x5f89d06E0D4dBe3C125a49FD9213624aD8a991d4
                 </code>
-                <button onClick={() => copyAddress(DEPLOYER_ADDRESS)} style={{ background: "rgba(155,81,224,0.1)", border: "1px solid rgba(155,81,224,0.3)", color: "var(--color-purple)", padding: "6px 12px", borderRadius: 6, fontSize: 12, cursor: "pointer" }}>
+                <button onClick={() => copyAddress("0x5f89d06E0D4dBe3C125a49FD9213624aD8a991d4")} style={{ background: "rgba(98,126,234,0.1)", border: "1px solid rgba(98,126,234,0.3)", color: "#627eea", padding: "6px 12px", borderRadius: 6, fontSize: 12, cursor: "pointer" }}>
                   Copy
                 </button>
               </div>
             </div>
+
+            {/* Base */}
             <div style={{ background: "rgba(0,0,0,0.2)", borderRadius: 10, padding: 16 }}>
-              <div style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 8 }}>JGT Token Address</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                <span style={{ fontSize: 18 }}>🔵</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>Base</span>
+                <span style={{ fontSize: 11, color: "var(--text-muted)", background: "rgba(0,82,255,0.1)", padding: "2px 8px", borderRadius: 4 }}>ETH</span>
+              </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <code style={{ flex: 1, fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--color-cyan)", background: "rgba(0,0,0,0.3)", padding: "8px 12px", borderRadius: 6, wordBreak: "break-all" }}>
+                <code style={{ flex: 1, fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--color-cyan)", background: "rgba(0,0,0,0.3)", padding: "8px 12px", borderRadius: 6, wordBreak: "break-all" }}>
+                  0x5f89d06E0D4dBe3C125a49FD9213624aD8a991d4
+                </code>
+                <button onClick={() => copyAddress("0x5f89d06E0D4dBe3C125a49FD9213624aD8a991d4")} style={{ background: "rgba(0,82,255,0.1)", border: "1px solid rgba(0,82,255,0.3)", color: "#0052ff", padding: "6px 12px", borderRadius: 6, fontSize: 12, cursor: "pointer" }}>
+                  Copy
+                </button>
+              </div>
+            </div>
+
+            {/* Solana */}
+            <div style={{ background: "rgba(0,0,0,0.2)", borderRadius: 10, padding: 16 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                <span style={{ fontSize: 18 }}>◎</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>Solana</span>
+                <span style={{ fontSize: 11, color: "var(--text-muted)", background: "rgba(20,241,149,0.1)", padding: "2px 8px", borderRadius: 4 }}>SOL</span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <code style={{ flex: 1, fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--color-cyan)", background: "rgba(0,0,0,0.3)", padding: "8px 12px", borderRadius: 6, wordBreak: "break-all" }}>
+                  EdkwpSGx9kBTNYiR3Zny6iApQuwTpUxm86bzgRK8y2sH
+                </code>
+                <button onClick={() => copyAddress("EdkwpSGx9kBTNYiR3Zny6iApQuwTpUxm86bzgRK8y2sH")} style={{ background: "rgba(20,241,149,0.1)", border: "1px solid rgba(20,241,149,0.3)", color: "#14f195", padding: "6px 12px", borderRadius: 6, fontSize: 12, cursor: "pointer" }}>
+                  Copy
+                </button>
+              </div>
+            </div>
+
+            {/* Tron */}
+            <div style={{ background: "rgba(0,0,0,0.2)", borderRadius: 10, padding: 16 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                <span style={{ fontSize: 18 }}>🔴</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>Tron</span>
+                <span style={{ fontSize: 11, color: "var(--text-muted)", background: "rgba(255,0,0,0.1)", padding: "2px 8px", borderRadius: 4 }}>TRX</span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <code style={{ flex: 1, fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--color-cyan)", background: "rgba(0,0,0,0.3)", padding: "8px 12px", borderRadius: 6, wordBreak: "break-all" }}>
+                  TC1c88s6PujsXXgAfqD6x9xHfgSKtjKbRL
+                </code>
+                <button onClick={() => copyAddress("TC1c88s6PujsXXgAfqD6x9xHfgSKtjKbRL")} style={{ background: "rgba(255,0,0,0.1)", border: "1px solid rgba(255,0,0,0.3)", color: "#ff0013", padding: "6px 12px", borderRadius: 6, fontSize: 12, cursor: "pointer" }}>
+                  Copy
+                </button>
+              </div>
+            </div>
+
+            {/* Bitcoin */}
+            <div style={{ background: "rgba(0,0,0,0.2)", borderRadius: 10, padding: 16 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                <span style={{ fontSize: 18 }}>₿</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>Bitcoin</span>
+                <span style={{ fontSize: 11, color: "var(--text-muted)", background: "rgba(247,147,26,0.1)", padding: "2px 8px", borderRadius: 4 }}>BTC</span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <code style={{ flex: 1, fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--color-cyan)", background: "rgba(0,0,0,0.3)", padding: "8px 12px", borderRadius: 6, wordBreak: "break-all" }}>
+                  bc1qgvjp0ng2ex2hswuw58d68g9rkkk5qp2h766qf3
+                </code>
+                <button onClick={() => copyAddress("bc1qgvjp0ng2ex2hswuw58d68g9rkkk5qp2h766qf3")} style={{ background: "rgba(247,147,26,0.1)", border: "1px solid rgba(247,147,26,0.3)", color: "#f7931a", padding: "6px 12px", borderRadius: 6, fontSize: 12, cursor: "pointer" }}>
+                  Copy
+                </button>
+              </div>
+            </div>
+
+            {/* JGT Token on Base */}
+            <div style={{ background: "rgba(155,81,224,0.05)", border: "1px solid rgba(155,81,224,0.2)", borderRadius: 10, padding: 16, marginTop: 4 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                <span style={{ fontSize: 18 }}>🟣</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>JGT Token (Base)</span>
+                <span style={{ fontSize: 11, color: "var(--text-muted)", background: "rgba(155,81,224,0.1)", padding: "2px 8px", borderRadius: 4 }}>ERC-20</span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <code style={{ flex: 1, fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--color-cyan)", background: "rgba(0,0,0,0.3)", padding: "8px 12px", borderRadius: 6, wordBreak: "break-all" }}>
                   {JGT_TOKEN_ADDRESS}
                 </code>
                 <button onClick={() => copyAddress(JGT_TOKEN_ADDRESS)} style={{ background: "rgba(155,81,224,0.1)", border: "1px solid rgba(155,81,224,0.3)", color: "var(--color-purple)", padding: "6px 12px", borderRadius: 6, fontSize: 12, cursor: "pointer" }}>
