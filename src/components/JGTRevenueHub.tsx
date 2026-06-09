@@ -48,7 +48,7 @@ export default function JGTRevenueHub() {
       const res = await fetch(`${API_BASE}/api/airdrop/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ wallet: address, email: airdropForm.email }),
+        body: JSON.stringify({ walletAddress: address, email: airdropForm.email }),
       });
       const data = await res.json();
       setMsg(data.message || "Registered!");
