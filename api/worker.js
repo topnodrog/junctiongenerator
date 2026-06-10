@@ -73,7 +73,7 @@ function toTursoValue(v) {
   if (v === null || v === undefined) return { type: "null" };
   if (typeof v === "number") {
     if (Number.isInteger(v)) return { type: "integer", value: String(v) };
-    return { type: "float", value: String(v) };
+    return { type: "float", value: v };
   }
   if (typeof v === "boolean") return { type: "integer", value: v ? "1" : "0" };
   return { type: "text", value: String(v) };
@@ -96,6 +96,11 @@ async function tursoQuery(env, sql, params = []) {
       ],
     }),
   });
+  if (!res.ok) {
+    const errText = await res.text();
+    console.error("Turso HTTP error:", res.status, errText);
+    throw new Error("Turso error " + res.status + ": " + errText);
+  }
   const data = await res.json();
   if (data.results && data.results[0] && data.results[0].response) {
     return data.results[0].response.result;
@@ -112,7 +117,7 @@ function getRows(result) {
 // Handle ad view registration
 async function handleAdView(request, env, corsHeaders) {
   const body = await request.json();
-  const { walletAddress, adIndex, rewardAmount, sessionId } = body;
+  const { walletAddress, adIndex, rewardAmount, sessionId, campaignId } = body;
 
   if (!walletAddress || adIndex === undefined || !rewardAmount) {
     return jsonResponse({ error: "Missing required fields" }, corsHeaders, 400);
@@ -143,6 +148,11 @@ async function handleAdView(request, env, corsHeaders) {
 
   // Record ad view
   await tursoQuery(env, "INSERT INTO ad_views (user_id, session_id, ad_index, reward_amount) VALUES (?, ?, ?, ?)", [userId, sessionIdDb, adIndex, rewardAmount]);
+
+  // Increment campaign impression count if campaignId provided
+  if (campaignId) {
+    await tursoQuery(env, "UPDATE ad_campaigns SET impressions = impressions + 1 WHERE id = ?", [campaignId]);
+  }
 
   // Add to pending claims
   await tursoQuery(env, "INSERT INTO pending_claims (user_id, wallet_address, amount, status) VALUES (?, ?, ?, 'pending')", [userId, wallet, rewardAmount]);

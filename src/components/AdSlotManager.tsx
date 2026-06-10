@@ -53,6 +53,8 @@ export default function AdSlotManager() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [loading, setLoading] = useState(true);
   const [walletError, setWalletError] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState("");
 
   // Form state
   const [formData, setFormData] = useState({
@@ -92,36 +94,76 @@ export default function AdSlotManager() {
       return;
     }
     setWalletError("");
-    // In production: sign transaction, pay ETH on Base
-    const newCampaign: AdCampaign = {
-      id: `camp-${Date.now()}`,
-      title: formData.title,
-      description: formData.description,
-      cta: formData.cta,
-      ctaUrl: formData.ctaUrl,
-      sponsor: formData.sponsor,
-      imageUrl: formData.imageUrl || undefined,
-      budget: parseFloat(formData.budget),
-      totalBudget: parseFloat(formData.budget),
-      impressions: 0,
-      clicks: 0,
-      status: "active",
-      createdAt: new Date().toISOString(),
-      walletAddress: address,
-    };
+    setCreateError("");
+    setCreating(true);
 
-    setCampaigns((prev) => [newCampaign, ...prev]);
-    setShowCreateForm(false);
-    setFormData({
-      title: "",
-      description: "",
-      cta: "Learn More",
-      ctaUrl: "",
-      sponsor: "",
-      imageUrl: "",
-      budget: "",
-      dailyBudget: "",
-    });
+    try {
+      const budget = parseFloat(formData.budget);
+      if (isNaN(budget) || budget < AD_PRICING.MIN_BUDGET) {
+        setCreateError(`Minimum budget is ${AD_PRICING.MIN_BUDGET} ETH`);
+        setCreating(false);
+        return;
+      }
+
+      // Post to worker API
+      const res = await fetch(`${API_BASE}/api/ads/campaigns`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: formData.title,
+          description: formData.description,
+          cta: formData.cta,
+          ctaUrl: formData.ctaUrl,
+          sponsor: formData.sponsor,
+          imageUrl: formData.imageUrl || undefined,
+          budget,
+          dailyBudget: formData.dailyBudget ? parseFloat(formData.dailyBudget) : undefined,
+          walletAddress: address,
+        }),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || `Server error: ${res.status}`);
+      }
+
+      const data = await res.json();
+
+      // Add to local list
+      const newCampaign: AdCampaign = {
+        id: data.campaignId,
+        title: formData.title,
+        description: formData.description,
+        cta: formData.cta,
+        ctaUrl: formData.ctaUrl,
+        sponsor: formData.sponsor,
+        imageUrl: formData.imageUrl || undefined,
+        budget,
+        totalBudget: budget,
+        impressions: 0,
+        clicks: 0,
+        status: "active",
+        createdAt: new Date().toISOString(),
+        walletAddress: address,
+      };
+
+      setCampaigns((prev) => [newCampaign, ...prev]);
+      setShowCreateForm(false);
+      setFormData({
+        title: "",
+        description: "",
+        cta: "Learn More",
+        ctaUrl: "",
+        sponsor: "",
+        imageUrl: "",
+        budget: "",
+        dailyBudget: "",
+      });
+    } catch (err: any) {
+      setCreateError(err.message || "Failed to create campaign");
+    } finally {
+      setCreating(false);
+    }
   };
 
   if (loading) {
@@ -275,13 +317,24 @@ export default function AdSlotManager() {
               </div>
             </div>
             
-            <button type="submit" className="btn-glow-purple" style={{ fontSize: 14, padding: "12px 24px", marginTop: 8 }}>
-              Pay with ETH & Launch Campaign
+            <button type="submit" className="btn-glow-purple" style={{ fontSize: 14, padding: "12px 24px", marginTop: 8 }} disabled={creating}>
+              {creating ? "Creating..." : "🚀 Create Campaign"}
             </button>
             
-            <p style={{ fontSize: 10, color: "var(--text-muted)", textAlign: "center" }}>
-              Payment processed on Base network. Campaign goes live after 1 confirmation.
-            </p>
+            {createError && (
+              <p style={{ fontSize: 12, color: "#ff6464", textAlign: "center", marginTop: 4 }}>
+                {createError}
+              </p>
+            )}
+            
+            <div style={{ background: "rgba(155,81,224,0.08)", border: "1px solid rgba(155,81,224,0.2)", borderRadius: 8, padding: "10px 14px", marginTop: 8 }}>
+              <p style={{ fontSize: 11, color: "var(--text-secondary)", lineHeight: 1.5 }}>
+                <strong>Payment:</strong> Send {formData.budget ? `${parseFloat(formData.budget).toFixed(3)}` : "—"} ETH on Base to start running immediately.
+              </p>
+              <code style={{ fontSize: 10, color: "var(--color-cyan)", display: "block", marginTop: 4, wordBreak: "break-all" }}>
+                0x5f89d06E0D4dBe3C125a49FD9213624aD8a991d4
+              </code>
+            </div>
           </div>
         </form>
       )}

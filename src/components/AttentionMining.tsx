@@ -110,7 +110,8 @@ async function recordAdView(
   walletAddress: string,
   adIndex: number,
   rewardAmount: number,
-  sessionId: string
+  sessionId: string,
+  campaignId?: string
 ): Promise<boolean> {
   if (!API_BASE_URL) {
     console.warn("[JGT Mining] API_BASE_URL not set, skipping ad view recording");
@@ -120,7 +121,7 @@ async function recordAdView(
     const res = await fetch(`${API_BASE_URL}/api/ad-view`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ walletAddress, adIndex, rewardAmount, sessionId }),
+      body: JSON.stringify({ walletAddress, adIndex, rewardAmount, sessionId, campaignId }),
     });
     return res.ok;
   } catch (err) {
@@ -161,11 +162,34 @@ export default function AttentionMining() {
   const [adCompleted, setAdCompleted] = useState(false);
   const [adProviderReady, setAdProviderReady] = useState(false);
   const [apiStatus, setApiStatus] = useState<"connected" | "disconnected" | "unknown">("unknown");
+  const [apiCampaigns, setApiCampaigns] = useState<typeof PLACEHOLDER_ADS>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const adContainerRef = useRef<HTMLDivElement>(null);
   const adImpressionRef = useRef<boolean>(false);
   const sessionIdRef = useRef<string>(`session-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
+
+  // Fetch active ad campaigns from worker API
+  useEffect(() => {
+    if (!API_BASE_URL) return;
+    fetch(`${API_BASE_URL}/api/ads/campaigns?status=active`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.campaigns && data.campaigns.length > 0) {
+          const mapped = data.campaigns.map((c: any) => ({
+            id: c.id,
+            title: c.title,
+            description: c.description,
+            sponsor: c.sponsor,
+            duration: 5,
+            cta: c.cta || "Learn More",
+            ctaUrl: c.ctaUrl,
+          }));
+          setApiCampaigns(mapped);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Check if user has previously dismissed the construction overlay
   useEffect(() => {
@@ -293,16 +317,19 @@ export default function AttentionMining() {
     connect({ connector: injected() });
   }, [connect]);
 
+  // Combined ad pool: API campaigns first, then placeholders as fallback
+  const adPool = apiCampaigns.length > 0 ? [...apiCampaigns, ...PLACEHOLDER_ADS] : PLACEHOLDER_ADS;
+
   // Start watching an ad
   const startAd = useCallback(() => {
     if (!wallet || state !== "ready") return;
-    const ad = PLACEHOLDER_ADS[adIndex % PLACEHOLDER_ADS.length];
+    const ad = adPool[adIndex % adPool.length];
     setCurrentAd(ad);
     setAdProgress(0);
     setAdCompleted(false);
     setState("watching");
 
-    if (ACTIVE_PROVIDER === "placeholder") {
+    if (ACTIVE_PROVIDER === "placeholder" || apiCampaigns.length > 0) {
       const duration = ad.duration;
       let elapsed = 0;
       timerRef.current = setInterval(() => {
@@ -316,13 +343,14 @@ export default function AttentionMining() {
         }
       }, 100);
     }
-  }, [wallet, state, adIndex]);
+  }, [wallet, state, adIndex, adPool, apiCampaigns]);
 
   // Claim reward — records to backend API
   const claimReward = useCallback(async () => {
     if (!wallet || !adCompleted) return;
     const reward = getCurrentReward(wallet.adsWatched);
-    await recordAdView(wallet.address, wallet.adsWatched, reward, sessionIdRef.current);
+    const campaignId = currentAd?.id.startsWith("camp-") ? currentAd.id : undefined;
+    await recordAdView(wallet.address, wallet.adsWatched, reward, sessionIdRef.current, campaignId);
     setWallet({
       ...wallet,
       totalEarned: wallet.totalEarned + reward,
@@ -365,7 +393,7 @@ export default function AttentionMining() {
           <h3 style={{ fontFamily: "var(--font-display)", fontSize: 24, fontWeight: 800, color: "var(--color-purple)", textAlign: "center" }}>Attention Mining — Coming Soon</h3>
           <p style={{ color: "var(--text-secondary)", textAlign: "center", maxWidth: 400, lineHeight: 1.6, fontSize: 14 }}>Watch advertisements, earn JGT tokens. This section is under active development and will go live soon.</p>
           <div style={{ display: "flex", gap: 12, marginTop: 8 }}>
-            <span style={{ background: "rgba(155, 81, 224, 0.15)", border: "1px solid rgba(155, 81, 224, 0.3)", padding: "4px 12px", borderRadius: 100, fontSize: 11, color: "var(--color-purple)", fontWeight: 600 }}>Ad Provider: {ACTIVE_PROVIDER === "bitmedia" ? "Bitmedia" : "TBA"}</span>
+            <span style={{ background: "rgba(155, 81, 224, 0.15)", border: "1px solid rgba(155, 81, 224, 0.3)", padding: "4px 12px", borderRadius: 100, fontSize: 11, color: "var(--color-purple)", fontWeight: 600 }}>Ad Provider: {ACTIVE_PROVIDER === "bitmedia" ? "Bitmedia" : apiCampaigns.length > 0 ? `Live Ads (${apiCampaigns.length})` : "TBA"}</span>
             <span style={{ background: "rgba(0, 242, 254, 0.1)", border: "1px solid rgba(0, 242, 254, 0.25)", padding: "4px 12px", borderRadius: 100, fontSize: 11, color: "var(--color-cyan)", fontWeight: 600 }}>Chain: Base</span>
           </div>
           <button onClick={dismissConstruction} style={{ background: "transparent", border: "1px solid var(--glass-border)", borderRadius: 8, color: "var(--text-muted)", padding: "8px 20px", cursor: "pointer", fontSize: 13, marginTop: 8 }}>Preview UI (Demo Mode)</button>
