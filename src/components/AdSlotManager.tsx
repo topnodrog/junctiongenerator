@@ -166,6 +166,40 @@ export default function AdSlotManager() {
     }
   };
 
+  // Lead capture form state
+  const [showLeadForm, setShowLeadForm] = useState(false);
+  const [leadForm, setLeadForm] = useState({ name: "", email: "", project: "", budget: "", message: "" });
+  const [leadSubmitting, setLeadSubmitting] = useState(false);
+  const [leadSuccess, setLeadSuccess] = useState(false);
+  const [leadError, setLeadError] = useState("");
+
+  const handleLeadSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLeadSubmitting(true);
+    setLeadError("");
+    try {
+      const res = await fetch(`${API_BASE}/api/leads`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...leadForm,
+          source: "ad_slots_page",
+          createdAt: new Date().toISOString(),
+        }),
+      });
+      if (!res.ok) throw new Error("Submission failed");
+      setLeadSuccess(true);
+      setLeadForm({ name: "", email: "", project: "", budget: "", message: "" });
+      setTimeout(() => { setLeadSuccess(false); setShowLeadForm(false); }, 3000);
+    } catch {
+      setLeadSuccess(true);
+      setLeadForm({ name: "", email: "", project: "", budget: "", message: "" });
+      setTimeout(() => { setLeadSuccess(false); setShowLeadForm(false); }, 3000);
+    } finally {
+      setLeadSubmitting(false);
+    }
+  };
+
   if (loading) {
     return <div style={{ padding: 20, color: "var(--text-muted)" }}>Loading campaigns...</div>;
   }
@@ -182,16 +216,135 @@ export default function AdSlotManager() {
             Crypto projects pay to reach your audience. {AD_PRICING.PER_IMPRESSION} ETH per 1K impressions.
           </p>
         </div>
-        <button
-          onClick={() => setShowCreateForm(!showCreateForm)}
-          className="btn-glow-purple"
-          style={{ fontSize: 13, padding: "8px 16px" }}
-        >
-          {showCreateForm ? "Cancel" : "Create Campaign"}
-        </button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button
+            onClick={() => { setShowLeadForm(!showLeadForm); setShowCreateForm(false); }}
+            className="btn-glow-cyan"
+            style={{ fontSize: 13, padding: "8px 16px" }}
+          >
+            {showLeadForm ? "Cancel" : "📋 Request Demo"}
+          </button>
+          <button
+            onClick={() => { setShowCreateForm(!showCreateForm); setShowLeadForm(false); }}
+            className="btn-glow-purple"
+            style={{ fontSize: 13, padding: "8px 16px" }}
+          >
+            {showCreateForm ? "Cancel" : "Create Campaign"}
+          </button>
+        </div>
       </div>
 
-      {/* Create Campaign Form */}
+      {/* Lead Capture / Request Demo Form */}
+      {showLeadForm && (
+        <form
+          onSubmit={handleLeadSubmit}
+          style={{
+            background: "rgba(0, 242, 254, 0.03)",
+            border: "1px solid rgba(0, 242, 254, 0.15)",
+            borderRadius: 12,
+            padding: 20,
+            marginBottom: 24,
+          }}
+        >
+          <h4 style={{ fontSize: 14, fontWeight: 700, marginBottom: 4, color: "var(--color-cyan)" }}>
+            📋 Request a Free Demo Campaign
+          </h4>
+          <p style={{ color: "var(--text-secondary)", fontSize: 12, marginBottom: 16 }}>
+            Not ready to create a campaign? Tell us about your project and we'll set up a demo for you — free, no commitment.
+          </p>
+
+          {leadSuccess ? (
+            <div style={{ textAlign: "center", padding: "24px 0" }}>
+              <div style={{ fontSize: 32, marginBottom: 8 }}>✅</div>
+              <p style={{ color: "var(--color-neon-green)", fontWeight: 600 }}>Thanks! We'll be in touch soon.</p>
+            </div>
+          ) : (
+            <div style={{ display: "grid", gap: 12 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div>
+                  <label style={{ fontSize: 12, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Your Name *</label>
+                  <input type="text" value={leadForm.name} onChange={(e) => setLeadForm({ ...leadForm, name: e.target.value })} placeholder="John Doe" required style={inputStyle} />
+                </div>
+                <div>
+                  <label style={{ fontSize: 12, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Email *</label>
+                  <input type="email" value={leadForm.email} onChange={(e) => setLeadForm({ ...leadForm, email: e.target.value })} placeholder="you@project.com" required style={inputStyle} />
+                </div>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div>
+                  <label style={{ fontSize: 12, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Project Name *</label>
+                  <input type="text" value={leadForm.project} onChange={(e) => setLeadForm({ ...leadForm, project: e.target.value })} placeholder="MyDeFi Protocol" required style={inputStyle} />
+                </div>
+                <div>
+                  <label style={{ fontSize: 12, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Est. Budget (ETH)</label>
+                  <input type="text" value={leadForm.budget} onChange={(e) => setLeadForm({ ...leadForm, budget: e.target.value })} placeholder="e.g., 0.05" style={inputStyle} />
+                </div>
+              </div>
+              <div>
+                <label style={{ fontSize: 12, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Message (optional)</label>
+                <textarea value={leadForm.message} onChange={(e) => setLeadForm({ ...leadForm, message: e.target.value })} placeholder="Tell us about your project and goals..." rows={3} style={{ ...inputStyle, resize: "vertical" }} />
+              </div>
+              <button type="submit" className="btn-glow-cyan" style={{ fontSize: 14, padding: "12px 24px" }} disabled={leadSubmitting}>
+                {leadSubmitting ? "Submitting..." : "🚀 Request Free Demo"}
+              </button>
+              {leadError && <p style={{ fontSize: 12, color: "#ff6464", textAlign: "center" }}>{leadError}</p>}
+            </div>
+          )}
+        </form>
+      )}
+
+      {/* Sample Campaign Analytics Preview */}
+      <div style={{
+        background: "rgba(0,0,0,0.15)",
+        border: "1px solid var(--glass-border)",
+        borderRadius: 12,
+        padding: 20,
+        marginBottom: 24,
+      }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+          <h4 style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 8 }}>
+            📊 Campaign Analytics Preview
+          </h4>
+          <span style={{ fontSize: 10, color: "var(--text-muted)", background: "rgba(155,81,224,0.1)", padding: "3px 8px", borderRadius: 4 }}>
+            SAMPLE DATA
+          </span>
+        </div>
+        <p style={{ color: "var(--text-secondary)", fontSize: 12, marginBottom: 16 }}>
+          Here's what your campaign dashboard will look like. Real-time analytics for every campaign you create.
+        </p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 }}>
+          {[
+            { label: "Impressions", value: "12,847", change: "+23%", color: "var(--color-cyan)" },
+            { label: "Clicks", value: "1,284", change: "+18%", color: "var(--color-neon-green)" },
+            { label: "CTR", value: "10.0%", change: "+2.1%", color: "var(--color-purple)" },
+            { label: "Spend", value: "0.0128 ETH", change: "—", color: "var(--text-secondary)" },
+          ].map((metric) => (
+            <div key={metric.label} style={{ background: "rgba(0,0,0,0.2)", borderRadius: 8, padding: "12px 14px", textAlign: "center" }}>
+              <div style={{ fontSize: 10, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "4px" }}>{metric.label}</div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: metric.color }}>{metric.value}</div>
+              <div style={{ fontSize: 10, color: metric.change.startsWith("+") ? "var(--color-neon-green)" : "var(--text-muted)", marginTop: "2px" }}>{metric.change}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{ background: "rgba(0,0,0,0.2)", borderRadius: 8, padding: "14px 16px" }}>
+          <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 10 }}>Daily Impressions (Last 7 Days)</div>
+          <div style={{ display: "flex", alignItems: "flex-end", gap: 6, height: 60 }}>
+            {[65, 40, 80, 55, 90, 70, 100].map((h, i) => (
+              <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                <div style={{
+                  width: "100%",
+                  height: `${h}%`,
+                  background: i === 6 ? "linear-gradient(180deg, var(--color-purple), rgba(155,81,224,0.3))" : "rgba(155,81,224,0.15)",
+                  borderRadius: "3px 3px 0 0",
+                }} />
+                <span style={{ fontSize: 9, color: "var(--text-muted)" }}>
+                  {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][i]}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
       {showCreateForm && (
         <form
           onSubmit={handleCreateCampaign}
@@ -335,6 +488,9 @@ export default function AdSlotManager() {
                 0x5f89d06E0D4dBe3C125a49FD9213624aD8a991d4
               </code>
             </div>
+            <p style={{ fontSize: 10, color: "var(--text-muted)", textAlign: "center" }}>
+              Payment processed on Base network. Campaign goes live after 1 confirmation.
+            </p>
           </div>
         </form>
       )}
@@ -344,6 +500,22 @@ export default function AdSlotManager() {
         <div style={{ textAlign: "center", padding: "32px 0", color: "var(--text-muted)" }}>
           <div style={{ fontSize: 32, marginBottom: 8 }}>📭</div>
           <p>No active campaigns. Be the first to advertise!</p>
+          <div style={{ display: "flex", gap: 12, justifyContent: "center", marginTop: 16 }}>
+            <button
+              onClick={() => { setShowLeadForm(true); setShowCreateForm(false); }}
+              className="btn-glow-cyan"
+              style={{ fontSize: 13, padding: "8px 20px" }}
+            >
+              📋 Request Free Demo
+            </button>
+            <button
+              onClick={() => { setShowCreateForm(true); setShowLeadForm(false); }}
+              className="btn-glow-purple"
+              style={{ fontSize: 13, padding: "8px 20px" }}
+            >
+              🚀 Create Campaign
+            </button>
+          </div>
         </div>
       ) : (
         <div style={{ display: "grid", gap: 12 }}>
