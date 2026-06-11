@@ -29,6 +29,7 @@ export default function Home() {
             <li className="nav-link-item"><a href="#revenue">💰 Revenue</a></li>
             <li className="nav-link-item"><a href="#staking">🔒 Stake</a></li>
             <li className="nav-link-item"><a href="#adslots">📢 Ad Slots</a></li>
+            <li className="nav-link-item"><a href="/blog">📝 Blog</a></li>
             </ul>
         </nav>
         <div style={{ position: "relative" }}>
@@ -64,6 +65,39 @@ export default function Home() {
             <a href="#telemetry" className="btn-glow-cyan" style={{ textDecoration: "none", display: "inline-block" }}>
               Explore Mining Grid
             </a>
+          </div>
+
+          {/* Referral Program Banner */}
+          <div style={{ marginTop: "32px", display: "flex", justifyContent: "center" }}>
+            <div style={{
+              background: "linear-gradient(135deg, rgba(155,81,224,0.12) 0%, rgba(0,242,254,0.08) 100%)",
+              border: "1px solid rgba(155,81,224,0.25)",
+              borderRadius: 12,
+              padding: "14px 24px",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "12px",
+              flexWrap: "wrap",
+              justifyContent: "center",
+            }}>
+              <span style={{ fontSize: "20px" }}>🤝</span>
+              <span style={{ color: "var(--text-primary)", fontSize: "13px", fontWeight: 600 }}>
+                Refer an advertiser, earn <span style={{ color: "var(--color-neon-green)" }}>10% of their campaign spend</span> in JGT
+              </span>
+              <a href="#adslots" style={{
+                background: "rgba(155,81,224,0.2)",
+                border: "1px solid rgba(155,81,224,0.4)",
+                borderRadius: 6,
+                color: "var(--color-purple)",
+                padding: "4px 12px",
+                fontSize: "11px",
+                fontWeight: 700,
+                textDecoration: "none",
+                whiteSpace: "nowrap",
+              }}>
+                Learn More →
+              </a>
+            </div>
           </div>
         </section>
 
