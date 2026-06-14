@@ -20,6 +20,7 @@
     "emission-table": "node dist/scripts/print-emission.js"
   },
   "dependencies": {
+    "@noble/secp256k1": "^3.1.0",
     "ws": "^8.17.0"
   },
   "devDependencies": {
