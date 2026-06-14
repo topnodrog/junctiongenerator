@@ -421,4 +421,7 @@ export interface NodeConfig {
   minerAddress?: Address;
   enableBroker: boolean;
   junctionGeneratorMode: boolean;  // Use compute for internal JG AI cluster first
+  /** Directory for durable block storage. When set, accepted blocks are
+   *  persisted and replayed on startup to rebuild chain + UTXO + epoch state. */
+  dataDir?: string;
 }
