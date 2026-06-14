@@ -82,4 +82,23 @@ describe("secp256k1 contribution signatures", () => {
     c.signature = signContribution(attacker.privateKey, c, 7);
     expect(verifyContributionSignature(c, 7).ok).toBe(false);
   });
+
+  test("malleated (high-S) signature is rejected", () => {
+    const N = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141n;
+    const kp = generateKeyPair();
+    const c = makeContribution(kp.publicKey, addressFromPublicKey(kp.publicKey));
+    c.signature = signContribution(kp.privateKey, c, 7);
+    expect(verifyContributionSignature(c, 7).ok).toBe(true);
+
+    // Malleate: s → n − s (same r). This is the OTHER valid ECDSA signature for
+    // the same message; rejecting it removes signature/txid malleability.
+    const r = c.signature.slice(0, 64);
+    const s = BigInt("0x" + c.signature.slice(64));
+    const malleated = r + (N - s).toString(16).padStart(64, "0");
+    expect(malleated).not.toBe(c.signature);
+    c.signature = malleated;
+    const res = verifyContributionSignature(c, 7);
+    expect(res.ok).toBe(false);
+    expect(res.error).toMatch(/high-S/i);
+  });
 });

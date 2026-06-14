@@ -11,9 +11,12 @@ import type { Block } from "../types/index.js";
 import { serializeBlock, deserializeBlock, BlockStore } from "../storage/persistence.js";
 import { createGenesisHeader } from "../consensus/block.js";
 import { initEpochState, applyBlockToEpoch } from "../consensus/epoch.js";
+import { assembleBlock, GENESIS_DIFFICULTY_BITS } from "../consensus/block.js";
+import { JGCNode } from "../network/node.js";
+import { makeGenesisBlock, makeContribution, DEFAULT_MINERS } from "../sim/harness.js";
 import { ComputeTaskType } from "../types/index.js";
 import { BASE_UNITS_PER_JGC } from "../consensus/emission.js";
-import type { MinerComputeContribution } from "../types/index.js";
+import type { MinerComputeContribution, NodeConfig } from "../types/index.js";
 
 function contrib(addr: string, tflops: number): MinerComputeContribution {
   return {
@@ -83,5 +86,40 @@ describe("BlockStore", () => {
     store.append(sampleBlock());
     store.clear();
     expect(store.loadAll()).toHaveLength(0);
+  });
+});
+
+describe("replay integrity (re-validation on restart)", () => {
+  const dir = join(tmpdir(), `jgc-replay-tamper-${process.pid}`);
+  const cfg = (): NodeConfig => ({
+    listenPort: 0, rpcPort: 0, networkMagic: 0xD9B4BEF9,
+    maxPeers: 8, enableBroker: false, junctionGeneratorMode: false, dataDir: dir,
+  });
+
+  /** A valid height-1 block on top of genesis (value-0 coinbase). */
+  function validHeightOne(): Block {
+    const genesis = makeGenesisBlock();
+    const mirror = initEpochState(0, genesis.header.timestamp);
+    applyBlockToEpoch(mirror, [], 0, 0n);
+    const contributions = DEFAULT_MINERS.map(m => makeContribution(m, 1));
+    const coinbase = { version: 1, inputs: [], outputs: [{ value: 0n, scriptPubKey: "76a914" + "00".repeat(20) + "88ac" }], locktime: 0 };
+    return assembleBlock(genesis.header, [coinbase], contributions, mirror, GENESIS_DIFFICULTY_BITS, 1, genesis.header.timestamp + 600);
+  }
+
+  afterAll(() => { try { rmSync(dir, { recursive: true, force: true }); } catch { /* ignore */ } });
+
+  test("honest store replays to the right tip", () => {
+    const store = new BlockStore(dir); store.clear();
+    store.append(validHeightOne());
+    const node = new JGCNode(cfg(), makeGenesisBlock());
+    expect(node.getChainInfo().tipHeight).toBe(1);
+  });
+
+  test("tampered stored block makes restart throw", () => {
+    const store = new BlockStore(dir); store.clear();
+    const tampered = deserializeBlock(serializeBlock(validHeightOne()));
+    tampered.transactions[0]!.outputs[0]!.value = 5n * BASE_UNITS_PER_JGC; // breaks merkleRoot
+    store.append(tampered);
+    expect(() => new JGCNode(cfg(), makeGenesisBlock())).toThrow(/integrity/i);
   });
 });

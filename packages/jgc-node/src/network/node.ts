@@ -33,8 +33,8 @@ import type {
 } from "../types/index.js";
 import { MessageType as MT } from "../types/index.js";
 import { validateBlock } from "../consensus/validation.js";
-import { hashBlockHeader, serializeTransaction } from "../consensus/block.js";
-import { applyBlockToEpoch, initEpochState, computeEpochSettlement } from "../consensus/epoch.js";
+import { hashBlockHeader, serializeTransaction, computeTransactionMerkleRoot } from "../consensus/block.js";
+import { applyBlockToEpoch, initEpochState, computeEpochSettlement, computeContributionsMerkleRoot, computeEpochRoot } from "../consensus/epoch.js";
 import { UTXOSet } from "../consensus/utxo.js";
 import { BlockStore } from "../storage/persistence.js";
 import { calculateNextDifficultyTarget, BLOCKS_PER_EPOCH, RETARGET_WINDOW_BLOCKS, encodeDifficultyBits, decodeDifficultyBits } from "../consensus/emission.js";
@@ -189,15 +189,25 @@ export class JGCNode extends EventEmitter {
     if (blocks.length === 0) return;
     this.replaying = true;
     for (const block of blocks) {
-      if (block.header.prevHash !== this.chain.tipHash) {
+      const h = block.header.height;
+      const fail = (why: string): never => {
         this.replaying = false;
-        throw new Error(
-          `Persistence replay mismatch at height ${block.header.height}: ` +
-          `block parent ${block.header.prevHash.slice(0, 16)}… ≠ tip ${this.chain.tipHash.slice(0, 16)}… ` +
-          `(wrong genesis or corrupt store?)`
-        );
+        throw new Error(`Persistence replay integrity failure at height ${h}: ${why} (corrupt or tampered store?)`);
+      };
+      // Re-validate each persisted block before re-applying it. These checks are
+      // synchronous (no ZK) but catch any tampering: changing a tx, proof, epoch
+      // commitment, or coinbase amount changes one of the committed roots, and a
+      // re-linked block must still extend the current tip.
+      if (block.header.prevHash !== this.chain.tipHash) fail("does not extend current tip");
+      if (computeTransactionMerkleRoot(block.transactions) !== block.header.merkleRoot) fail("merkleRoot mismatch");
+      if (computeContributionsMerkleRoot(block.computeProofs) !== block.header.computeRoot) fail("computeRoot mismatch");
+      if (computeEpochRoot(this.chain.epochState) !== block.header.epochRoot) fail("epochRoot mismatch");
+      // Non-boundary coinbase must not mint (the inflation guard, re-checked).
+      if (h % BLOCKS_PER_EPOCH !== BLOCKS_PER_EPOCH - 1) {
+        const minted = block.transactions[0]?.outputs.reduce((s, o) => s + o.value, 0n) ?? 0n;
+        if (minted > 0n) fail("non-boundary coinbase mints value");
       }
-      this.acceptBlock(block, hashBlockHeader(block.header), block.header.height % BLOCKS_PER_EPOCH);
+      this.acceptBlock(block, hashBlockHeader(block.header), h % BLOCKS_PER_EPOCH);
     }
     this.replaying = false;
     console.log(`[Node] Replayed ${blocks.length} block(s) from ${this.config.dataDir} — tip height ${this.chain.tipHeight}`);

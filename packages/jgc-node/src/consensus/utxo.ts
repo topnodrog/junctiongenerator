@@ -20,7 +20,7 @@ import { createHash } from "crypto";
 import type { Transaction, JGCSatoshis, Hash256 } from "../types/index.js";
 import { serializeTransaction } from "./block.js";
 import { hashTransaction } from "../crypto/merkle.js";
-import { verifyP2PKHSpend } from "../crypto/signatures.js";
+import { verifyP2PKHSpend, JGC_NETWORK_ID } from "../crypto/signatures.js";
 
 /** Coinbase outputs (epoch settlement payouts) can't be spent for this many blocks. */
 export const COINBASE_MATURITY = 100;
@@ -45,7 +45,11 @@ export function txid(tx: Transaction): Hash256 {
  */
 export function txSigHash(tx: Transaction): Uint8Array {
   const blanked: Transaction = { ...tx, inputs: tx.inputs.map(i => ({ ...i, scriptSig: "" })) };
-  const first = createHash("sha256").update(serializeTransaction(blanked)).digest();
+  // Bind the network id so a spend can't be replayed on a fork/testnet.
+  const first = createHash("sha256")
+    .update(JGC_NETWORK_ID)
+    .update(serializeTransaction(blanked))
+    .digest();
   return new Uint8Array(createHash("sha256").update(first).digest());
 }
 
