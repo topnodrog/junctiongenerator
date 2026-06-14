@@ -1,0 +1,59 @@
+{
+  "name": "@jg/jgc-node",
+  "version": "0.1.0",
+  "description": "Junction Generator Coin — Proof-of-Useful-Compute node",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "build:rust": "wasm-pack build rust --target nodejs --out-dir pkg --release",
+    "build:all": "npm run build:rust && npm run build",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "test": "node --experimental-vm-modules --max-old-space-size=1536 ../../node_modules/jest/bin/jest.js --runInBand",
+    "sync-demo": "node dist/scripts/sync-demo.js",
+    "epoch-verify": "node dist/scripts/epoch-verify.js",
+    "prove-verify-demo": "node dist/scripts/prove-verify-demo.js",
+    "strict-mine-demo": "node dist/scripts/strict-mine-demo.js",
+    "ceremony-demo": "node dist/scripts/ceremony-demo.js",
+    "kernels-demo": "node dist/scripts/kernels-demo.js",
+    "emission-table": "node dist/scripts/print-emission.js"
+  },
+  "dependencies": {
+    "ws": "^8.17.0"
+  },
+  "devDependencies": {
+    "@jest/globals": "^29.7.0",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^20.14.0",
+    "@types/ws": "^8.5.10",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.4",
+    "typescript": "^5.4.5"
+  },
+  "jest": {
+    "preset": "ts-jest/presets/default-esm",
+    "testEnvironment": "node",
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "/dist/"
+    ],
+    "maxWorkers": 1,
+    "workerIdleMemoryLimit": "512MB",
+    "extensionsToTreatAsEsm": [
+      ".ts"
+    ],
+    "moduleNameMapper": {
+      "^(\\.{1,2}/.*)\\.js$": "$1"
+    },
+    "transform": {
+      "^.+\\.ts$": [
+        "ts-jest",
+        {
+          "useESM": true,
+          "isolatedModules": true
+        }
+      ]
+    }
+  }
+}
