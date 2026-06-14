@@ -17,6 +17,7 @@
     "strict-mine-demo": "node dist/scripts/strict-mine-demo.js",
     "ceremony-demo": "node dist/scripts/ceremony-demo.js",
     "kernels-demo": "node dist/scripts/kernels-demo.js",
+    "utxo-demo": "node dist/scripts/utxo-demo.js",
     "emission-table": "node dist/scripts/print-emission.js"
   },
   "dependencies": {

@@ -82,6 +82,72 @@ export function signContribution(privateKeyHex: string, c: MinerComputeContribut
   return toHex(sig);
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Transaction-spend (P2PKH) primitives
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** hash160 (RIPEMD160∘SHA256) of a compressed public key, hex. */
+export function hash160Hex(publicKeyHex: string): string {
+  return hash160(toBytes(publicKeyHex)).toString("hex");
+}
+
+/** P2PKH scriptPubKey for a public key: 76a914 <hash160> 88ac. */
+export function p2pkhScript(publicKeyHex: string): string {
+  return "76a914" + hash160Hex(publicKeyHex) + "88ac";
+}
+
+/** Extract the 20-byte hash160 (hex) from a P2PKH scriptPubKey, or null. */
+export function hash160FromP2PKH(scriptPubKey: string): string | null {
+  const m = /^76a914([0-9a-fA-F]{40})88ac$/.exec(scriptPubKey);
+  return m ? m[1]!.toLowerCase() : null;
+}
+
+/** ECDSA-sign a 32-byte digest with a private key (hex) → 64-byte compact sig hex. */
+export function signHash(privateKeyHex: string, hash32: Uint8Array): string {
+  return toHex(secp.sign(hash32, toBytes(privateKeyHex), { prehash: false }));
+}
+
+/** Verify a compact sig (hex) over a 32-byte digest by a public key (hex). */
+export function verifyHashSignature(sigHex: string, hash32: Uint8Array, publicKeyHex: string): boolean {
+  try {
+    return secp.verify(toBytes(sigHex), hash32, toBytes(publicKeyHex), { prehash: false });
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Verify a P2PKH spend: the scriptSig's pubkey must hash to the output's
+ * hash160, and its signature must be valid over `sigHash`.
+ * scriptSig encoding: <64-byte compact sig hex (128)> ‖ <33-byte pubkey hex (66)>.
+ */
+export function verifyP2PKHSpend(
+  scriptSig: string,
+  scriptPubKey: string,
+  sigHash: Uint8Array,
+): { ok: boolean; error?: string } {
+  if (scriptSig.length !== 128 + 66) {
+    return { ok: false, error: "malformed scriptSig (expected sig‖pubkey)" };
+  }
+  const sigHex = scriptSig.slice(0, 128);
+  const pubHex = scriptSig.slice(128);
+  const expected = hash160FromP2PKH(scriptPubKey);
+  if (expected === null) {
+    return { ok: false, error: "scriptPubKey is not P2PKH" };
+  }
+  if (hash160Hex(pubHex) !== expected) {
+    return { ok: false, error: "pubkey does not match output hash160" };
+  }
+  return verifyHashSignature(sigHex, sigHash, pubHex)
+    ? { ok: true }
+    : { ok: false, error: "spend signature invalid" };
+}
+
+/** Build a P2PKH scriptSig from a signature hex and compressed pubkey hex. */
+export function p2pkhScriptSig(sigHex: string, publicKeyHex: string): string {
+  return sigHex + publicKeyHex;
+}
+
 /**
  * Verify a contribution's signature AND that its address is derived from its
  * public key. Returns { ok } or { ok: false, error }.
