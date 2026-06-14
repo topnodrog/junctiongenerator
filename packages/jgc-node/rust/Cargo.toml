@@ -1,0 +1,75 @@
+[package]
+name    = "jgc_verifier"
+version = "0.1.0"
+edition = "2021"
+description = "ZK-SNARK verifier and TFLOPS computation for Junction Generator Coin"
+license = "MIT"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Features
+# ─────────────────────────────────────────────────────────────────────────────
+[features]
+default = ["console_error_panic_hook"]
+console_error_panic_hook = ["dep:console_error_panic_hook"]
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Core Dependencies
+# ─────────────────────────────────────────────────────────────────────────────
+[dependencies]
+
+# WASM bindings — analogous to how Bitcoin Core links against libsecp256k1.
+wasm-bindgen  = "0.2"
+js-sys        = "0.3"
+web-sys       = { version = "0.3", features = ["console"] }
+
+# Better WASM panic messages in debug builds.
+console_error_panic_hook = { version = "0.1", optional = true }
+
+# Serialization for VerificationKey and TaskSpec JSON exchange.
+serde       = { version = "1", features = ["derive"] }
+serde_json  = "1"
+
+# ── Arkworks ZK-SNARK Stack (Groth16 over BN254) ─────────────────────────────
+# Arkworks is the production, audited Groth16 + BN254 implementation.
+# default-features = false keeps these no_std + alloc so they compile cleanly
+# for the wasm32-unknown-unknown verifier target (the node only VERIFIES, which
+# needs no RNG). The host-side round-trip test (cargo test, x86_64) pulls std +
+# the prover via dev-dependencies for a real setup → prove → verify check.
+# See: https://github.com/arkworks-rs/groth16 , https://github.com/arkworks-rs/algebra
+# The verifier path needs the curve + groth16 verify; the simnet prover path
+# (groth16_setup / groth16_prove) additionally needs the R1CS machinery
+# (ark-relations) and a no_std CSPRNG (rand_chacha, seeded — wasm32 has no
+# getrandom in our tree). All default-features = false so the wasm32 build stays
+# no_std + alloc; the host test build (cargo test) reuses the exact same deps.
+ark-bn254     = { version = "0.5", default-features = false, features = ["curve"] }
+ark-groth16   = { version = "0.5", default-features = false }
+ark-ec        = { version = "0.5", default-features = false }
+ark-ff        = { version = "0.5", default-features = false }
+ark-serialize = { version = "0.5", default-features = false }
+ark-std       = { version = "0.5", default-features = false }
+ark-snark     = { version = "0.5", default-features = false }
+ark-relations = { version = "0.5", default-features = false }
+rand_chacha   = { version = "0.3", default-features = false }
+# Poseidon sponge (hash) + its R1CS gadget, and the gadget std lib for the
+# Conv1D useful-compute circuit. "sponge" + "r1cs" gate the Poseidon native +
+# constraint implementations; ark-r1cs-std provides FpVar etc.
+ark-crypto-primitives = { version = "0.5", default-features = false, features = ["sponge", "r1cs"] }
+ark-r1cs-std          = { version = "0.5", default-features = false }
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Build Target Profile
+# ─────────────────────────────────────────────────────────────────────────────
+[profile.release]
+# Maximum optimisation for pairing operations (critical path).
+opt-level     = 3
+lto           = true
+codegen-units = 1
+panic         = "abort"
+
+[profile.dev]
+# Fast compilation during development.
+opt-level = 0
+debug     = true
