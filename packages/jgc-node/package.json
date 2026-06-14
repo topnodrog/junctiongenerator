@@ -18,6 +18,7 @@
     "ceremony-demo": "node dist/scripts/ceremony-demo.js",
     "kernels-demo": "node dist/scripts/kernels-demo.js",
     "utxo-demo": "node dist/scripts/utxo-demo.js",
+    "utxo-live-demo": "node dist/scripts/utxo-live-demo.js",
     "emission-table": "node dist/scripts/print-emission.js"
   },
   "dependencies": {

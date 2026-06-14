@@ -55,6 +55,7 @@ import { computeContributionsMerkleRoot, computeEpochRoot, computeEpochSettlemen
 import { decodeDifficultyBits, BLOCKS_PER_EPOCH, HARD_CAP_SATOSHIS } from "./emission.js";
 import { batchVerifyComputeProofs, getVerifierMode } from "../crypto/zkp.js";
 import { verifyContributionSignature } from "../crypto/signatures.js";
+import { UTXOSet, validateSpend } from "./utxo.js";
 import { verifyMerkleProof, getMerkleProof, buildMerkleTree, hashComputeProof } from "../crypto/merkle.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -497,6 +498,9 @@ export interface BlockValidationContext {
   epochBlockIndex: number;
   /** Total fees collected in the current epoch so far (for coinbase validation at epoch end). */
   epochFees: JGCSatoshis;
+  /** Current UTXO set (chainstate). When present, every non-coinbase tx (tx[1..])
+   *  is validated against it: inputs exist & unspent, authorized, value conserved. */
+  utxos?: UTXOSet;
 }
 
 /**
@@ -553,13 +557,36 @@ export async function validateBlock(
   const isEpochBoundary = context.epochBlockIndex === BLOCKS_PER_EPOCH - 1;
 
   for (let i = 0; i < block.transactions.length; i++) {
-    const txResult = validateTransaction(block.transactions[i]!, i === 0 && isEpochBoundary);
+    // tx[0] is the block coinbase (epoch-settlement payout at the boundary, or a
+    // no-spend marker otherwise); all others are ordinary spends.
+    const txResult = validateTransaction(block.transactions[i]!, i === 0);
     if (!txResult.valid) {
       return {
         valid: false,
         errors: [ValidationError.INVALID_TRANSACTION],
         warnings: [`tx[${i}]: ${txResult.warnings.join(", ")}`],
       };
+    }
+  }
+
+  // ── Step 2b: Spend validation against the UTXO set ────────────────────────
+  // Every non-coinbase tx must spend existing, unspent, authorized (P2PKH-signed)
+  // outputs and conserve value (Σin ≥ Σout). Validated against a scratch copy so
+  // a tx can spend an earlier tx's output in the same block; the canonical set is
+  // updated by the node on accept. (No-op for coinbase-only blocks, e.g. simnet.)
+  if (context.utxos) {
+    const view = context.utxos.clone();
+    for (let i = 1; i < block.transactions.length; i++) {
+      const tx = block.transactions[i]!;
+      const spend = validateSpend(tx, view, context.expectedHeight);
+      if (!spend.ok) {
+        return {
+          valid: false,
+          errors: [ValidationError.INVALID_TRANSACTION],
+          warnings: [`tx[${i}] spend invalid: ${spend.error}`],
+        };
+      }
+      view.applyTransaction(tx, context.expectedHeight, false);
     }
   }
 

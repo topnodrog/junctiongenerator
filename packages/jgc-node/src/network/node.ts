@@ -35,6 +35,7 @@ import { MessageType as MT } from "../types/index.js";
 import { validateBlock } from "../consensus/validation.js";
 import { hashBlockHeader, serializeTransaction } from "../consensus/block.js";
 import { applyBlockToEpoch, initEpochState, computeEpochSettlement } from "../consensus/epoch.js";
+import { UTXOSet } from "../consensus/utxo.js";
 import { calculateNextDifficultyTarget, BLOCKS_PER_EPOCH, RETARGET_WINDOW_BLOCKS, encodeDifficultyBits, decodeDifficultyBits } from "../consensus/emission.js";
 import { globalBroker } from "../broker/compute-broker.js";
 import type { Hash256, EpochState } from "../types/index.js";
@@ -99,6 +100,8 @@ export interface ChainState {
   medianPastTime: number;
   /** Total cumulative fees collected in current epoch. */
   epochFees: bigint;
+  /** Unspent transaction output set (chainstate / ledger). */
+  utxos: UTXOSet;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -144,7 +147,13 @@ export class JGCNode extends EventEmitter {
       recentBlockTimes:      [genesisBlock.header.timestamp],
       medianPastTime:        genesisBlock.header.timestamp - 1,
       epochFees:             0n,
+      utxos:                 new UTXOSet(),
     };
+
+    // Seed the UTXO set from genesis (its tx[0], if any, is the coinbase).
+    genesisBlock.transactions.forEach((tx, i) =>
+      this.chain.utxos.applyTransaction(tx, 0, i === 0),
+    );
 
     // Apply genesis (height 0) to the epoch accumulator. Epoch 0 spans
     // heights [0, 143], so genesis occupies slot 0: its subsidy joins the
@@ -319,6 +328,7 @@ export class JGCNode extends EventEmitter {
       blockFees:              this.calculateBlockFees(block),
       epochBlockIndex,
       epochFees:              this.chain.epochFees,
+      utxos:                  this.chain.utxos,
     });
 
     if (!result.valid) {
@@ -504,6 +514,12 @@ export class JGCNode extends EventEmitter {
     this.chain.heightIndex.set(block.header.height, blockHash);
     this.chain.tipHash   = blockHash;
     this.chain.tipHeight = block.header.height;
+
+    // Update the UTXO set: tx[0] is the coinbase (adds outputs, spends nothing);
+    // every other tx spends its inputs and creates its outputs.
+    block.transactions.forEach((tx, i) =>
+      this.chain.utxos.applyTransaction(tx, block.header.height, i === 0),
+    );
 
     // Update epoch state.
     applyBlockToEpoch(
@@ -691,6 +707,12 @@ export class JGCNode extends EventEmitter {
    */
   getEpochState(): EpochState {
     return this.chain.epochState;
+  }
+
+  /** The live UTXO set (chainstate). Treat as read-only except for genesis/premine
+   *  funding in tests/demos; the node maintains it as blocks are accepted. */
+  getUTXOSet(): UTXOSet {
+    return this.chain.utxos;
   }
 
   /** Compact difficulty bits the next block header must carry. */
