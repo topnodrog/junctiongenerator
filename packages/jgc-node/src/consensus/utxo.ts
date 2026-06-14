@@ -71,12 +71,16 @@ export class UTXOSet {
     return e;
   }
 
-  /** Add all of a transaction's outputs as new UTXOs. */
+  /** Add a transaction's value-bearing outputs as new UTXOs. Zero-value outputs
+   *  (e.g. the non-boundary coinbase marker, OP_RETURN-style) are unspendable and
+   *  are not tracked, to keep the set free of permanent dust. */
   addTransactionOutputs(tx: Transaction, height: number, isCoinbase: boolean): void {
     const id = txid(tx);
-    tx.outputs.forEach((o, vout) =>
-      this.add(id, vout, { value: o.value, scriptPubKey: o.scriptPubKey, height, isCoinbase }),
-    );
+    tx.outputs.forEach((o, vout) => {
+      if (o.value > 0n) {
+        this.add(id, vout, { value: o.value, scriptPubKey: o.scriptPubKey, height, isCoinbase });
+      }
+    });
   }
 
   /**

@@ -31,7 +31,6 @@ import type {
 import { ComputeTaskType } from "../types/index.js";
 import { buildPublicInputs } from "../crypto/zkp.js";
 import { assembleBlock } from "../consensus/block.js";
-import { BASE_UNITS_PER_JGC } from "../consensus/emission.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Miner Identity
@@ -172,7 +171,7 @@ export function createRegtestTx(blockHeight: number): Transaction {
       sequence:  0xFFFFFFFF,
     }],
     outputs: [{
-      value: BASE_UNITS_PER_JGC,  // 1 JGC
+      value: 0n,  // non-boundary coinbase mints nothing (reward is at the epoch boundary)
       // OP_DUP OP_HASH160 <20-byte dev hash> OP_EQUALVERIFY OP_CHECKSIG
       scriptPubKey: "76a914" + "00".repeat(20) + "88ac",
     }],
