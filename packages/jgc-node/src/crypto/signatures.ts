@@ -33,6 +33,25 @@ const toBytes = (hex: string): Uint8Array => Uint8Array.from(Buffer.from(hex, "h
 const toHex = (b: Uint8Array): string => Buffer.from(b).toString("hex");
 
 /**
+ * Network/chain identifier mixed into every sighash so a signature is bound to
+ * this chain — a signed contribution or spend cannot be replayed on a fork or
+ * testnet that shares the same UTXOs/addresses. Bump per network.
+ */
+export const JGC_NETWORK_ID = "JGC-mainnet-v1";
+
+// secp256k1 group order; low-S = s ≤ n/2. Rejecting high-S removes signature
+// (and hence txid) malleability — both (r,s) and (r,n−s) verify otherwise.
+const SECP256K1_N = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141n;
+const SECP256K1_HALF_N = SECP256K1_N >> 1n;
+
+/** True iff the compact signature's s value is canonical (low-S, in [1, n/2]). */
+function isLowS(sigHex: string): boolean {
+  if (sigHex.length !== 128) return false;
+  const s = BigInt("0x" + sigHex.slice(64, 128));
+  return s >= 1n && s <= SECP256K1_HALF_N;
+}
+
+/**
  * Bitcoin's hash160 = RIPEMD160(SHA256(x)). Falls back to SHA256d(x)[:20] on the
  * rare Node/OpenSSL build without ripemd160 — deterministic either way.
  */
@@ -66,6 +85,7 @@ export function generateKeyPair(): { privateKey: string; publicKey: string } {
  */
 export function contributionSigHash(c: MinerComputeContribution, height: number): Uint8Array {
   const preimage = [
+    JGC_NETWORK_ID,
     c.minerAddress,
     c.proof.taskCommitment,
     c.proof.circuitId,
@@ -107,8 +127,10 @@ export function signHash(privateKeyHex: string, hash32: Uint8Array): string {
   return toHex(secp.sign(hash32, toBytes(privateKeyHex), { prehash: false }));
 }
 
-/** Verify a compact sig (hex) over a 32-byte digest by a public key (hex). */
+/** Verify a compact sig (hex) over a 32-byte digest by a public key (hex).
+ *  Rejects non-canonical (high-S) signatures to prevent malleability. */
 export function verifyHashSignature(sigHex: string, hash32: Uint8Array, publicKeyHex: string): boolean {
+  if (!isLowS(sigHex)) return false;
   try {
     return secp.verify(toBytes(sigHex), hash32, toBytes(publicKeyHex), { prehash: false });
   } catch {
@@ -158,6 +180,9 @@ export function verifyContributionSignature(
 ): { ok: boolean; error?: string } {
   if (addressFromPublicKey(c.publicKey) !== c.minerAddress) {
     return { ok: false, error: "minerAddress is not derived from publicKey" };
+  }
+  if (!isLowS(c.signature)) {
+    return { ok: false, error: "non-canonical (high-S) signature" };
   }
   try {
     const ok = secp.verify(toBytes(c.signature), contributionSigHash(c, height), toBytes(c.publicKey), { prehash: false });
