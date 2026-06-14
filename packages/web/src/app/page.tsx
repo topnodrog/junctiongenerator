@@ -3,6 +3,7 @@ import VibePlayground from "@/components/VibePlayground";
 import MiningTelemetry from "@/components/MiningTelemetry";
 import AgentConsole from "@/components/AgentConsole";
 import OSCRPCalculator from "@/components/OSCRPCalculator";
+import ConnectButtonCustom from "@/components/ConnectButtonCustom";
 
 export default function Home() {
   return (
@@ -22,9 +23,7 @@ export default function Home() {
           </ul>
         </nav>
         <div>
-          <button className="btn-glow-cyan" style={{ padding: "8px 20px", fontSize: "14px" }}>
-            Connect Wallet
-          </button>
+          <ConnectButtonCustom />
         </div>
       </header>
 

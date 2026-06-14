@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Outfit, JetBrains_Mono } from "next/font/google";
+import { Providers } from "./providers";
 import "./globals.css";
 
 const outfit = Outfit({
@@ -30,7 +31,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${outfit.variable} ${jetbrainsMono.variable} h-full antialiased`}>
       <body style={{ margin: 0, padding: 0, backgroundColor: "var(--bg-space)", color: "var(--text-primary)" }}>
-        {children}
+        <Providers>
+          {children}
+        </Providers>
       </body>
     </html>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { LeaderboardEntry, INITIAL_LEADERBOARD } from "@/lib/constants";
 
 interface SimulatedPR {
   description: string;
@@ -12,21 +13,6 @@ interface SimulatedPR {
   liquidValue: number;
 }
 
-interface LeaderboardEntry {
-  rank: number;
-  user: string;
-  contribution: string;
-  jgt: number;
-  ae: number;
-  category: "Core" | "Security" | "Gas Opt" | "Docs";
-}
-
-const INITIAL_LEADERBOARD: LeaderboardEntry[] = [
-  { rank: 1, user: "jgordon.dev", contribution: "Core PoUC Allocation Protocol v1.5", jgt: 482000, ae: 0.4820, category: "Core" },
-  { rank: 2, user: "elena_codes", contribution: "Adversarial AST Compiler Auditing Loop", jgt: 320000, ae: 0.3200, category: "Security" },
-  { rank: 3, user: "gas_goblin", contribution: "EVM Storage Assembly Slot Refactor", jgt: 245000, ae: 0.2450, category: "Gas Opt" },
-  { rank: 4, user: "doc_ninja", contribution: "PoUC Verification Math & Spec Docs", jgt: 110000, ae: 0.1100, category: "Docs" }
-];
 
 export default function OSCRPCalculator() {
   const [prDesc, setPrDesc] = useState("");

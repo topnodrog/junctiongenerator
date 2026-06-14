@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { SAMPLE_TASKS, SAMPLE_MINERS } from "@/lib/constants";
 
 interface Workload {
   id: string;
@@ -11,20 +12,6 @@ interface Workload {
   size: string;
 }
 
-const SAMPLE_TASKS = [
-  { name: "Llama-3-8B Fine-Tuning Batch #14", size: "450 MB" },
-  { name: "Stable Diffusion 3 Image Synthesis", size: "128 MB" },
-  { name: "DeepSeek Coder Autocomplete Inference", size: "64 MB" },
-  { name: "Whisper Speech-to-Text Processing", size: "320 MB" },
-  { name: "ResNet-101 Image Feature Extraction", size: "180 MB" },
-  { name: "BERT-Large Sentiment Token Aggregator", size: "96 MB" },
-  { name: "ZK-Rollup Cryptographic Workload Proof", size: "48 MB" },
-];
-
-const SAMPLE_MINERS = [
-  "0x89a...21c", "0xf4d...5a1", "0x3a2...b8e", "0x71c...e3a",
-  "0x2be...9df", "0x51c...8aa", "0x6f3...712", "0xbc1...3ef"
-];
 
 export default function MiningTelemetry() {
   const [flops, setFlops] = useState(8.42);
