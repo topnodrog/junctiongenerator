@@ -139,3 +139,56 @@ export function dialPeer(node: JGCNode, url: string): Promise<PeerConnection> {
     ws.on("error", reject);
   });
 }
+
+/** A managed set of outbound peer connections with auto-reconnect. */
+export interface PeerLinks {
+  /** Stop all links and cancel pending reconnects. */
+  close(): void;
+}
+
+/**
+ * Maintain outbound connections to a set of peer URLs, reconnecting with a
+ * fixed backoff whenever a link drops. This is the bootstrap/seed-list path —
+ * the multi-peer analog of dialPeer (Bitcoin: -addnode / -connect + the
+ * connection manager that keeps outbound slots full).
+ *
+ * On (re)connection the VERSION handshake fires automatically; if the peer is
+ * ahead, the node requests headers and catches up — so a reconnecting node
+ * re-syncs any blocks it missed while disconnected.
+ */
+export function connectToPeers(
+  node: JGCNode,
+  urls: string[],
+  opts: { retryMs?: number } = {},
+): PeerLinks {
+  const retryMs = opts.retryMs ?? 2000;
+  let stopped = false;
+  const timers = new Set<ReturnType<typeof setTimeout>>();
+  const sockets = new Set<WebSocket>();
+
+  const dial = (url: string): void => {
+    if (stopped) return;
+    const ws = new WebSocket(url);
+    sockets.add(ws);
+    ws.on("open",  () => { if (stopped) ws.terminate(); else attachSocket(node, ws, url, false); });
+    ws.on("error", () => { /* a "close" follows; reconnect is handled there */ });
+    ws.on("close", () => {
+      sockets.delete(ws);
+      if (stopped) return;
+      const t = setTimeout(() => { timers.delete(t); dial(url); }, retryMs);
+      timers.add(t);
+    });
+  };
+
+  for (const url of urls) dial(url);
+
+  return {
+    close(): void {
+      stopped = true;
+      for (const t of timers) clearTimeout(t);
+      timers.clear();
+      for (const ws of sockets) ws.terminate();
+      sockets.clear();
+    },
+  };
+}
