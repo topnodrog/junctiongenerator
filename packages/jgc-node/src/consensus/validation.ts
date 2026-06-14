@@ -76,6 +76,7 @@ export enum ValidationError {
   NO_COMPUTE_PROOFS        = "NO_COMPUTE_PROOFS",
   PROOF_VERIFICATION_FAILED = "PROOF_VERIFICATION_FAILED",
   INVALID_SIGNATURE        = "INVALID_SIGNATURE",
+  DUPLICATE_CONTRIBUTION   = "DUPLICATE_CONTRIBUTION",
   INSUFFICIENT_TFLOPS      = "INSUFFICIENT_TFLOPS",
   COMPUTE_ROOT_MISMATCH    = "COMPUTE_ROOT_MISMATCH",
 
@@ -254,6 +255,25 @@ export async function validateComputeProofs(
     return fail(ValidationError.NO_COMPUTE_PROOFS,
       "Block must contain at least one ComputeProof (PoUC requirement)"
     );
+  }
+
+  // ── Reject duplicate contributions ────────────────────────────────────────
+  // A miner gets ONE contribution per block, and each task is proven once;
+  // otherwise a miner could resubmit the same proof K times and multiply its
+  // pro-rata TFLOPS share (applyBlockToEpoch sums per address).
+  const seenMiners = new Set<string>();
+  const seenTasks  = new Set<string>();
+  for (const c of contributions) {
+    if (seenMiners.has(c.minerAddress)) {
+      return fail(ValidationError.DUPLICATE_CONTRIBUTION,
+        `Duplicate contribution from miner ${c.minerAddress} in one block`);
+    }
+    if (seenTasks.has(c.proof.taskCommitment)) {
+      return fail(ValidationError.DUPLICATE_CONTRIBUTION,
+        `Duplicate taskCommitment ${c.proof.taskCommitment.slice(0, 16)}… in one block`);
+    }
+    seenMiners.add(c.minerAddress);
+    seenTasks.add(c.proof.taskCommitment);
   }
 
   // ── Signature verification (strict mode) ─────────────────────────────────
@@ -644,6 +664,19 @@ export async function validateBlock(
       Math.floor(context.expectedHeight / BLOCKS_PER_EPOCH),
     );
     if (!coinbaseResult.valid) return coinbaseResult;
+  } else {
+    // ── Non-boundary coinbase must NOT mint ─────────────────────────────────
+    // JGC defers all block reward to the epoch-boundary settlement, so tx[0] in
+    // every other block may create at most the collected fees (0 today). Without
+    // this, a miner could pay itself arbitrary outputs in any normal block —
+    // those become spendable UTXOs (acceptBlock adds tx[0] outputs). This is the
+    // inflation guard for the only place value is otherwise unconstrained.
+    const minted = block.transactions[0]!.outputs.reduce((s, o) => s + o.value, 0n);
+    if (minted > context.blockFees) {
+      return fail(ValidationError.INVALID_COINBASE,
+        `Non-boundary coinbase mints ${minted} > allowed fees ${context.blockFees} ` +
+        `(reward is paid only at the epoch boundary)`);
+    }
   }
 
   return { valid: true, errors: [], warnings };

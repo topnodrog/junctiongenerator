@@ -307,6 +307,16 @@ export async function loadVerifierWasm(
   opts: { mode?: VerifierMode; wasmPath?: string } = {},
 ): Promise<void> {
   const { mode = "strict", wasmPath } = opts;
+
+  // SAFETY: "simnet" skips the real pairing AND contribution-signature checks —
+  // it must never run on a production node (fails closed).
+  if (mode === "simnet" && process.env["NODE_ENV"] === "production") {
+    throw new Error(
+      "verifierMode 'simnet' is forbidden when NODE_ENV=production " +
+      "(it skips real Groth16 pairing and contribution signature verification)"
+    );
+  }
+
   // Record the mode even if the module is already loaded (mode is independent
   // of which WASM binary is resident — the same binary serves both paths).
   _verifierMode = mode;
@@ -554,6 +564,16 @@ export function verifyComputeProof(
   }
 
   // ── Step 2: Bounds check on claimed TFLOPS ────────────────────────────────
+  // Must be a non-negative integer: epoch settlement converts the accumulated
+  // TFLOPS to BigInt (pool × tflops / total), which throws on a fractional sum —
+  // a single fractional weight would otherwise halt settlement at the boundary.
+  if (!Number.isInteger(proof.tflopsWeight) || proof.tflopsWeight < 0) {
+    return {
+      valid: false,
+      error: `tflopsWeight ${proof.tflopsWeight} must be a non-negative integer`,
+      verifiedTFLOPS: 0,
+    };
+  }
   if (proof.tflopsWeight < vk.minTFLOPSPerProof) {
     return {
       valid: false,

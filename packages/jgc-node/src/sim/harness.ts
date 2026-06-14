@@ -25,7 +25,7 @@ import {
   createGenesisHeader, GENESIS_TIMESTAMP, assembleBlock,
 } from "../consensus/block.js";
 import { initEpochState, applyBlockToEpoch, computeEpochSettlement } from "../consensus/epoch.js";
-import { BLOCKS_PER_EPOCH, BASE_UNITS_PER_JGC } from "../consensus/emission.js";
+import { BLOCKS_PER_EPOCH } from "../consensus/emission.js";
 import { buildPublicInputs } from "../crypto/zkp.js";
 import type { JGCNode, PeerConnection } from "../network/node.js";
 
@@ -74,7 +74,12 @@ export function makeContribution(miner: SimMinerSpec, height: number): MinerComp
   };
 }
 
-/** Plain spend transaction (non-coinbase blocks need at least one tx). */
+/**
+ * Non-boundary block coinbase marker (every block needs ≥1 tx). Value MUST be 0:
+ * JGC mints only at the epoch-boundary settlement, and validateBlock rejects any
+ * non-boundary coinbase that creates value. The height-derived input keeps the
+ * txid unique per block.
+ */
 export function makeDummyTx(height: number): Transaction {
   return {
     version:  1,
@@ -83,7 +88,7 @@ export function makeDummyTx(height: number): Transaction {
       scriptSig: "47" + "30".repeat(71),
       sequence:  0xFFFFFFFF,
     }],
-    outputs:  [{ value: BASE_UNITS_PER_JGC, scriptPubKey: "76a914" + "00".repeat(20) + "88ac" }],
+    outputs:  [{ value: 0n, scriptPubKey: "76a914" + "00".repeat(20) + "88ac" }],
     locktime: 0,
   };
 }
