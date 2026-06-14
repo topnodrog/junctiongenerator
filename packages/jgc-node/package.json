@@ -19,6 +19,7 @@
     "kernels-demo": "node dist/scripts/kernels-demo.js",
     "utxo-demo": "node dist/scripts/utxo-demo.js",
     "utxo-live-demo": "node dist/scripts/utxo-live-demo.js",
+    "persistence-demo": "node dist/scripts/persistence-demo.js",
     "emission-table": "node dist/scripts/print-emission.js"
   },
   "dependencies": {

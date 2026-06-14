@@ -36,6 +36,7 @@ import { validateBlock } from "../consensus/validation.js";
 import { hashBlockHeader, serializeTransaction } from "../consensus/block.js";
 import { applyBlockToEpoch, initEpochState, computeEpochSettlement } from "../consensus/epoch.js";
 import { UTXOSet } from "../consensus/utxo.js";
+import { BlockStore } from "../storage/persistence.js";
 import { calculateNextDifficultyTarget, BLOCKS_PER_EPOCH, RETARGET_WINDOW_BLOCKS, encodeDifficultyBits, decodeDifficultyBits } from "../consensus/emission.js";
 import { globalBroker } from "../broker/compute-broker.js";
 import type { Hash256, EpochState } from "../types/index.js";
@@ -129,6 +130,10 @@ export class JGCNode extends EventEmitter {
 
   /** Mempool: txid → Transaction. */
   private mempool = new Map<Hash256, Transaction>();
+  /** Durable block store (set when config.dataDir is provided). */
+  private store?: BlockStore;
+  /** True while replaying persisted blocks on startup (suppresses append + logs). */
+  private replaying = false;
 
   constructor(config: NodeConfig, genesisBlock: Block) {
     super();
@@ -166,6 +171,36 @@ export class JGCNode extends EventEmitter {
       0,
       0n,
     );
+
+    // Durable storage: replay persisted blocks to rebuild full chain state.
+    if (this.config.dataDir) {
+      this.store = new BlockStore(this.config.dataDir);
+      this.replayFromStore();
+    }
+  }
+
+  /**
+   * Rebuild chain/UTXO/epoch state by replaying the persisted block log through
+   * the normal accept path. Each block must extend the current tip (guards
+   * against a store/genesis mismatch).
+   */
+  private replayFromStore(): void {
+    const blocks = this.store!.loadAll();
+    if (blocks.length === 0) return;
+    this.replaying = true;
+    for (const block of blocks) {
+      if (block.header.prevHash !== this.chain.tipHash) {
+        this.replaying = false;
+        throw new Error(
+          `Persistence replay mismatch at height ${block.header.height}: ` +
+          `block parent ${block.header.prevHash.slice(0, 16)}… ≠ tip ${this.chain.tipHash.slice(0, 16)}… ` +
+          `(wrong genesis or corrupt store?)`
+        );
+      }
+      this.acceptBlock(block, hashBlockHeader(block.header), block.header.height % BLOCKS_PER_EPOCH);
+    }
+    this.replaying = false;
+    console.log(`[Node] Replayed ${blocks.length} block(s) from ${this.config.dataDir} — tip height ${this.chain.tipHeight}`);
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -339,8 +374,9 @@ export class JGCNode extends EventEmitter {
       return;
     }
 
-    // Accept block: update chain state.
+    // Accept block: update chain state, then persist it durably.
     this.acceptBlock(block, blockHash, epochBlockIndex);
+    if (this.store) this.store.append(block);
 
     // Relay to other peers (same as Bitcoin's block relay).
     await this.relayBlock(block, peer.info.peerId);
@@ -567,12 +603,14 @@ export class JGCNode extends EventEmitter {
     // Clear proofs used in this block.
     this.pendingProofs = [];
 
-    console.log(
-      `[Node] Block accepted: height=${block.header.height} ` +
-      `hash=${blockHash.slice(0, 16)}… ` +
-      `proofs=${block.computeProofs.length} ` +
-      `txs=${block.transactions.length}`
-    );
+    if (!this.replaying) {
+      console.log(
+        `[Node] Block accepted: height=${block.header.height} ` +
+        `hash=${blockHash.slice(0, 16)}… ` +
+        `proofs=${block.computeProofs.length} ` +
+        `txs=${block.transactions.length}`
+      );
+    }
   }
 
   // ─────────────────────────────────────────────────────────────────────────
