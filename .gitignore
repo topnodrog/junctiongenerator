@@ -1,7 +1,8 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-# dependencies
+# dependencies (root and workspaces)
 /node_modules
+packages/*/node_modules
 /.pnp
 .pnp.*
 .yarn/*
@@ -12,10 +13,21 @@
 
 # testing
 /coverage
+packages/*/coverage
 
 # next.js
 /.next/
+packages/web/.next/
 /out/
+packages/web/out/
+
+# jgc-node build output
+packages/jgc-node/dist/
+packages/jgc-node/rust/pkg/
+
+# rust build artifacts (Cargo target dirs — multi-GB, never commit)
+target/
+packages/jgc-node/rust/target/
 
 # production
 /build
