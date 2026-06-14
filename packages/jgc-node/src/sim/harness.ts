@@ -179,7 +179,7 @@ export class BlockProducer {
    * At the epoch boundary the first tx is the settlement coinbase, computed
    * exactly as validation does: on a post-apply copy of the accumulator.
    */
-  produceBlock(contributions: MinerComputeContribution[]): Block {
+  produceBlock(contributions: MinerComputeContribution[], extraTxs: Transaction[] = []): Block {
     const height          = this.height + 1;
     const isEpochBoundary = height % BLOCKS_PER_EPOCH === BLOCKS_PER_EPOCH - 1;
 
@@ -200,6 +200,9 @@ export class BlockProducer {
     } else {
       transactions = [makeDummyTx(height)];
     }
+
+    // Append any user spend transactions (tx[1..]) — validated against the UTXO set.
+    if (extraTxs.length > 0) transactions = [...transactions, ...extraTxs];
 
     return assembleBlock(
       this.tipHeader,
