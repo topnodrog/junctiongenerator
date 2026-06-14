@@ -53,7 +53,8 @@ import type {
 import { computeTransactionMerkleRoot } from "./block.js";
 import { computeContributionsMerkleRoot, computeEpochRoot, computeEpochSettlement, applyBlockToEpoch } from "./epoch.js";
 import { decodeDifficultyBits, BLOCKS_PER_EPOCH, HARD_CAP_SATOSHIS } from "./emission.js";
-import { batchVerifyComputeProofs } from "../crypto/zkp.js";
+import { batchVerifyComputeProofs, getVerifierMode } from "../crypto/zkp.js";
+import { verifyContributionSignature } from "../crypto/signatures.js";
 import { verifyMerkleProof, getMerkleProof, buildMerkleTree, hashComputeProof } from "../crypto/merkle.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -73,6 +74,7 @@ export enum ValidationError {
   // PoUC errors (analogs to Bitcoin's BLOCK_PROOF_OF_WORK_FAILED)
   NO_COMPUTE_PROOFS        = "NO_COMPUTE_PROOFS",
   PROOF_VERIFICATION_FAILED = "PROOF_VERIFICATION_FAILED",
+  INVALID_SIGNATURE        = "INVALID_SIGNATURE",
   INSUFFICIENT_TFLOPS      = "INSUFFICIENT_TFLOPS",
   COMPUTE_ROOT_MISMATCH    = "COMPUTE_ROOT_MISMATCH",
 
@@ -251,6 +253,23 @@ export async function validateComputeProofs(
     return fail(ValidationError.NO_COMPUTE_PROOFS,
       "Block must contain at least one ComputeProof (PoUC requirement)"
     );
+  }
+
+  // ── Signature verification (strict mode) ─────────────────────────────────
+  // Each contribution must be signed by the key controlling its payout address,
+  // over a sighash binding the proven work and this height. Cheap — runs before
+  // the expensive pairing checks. Skipped in "simnet" mode (placeholder sigs).
+  if (getVerifierMode() === "strict") {
+    for (let i = 0; i < contributions.length; i++) {
+      const sig = verifyContributionSignature(contributions[i]!, currentHeight);
+      if (!sig.ok) {
+        return {
+          valid: false,
+          errors: [ValidationError.INVALID_SIGNATURE],
+          warnings: [`Contribution ${i} (miner ${contributions[i]!.minerAddress}): ${sig.error}`],
+        };
+      }
+    }
   }
 
   // ── Batch Groth16 verification ───────────────────────────────────────────

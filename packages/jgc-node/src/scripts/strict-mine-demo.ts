@@ -30,6 +30,7 @@ import {
 import {
   makeGenesisBlock, makePeer, BlockProducer, mineBlocks, type SimMinerSpec,
 } from "../sim/harness.js";
+import { generateKeyPair, addressFromPublicKey, signContribution } from "../crypto/signatures.js";
 
 const SEED          = 4242;
 const CIRCUIT_ID    = "CIRCUIT_CONV1D_V1";
@@ -43,6 +44,18 @@ function makeConfig(): NodeConfig {
     listenPort: 0, rpcPort: 0, networkMagic: 0xD9B4BEF9,
     maxPeers: 8, enableBroker: false, junctionGeneratorMode: false,
   };
+}
+
+// Real keypairs per miner: address → private key (hex). Each miner signs its
+// contributions; the node verifies the signature in strict mode.
+const keyByAddr = new Map<string, string>();
+
+/** Make a miner with a fresh secp256k1 keypair and a key-derived address. */
+function makeMiner(tflops: number): SimMinerSpec {
+  const kp = generateKeyPair();
+  const address = addressFromPublicKey(kp.publicKey);
+  keyByAddr.set(address, kp.privateKey);
+  return { address, pubKey: kp.publicKey, tflops };
 }
 
 /** Deterministic small seed per (miner, height) for distinct conv I/O. */
@@ -74,12 +87,15 @@ function makeRealContribution(miner: SimMinerSpec, height: number): MinerCompute
     computeStartedAt: new Date().toISOString(),
   };
   proof.publicInputs = buildPublicInputs(proof, epochBlockIndex);
-  return {
+  const contribution: MinerComputeContribution = {
     minerAddress: miner.address,
     proof,
-    signature:    "0".repeat(128),
+    signature:    "",   // filled below
     publicKey:    miner.pubKey,
   };
+  // Sign over the canonical contribution sighash (binds payee, work, height).
+  contribution.signature = signContribution(keyByAddr.get(miner.address)!, contribution, height);
+  return contribution;
 }
 
 async function main(): Promise<void> {
@@ -112,10 +128,8 @@ async function main(): Promise<void> {
   console.log(`[StrictMine] Strict mode, ${CIRCUIT_ID} VK registered; genesis target ≈${TARGET_TFLOPS} TFLOPS`);
   console.log("──────────────────────────────────────────────────────────────");
 
-  const miners: SimMinerSpec[] = [
-    { address: "1JGCConvMinerOneXXXXXXXXXXXXXXXXXX", pubKey: "02" + "11".repeat(32), tflops: 104 },
-    { address: "1JGCConvMinerTwoXXXXXXXXXXXXXXXXXX", pubKey: "03" + "22".repeat(32), tflops: 104 },
-  ];
+  // Two miners with real secp256k1 keypairs (addresses derived from their keys).
+  const miners: SimMinerSpec[] = [makeMiner(104), makeMiner(104)];
 
   const onBlock = (b: { header: { height: number; hash?: string }; computeProofs: unknown[] }): void => {
     console.log(`[StrictMine] Block ${b.header.height} accepted — ${b.computeProofs.length} real conv proofs verified (strict pairing)`);
