@@ -32,7 +32,7 @@ import type {
 } from "../types/index.js";
 import { MessageType as MT } from "../types/index.js";
 import { validateBlock } from "../consensus/validation.js";
-import { hashBlockHeader, computeTransactionMerkleRoot } from "../consensus/block.js";
+import { hashBlockHeader, computeTransactionMerkleRoot, serializeTransaction } from "../consensus/block.js";
 import { applyBlockToEpoch, initEpochState, computeEpochSettlement, computeContributionsMerkleRoot, computeEpochRoot } from "../consensus/epoch.js";
 import { UTXOSet, validateSpend, txid } from "../consensus/utxo.js";
 import { BlockStore } from "../storage/persistence.js";
@@ -119,6 +119,16 @@ export interface ChainState {
  *   "peer:connect" (peer: PeerInfo)               — new peer connected
  *   "peer:disconnect" (peerId: string)            — peer disconnected
  */
+/** Default mempool capacity (txs) before lowest-fee-rate eviction kicks in. */
+export const DEFAULT_MAX_MEMPOOL_TXS = 5000;
+/** Default minimum relay fee rate (base units per serialized byte). Modest: it
+ *  rejects zero/dust-fee spam while leaving normal fees far above the floor. */
+export const DEFAULT_MIN_RELAY_FEERATE = 1000n;
+
+/** A mempool resident: the tx plus its cached fee and serialized size, so
+ *  fee-rate (fee/size) comparisons for eviction don't re-serialize each time. */
+interface MempoolEntry { tx: Transaction; fee: bigint; size: number; }
+
 export class JGCNode extends EventEmitter {
   readonly config: NodeConfig;
   private peers = new Map<string, PeerConnection>();
@@ -127,8 +137,14 @@ export class JGCNode extends EventEmitter {
   /** Compute proofs received for the current block window (pending aggregation). */
   private pendingProofs: MinerComputeContribution[] = [];
 
-  /** Mempool: txid → Transaction. */
-  private mempool = new Map<Hash256, Transaction>();
+  /** Mempool: txid → entry (tx + cached fee/size). */
+  private mempool = new Map<Hash256, MempoolEntry>();
+  /** Outpoints ("txid:vout") spent by some mempool tx — lets us reject a
+   *  double-spend of a pending coin in O(inputs) without cloning the chainstate. */
+  private readonly mempoolSpends = new Set<string>();
+  /** Mempool DoS bounds (from config, with defaults). */
+  private readonly maxMempoolTxs: number;
+  private readonly minRelayFeeRate: bigint;
   /** Durable block store (set when config.dataDir is provided). */
   private store?: BlockStore;
   /** True while replaying persisted blocks on startup (suppresses append + logs). */
@@ -137,6 +153,8 @@ export class JGCNode extends EventEmitter {
   constructor(config: NodeConfig, genesisBlock: Block) {
     super();
     this.config = config;
+    this.maxMempoolTxs   = config.maxMempoolTxs   ?? DEFAULT_MAX_MEMPOOL_TXS;
+    this.minRelayFeeRate = config.minRelayFeeRate ?? DEFAULT_MIN_RELAY_FEERATE;
 
     // Initialize chain state from genesis.
     const genesisHash = hashBlockHeader(genesisBlock.header);
@@ -397,26 +415,74 @@ export class JGCNode extends EventEmitter {
    * Validate a transaction against the UTXO set AND the current mempool, and add
    * it to the mempool if valid. Returns whether it was newly accepted.
    *
-   * Checks: ≥1 input, every input exists & is unspent (counting outputs already
-   * spent by mempool txs — no double-spend of pending coins), authorized (P2PKH),
-   * value conserved. BITCOIN ANALOG: AcceptToMemoryPool.
+   * Checks: ≥1 input, no input already spent by a pending mempool tx, every input
+   * exists & is unspent & authorized (P2PKH) & value-conserved (validateSpend),
+   * fee rate ≥ the relay floor, and mempool capacity (evicting the cheapest tx if
+   * full). BITCOIN ANALOG: AcceptToMemoryPool.
    */
   submitTransaction(tx: Transaction): { ok: boolean; error?: string } {
     if (tx.inputs.length === 0) return { ok: false, error: "transaction has no inputs" };
     const id = txid(tx);
     if (this.mempool.has(id)) return { ok: false, error: "already in mempool" };
 
-    // View = confirmed UTXOs minus everything the mempool already spends.
-    const view = this.chain.utxos.clone();
-    for (const m of this.mempool.values()) {
-      for (const input of m.inputs) view.spend(input.prevOut.txid, input.prevOut.vout);
+    // Reject a double-spend of a coin some pending tx already spends — O(inputs),
+    // no chainstate clone. (Inputs created by another mempool tx aren't in the
+    // confirmed UTXO set, so validateSpend below rejects in-mempool chaining, as
+    // before — this only guards confirmed coins.)
+    for (const input of tx.inputs) {
+      const op = `${input.prevOut.txid}:${input.prevOut.vout}`;
+      if (this.mempoolSpends.has(op)) return { ok: false, error: `input ${op} already spent by a mempool tx` };
     }
-    const res = validateSpend(tx, view, this.chain.tipHeight + 1);
-    if (!res.ok) return { ok: false, error: res.error };
 
-    this.mempool.set(id, tx);
+    const res = validateSpend(tx, this.chain.utxos, this.chain.tipHeight + 1);
+    if (!res.ok) return { ok: false, error: res.error };
+    const fee = res.fee ?? 0n;
+
+    // Minimum relay fee rate (anti-spam): fee/size ≥ floor ⇔ fee ≥ floor·size.
+    const size = serializeTransaction(tx).length;
+    if (fee < this.minRelayFeeRate * BigInt(size)) {
+      return { ok: false, error: `fee ${fee} below min relay rate (${this.minRelayFeeRate}/byte × ${size}B)` };
+    }
+    const entry: MempoolEntry = { tx, fee, size };
+
+    // Capacity bound: when full, evict the lowest fee-rate resident — but only if
+    // the newcomer pays a strictly higher rate, else reject the newcomer. This
+    // makes the mempool a bounded, fee-prioritized set (anti-DoS on memory).
+    if (this.mempool.size >= this.maxMempoolTxs) {
+      const worst = this.lowestFeeRateEntry();
+      if (!worst || !this.feeRateGreater(entry, worst.entry)) {
+        return { ok: false, error: "mempool full; fee rate not above the cheapest tx" };
+      }
+      this.removeFromMempool(worst.id);
+    }
+
+    this.mempool.set(id, entry);
+    for (const input of tx.inputs) this.mempoolSpends.add(`${input.prevOut.txid}:${input.prevOut.vout}`);
     this.emit("tx", tx);
     return { ok: true };
+  }
+
+  /** True iff a's fee rate strictly exceeds b's, compared without division:
+   *  a.fee/a.size > b.fee/b.size ⇔ a.fee·b.size > b.fee·a.size. */
+  private feeRateGreater(a: MempoolEntry, b: MempoolEntry): boolean {
+    return a.fee * BigInt(b.size) > b.fee * BigInt(a.size);
+  }
+
+  /** The current lowest-fee-rate mempool entry (eviction candidate), or null. */
+  private lowestFeeRateEntry(): { id: Hash256; entry: MempoolEntry } | null {
+    let lo: { id: Hash256; entry: MempoolEntry } | null = null;
+    for (const [id, entry] of this.mempool) {
+      if (!lo || this.feeRateGreater(lo.entry, entry)) lo = { id, entry };
+    }
+    return lo;
+  }
+
+  /** Remove a mempool tx and release the outpoints it reserved. */
+  private removeFromMempool(id: Hash256): void {
+    const e = this.mempool.get(id);
+    if (!e) return;
+    this.mempool.delete(id);
+    for (const input of e.tx.inputs) this.mempoolSpends.delete(`${input.prevOut.txid}:${input.prevOut.vout}`);
   }
 
   /** Submit a local transaction and relay it to ALL peers (user broadcast). */
@@ -441,9 +507,9 @@ export class JGCNode extends EventEmitter {
   /** Drop mempool txs that are no longer spendable (confirmed by, or conflicting
    *  with, a newly-accepted block). */
   private pruneMempool(): void {
-    for (const [id, tx] of this.mempool) {
-      if (!validateSpend(tx, this.chain.utxos, this.chain.tipHeight + 1).ok) {
-        this.mempool.delete(id);
+    for (const [id, e] of this.mempool) {
+      if (!validateSpend(e.tx, this.chain.utxos, this.chain.tipHeight + 1).ok) {
+        this.removeFromMempool(id);  // keeps mempoolSpends in sync
       }
     }
   }
@@ -801,7 +867,7 @@ export class JGCNode extends EventEmitter {
   }
 
   getMempool(): Transaction[] {
-    return Array.from(this.mempool.values());
+    return Array.from(this.mempool.values(), e => e.tx);
   }
 
   // ─────────────────────────────────────────────────────────────────────────

@@ -84,6 +84,85 @@ describe("mempool acceptance", () => {
   });
 });
 
+describe("mempool DoS bounds (fee floor + capacity eviction)", () => {
+  const fundTxid = (i: number): string => "00".repeat(31) + (0xa0 + i).toString(16).padStart(2, "0");
+
+  function nodeWith(opts: Partial<NodeConfig>): JGCNode {
+    const node = new JGCNode({ ...cfg(), ...opts }, makeGenesisBlock());
+    return node;
+  }
+  function fundN(node: JGCNode, n: number, value: bigint): void {
+    for (let i = 0; i < n; i++) {
+      node.getUTXOSet().add(fundTxid(i), 0, { value, scriptPubKey: p2pkhScript(alice.publicKey), height: 0, isCoinbase: false });
+    }
+  }
+  // Spend funded output `i` (worth `inValue`) leaving `fee` to miners. Same shape
+  // for every tx ⇒ equal serialized size ⇒ fee-rate order == fee order.
+  function spend1(i: number, inValue: bigint, fee: bigint): Transaction {
+    const tx: Transaction = {
+      version: 1,
+      inputs: [{ prevOut: { txid: fundTxid(i), vout: 0 }, scriptSig: "", sequence: 0xFFFFFFFF }],
+      outputs: [{ value: inValue - fee, scriptPubKey: p2pkhScript(bob.publicKey) }],
+      locktime: 0,
+    };
+    tx.inputs[0]!.scriptSig = p2pkhScriptSig(signHash(alice.privateKey, txSigHash(tx)), alice.publicKey);
+    return tx;
+  }
+
+  test("a tx below the min relay fee rate is rejected", () => {
+    const node = nodeWith({ minRelayFeeRate: 10n ** 12n });
+    fundN(node, 1, J(10n));
+    const r = node.submitTransaction(spend1(0, J(10n), 1n)); // 1 base-unit fee ≪ floor·size
+    expect(r.ok).toBe(false);
+    expect(r.error).toMatch(/min relay/);
+    expect(node.getMempool()).toHaveLength(0);
+  });
+
+  test("a tx at/above the floor is accepted", () => {
+    const node = nodeWith({ minRelayFeeRate: 1n });
+    fundN(node, 1, J(10n));
+    expect(node.submitTransaction(spend1(0, J(10n), J(1n))).ok).toBe(true);
+  });
+
+  test("mempool is capacity-bounded and evicts the lowest fee-rate tx", () => {
+    const node = nodeWith({ maxMempoolTxs: 2, minRelayFeeRate: 1n });
+    fundN(node, 4, J(10n));
+    const lowFee = spend1(0, J(10n), J(1n));   // fee 1
+    const midFee = spend1(1, J(10n), J(2n));   // fee 2
+    const hiFee  = spend1(2, J(10n), J(3n));   // fee 3
+    expect(node.submitTransaction(lowFee).ok).toBe(true);
+    expect(node.submitTransaction(midFee).ok).toBe(true);
+    expect(node.getMempool()).toHaveLength(2);  // at capacity
+
+    // hiFee (rate > cheapest) evicts lowFee; size stays at the cap.
+    expect(node.submitTransaction(hiFee).ok).toBe(true);
+    const ids = new Set(node.getMempool().map(txid));
+    expect(node.getMempool()).toHaveLength(2);
+    expect(ids.has(txid(lowFee))).toBe(false);  // evicted
+    expect(ids.has(txid(midFee))).toBe(true);
+    expect(ids.has(txid(hiFee))).toBe(true);
+
+    // A newcomer cheaper than the cheapest resident is rejected outright.
+    expect(node.submitTransaction(spend1(3, J(10n), J(1n))).ok).toBe(false);
+    expect(node.getMempool()).toHaveLength(2);
+  });
+
+  test("evicting a tx frees the outpoint it reserved", () => {
+    const node = nodeWith({ maxMempoolTxs: 1, minRelayFeeRate: 1n });
+    fundN(node, 2, J(10n));
+    const a = spend1(0, J(10n), J(1n));      // reserves output 0
+    const b = spend1(1, J(10n), J(2n));      // reserves output 1, evicts a
+    expect(node.submitTransaction(a).ok).toBe(true);
+    expect(node.submitTransaction(b).ok).toBe(true);
+    expect(node.getMempool().map(txid)).toEqual([txid(b)]);
+    // c spends output 0 — only acceptable if a's eviction released that outpoint
+    // (otherwise the pending-double-spend guard would reject it). c also evicts b.
+    const c = spend1(0, J(10n), J(3n));
+    expect(node.submitTransaction(c).ok).toBe(true);
+    expect(node.getMempool().map(txid)).toEqual([txid(c)]);
+  });
+});
+
 describe("in-block chained-tx fee accounting", () => {
   // Regression for the calculateBlockFees in-block-chaining bug: a child tx that
   // spends a parent tx's output in the SAME block must have its fee counted into
