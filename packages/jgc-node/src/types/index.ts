@@ -424,4 +424,10 @@ export interface NodeConfig {
   /** Directory for durable block storage. When set, accepted blocks are
    *  persisted and replayed on startup to rebuild chain + UTXO + epoch state. */
   dataDir?: string;
+  /** Max transactions held in the mempool before lowest-fee-rate eviction
+   *  (anti-DoS bound on memory). Default DEFAULT_MAX_MEMPOOL_TXS. */
+  maxMempoolTxs?: number;
+  /** Minimum relay fee rate in base units per serialized byte; txs paying less
+   *  are rejected at admission (anti-spam). Default DEFAULT_MIN_RELAY_FEERATE. */
+  minRelayFeeRate?: bigint;
 }
