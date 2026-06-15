@@ -57,6 +57,9 @@ export interface PeerInfo {
   bytesSent:     number;
   bytesReceived: number;
   inbound:       boolean;
+  /** The peer's self-advertised dialable URL from its VERSION (for discovery).
+   *  Reliable even for inbound peers, whose `address` is an ephemeral socket. */
+  advertisedUrl?: string;
 }
 
 /** Simulated peer connection — in production: replace with TCP/WebSocket. */
@@ -131,6 +134,11 @@ export const DEFAULT_MAX_MEMPOOL_TXS = 5000;
 /** Default minimum relay fee rate (base units per serialized byte). Modest: it
  *  rejects zero/dust-fee spam while leaving normal fees far above the floor. */
 export const DEFAULT_MIN_RELAY_FEERATE = 1000n;
+/** Max peer addresses retained in the discovery address book (anti-DoS bound;
+ *  oldest evicted when full). */
+export const MAX_ADDR_BOOK = 1000;
+/** Max addresses sent in a single ADDR message. */
+export const MAX_ADDR_PER_MESSAGE = 100;
 
 /** A mempool resident: the tx plus its cached fee and serialized size, so
  *  fee-rate (fee/size) comparisons for eviction don't re-serialize each time. */
@@ -158,6 +166,8 @@ export class JGCNode extends EventEmitter {
   private replaying = false;
   /** The genesis block — kept so a reorg can rebuild active state from height 0. */
   private readonly genesis: Block;
+  /** Discovery address book: dialable peer URL → last time we heard of it. */
+  private readonly addrBook = new Map<string, number>();
 
   constructor(config: NodeConfig, genesisBlock: Block) {
     super();
@@ -334,6 +344,14 @@ export class JGCNode extends EventEmitter {
         await this.handleGetData(peer, msg.payload as { hashes: Hash256[] });
         break;
 
+      case MT.GETADDR:
+        await this.handleGetAddr(peer);
+        break;
+
+      case MT.ADDR:
+        await this.handleAddr(peer, msg.payload as { addrs: string[] });
+        break;
+
       case MT.VERACK:
       case MT.PONG:
         // Handshake ack / ping reply — lastSeen was already refreshed above.
@@ -348,19 +366,47 @@ export class JGCNode extends EventEmitter {
   // Message Handlers
   // ─────────────────────────────────────────────────────────────────────────
 
-  private async handleVersion(peer: PeerConnection, payload: Partial<PeerInfo>): Promise<void> {
+  private async handleVersion(peer: PeerConnection, payload: Partial<PeerInfo> & { listenUrl?: string }): Promise<void> {
     peer.info.version     = payload.version     ?? 0;
     peer.info.bestBlock   = payload.bestBlock   ?? "0".repeat(64);
     peer.info.startHeight = payload.startHeight ?? 0;
     peer.info.userAgent   = payload.userAgent   ?? "unknown";
 
+    // Discovery: record the peer's self-advertised dialable URL and ask it for the
+    // addresses it knows, so the network can form without a central seed.
+    if (payload.listenUrl) {
+      peer.info.advertisedUrl = payload.listenUrl;
+      this.addAddr(payload.listenUrl);
+    }
+
     await peer.send(this.buildMessage(MT.VERACK, {}));
+    await peer.send(this.buildMessage(MT.GETADDR, {}));
 
     // If peer is ahead of us, request headers (headers-first sync).
     if (peer.info.startHeight > this.chain.tipHeight) {
       await peer.send(this.buildMessage(MT.GETHEADERS, {
         fromHashes: [this.chain.tipHash],
       }));
+    }
+  }
+
+  /** Reply to GETADDR with a sample of known peer addresses. */
+  private async handleGetAddr(peer: PeerConnection): Promise<void> {
+    const addrs = this.sampleAddresses(MAX_ADDR_PER_MESSAGE, peer.info.advertisedUrl);
+    if (addrs.length > 0) await peer.send(this.buildMessage(MT.ADDR, { addrs }));
+  }
+
+  /** Learn advertised peer addresses and gossip genuinely-new ones onward. */
+  private async handleAddr(peer: PeerConnection, payload: { addrs: string[] }): Promise<void> {
+    const fresh: string[] = [];
+    for (const url of (payload.addrs ?? []).slice(0, MAX_ADDR_PER_MESSAGE)) {
+      if (this.addAddr(url)) fresh.push(url);
+    }
+    if (fresh.length === 0) return;
+    this.emit("addr", fresh);
+    // Relay new addresses to other peers; dedup at each hop (addAddr) stops loops.
+    for (const [pid, p] of this.peers) {
+      if (pid !== peer.info.peerId) void p.send(this.buildMessage(MT.ADDR, { addrs: fresh }));
     }
   }
 
@@ -954,8 +1000,57 @@ export class JGCNode extends EventEmitter {
       userAgent:   "/JGCNode:0.1.0/",
       startHeight: this.chain.tipHeight,
       bestBlock:   this.chain.tipHash,
+      listenUrl:   this.config.advertiseUrl,  // self-advertise for peer discovery
     });
   }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Peer discovery (ADDR gossip)
+  // BITCOIN ANALOG: addrman (CAddrMan) + GETADDR/ADDR
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /** Record a dialable peer URL. Ignores our own advertised URL and malformed
+   *  entries; evicts the oldest when the book is full. Returns true if newly added. */
+  private addAddr(url: string): boolean {
+    if (!url || url === this.config.advertiseUrl) return false;
+    if (!/^wss?:\/\/[^\s]+$/.test(url)) return false;
+    const known = this.addrBook.has(url);
+    this.addrBook.set(url, Math.floor(Date.now() / 1000));
+    if (!known && this.addrBook.size > MAX_ADDR_BOOK) {
+      const oldest = [...this.addrBook.entries()].sort((a, b) => a[1] - b[1])[0];
+      if (oldest && oldest[0] !== url) this.addrBook.delete(oldest[0]);
+    }
+    return !known;
+  }
+
+  /** Up to `n` known addresses (most-recent first), excluding `exclude`. */
+  private sampleAddresses(n: number, exclude?: string): string[] {
+    return [...this.addrBook.entries()]
+      .filter(([url]) => url !== exclude)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, n)
+      .map(([url]) => url);
+  }
+
+  /** All known peer addresses (for the connection manager / inspection). */
+  getKnownAddresses(): string[] {
+    return [...this.addrBook.keys()];
+  }
+
+  /** Known addresses we aren't already connected to (dial candidates), excluding
+   *  this node's own advertised URL. */
+  getDialCandidates(): string[] {
+    const connected = new Set<string>();
+    for (const p of this.peers.values()) {
+      connected.add(p.info.address);
+      if (p.info.advertisedUrl) connected.add(p.info.advertisedUrl);
+    }
+    return this.getKnownAddresses().filter(u => u !== this.config.advertiseUrl && !connected.has(u));
+  }
+
+  /** Current connected peer count and configured ceiling (for the dialer). */
+  peerCount(): number { return this.peers.size; }
+  get maxPeerLimit(): number { return this.config.maxPeers; }
 
   private buildMessage(type: MT, payload: unknown): PeerMessage {
     return {
