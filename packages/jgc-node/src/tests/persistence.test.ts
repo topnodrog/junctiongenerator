@@ -8,7 +8,7 @@ import { tmpdir } from "os";
 import { join } from "path";
 import { rmSync } from "fs";
 import type { Block } from "../types/index.js";
-import { serializeBlock, deserializeBlock, BlockStore } from "../storage/persistence.js";
+import { serializeBlock, deserializeBlock, encodeBlock, decodeBlock, BlockStore } from "../storage/persistence.js";
 import { createGenesisHeader } from "../consensus/block.js";
 import { initEpochState, applyBlockToEpoch } from "../consensus/epoch.js";
 import { assembleBlock, GENESIS_DIFFICULTY_BITS } from "../consensus/block.js";
@@ -45,7 +45,7 @@ function sampleBlock(): Block {
   };
 }
 
-describe("block serialization", () => {
+describe("block serialization (JSON debug/clone)", () => {
   test("round-trips BigInt amounts and the EpochState Map", () => {
     const block = sampleBlock();
     const back = deserializeBlock(serializeBlock(block));
@@ -57,6 +57,36 @@ describe("block serialization", () => {
     expect(back.epochState.pendingRewardPool).toBe(block.epochState.pendingRewardPool);
     expect(typeof back.epochState.pendingRewardPool).toBe("bigint");
     expect(back.header.merkleRoot).toBe(block.header.merkleRoot);
+  });
+});
+
+describe("binary block codec", () => {
+  test("encodeBlock/decodeBlock round-trips header, txs, proofs, and epoch state", () => {
+    const block = sampleBlock();
+    const back = decodeBlock(encodeBlock(block));
+
+    // Header identity (the hash is over the 160-byte header) and money fields.
+    expect(back.header).toEqual(block.header);
+    expect(back.transactions[0]!.outputs[0]!.value).toBe(123n * BASE_UNITS_PER_JGC);
+    expect(typeof back.transactions[0]!.outputs[0]!.value).toBe("bigint");
+
+    // Compute proofs (incl. the fractional-safe tflopsWeight and public inputs).
+    expect(back.computeProofs).toHaveLength(1);
+    expect(back.computeProofs[0]!.proof.tflopsWeight).toBe(600);
+    expect(back.computeProofs[0]!.proof.publicInputs).toEqual(["1"]);
+    expect(back.computeProofs[0]!.minerAddress).toBe("minerA");
+
+    // Epoch accumulator (Map + bigint pool).
+    expect(back.epochState.minerContributions).toBeInstanceOf(Map);
+    expect(back.epochState.minerContributions.get("minerA")).toBe(600);
+    expect(back.epochState.minerContributions.get("minerB")).toBe(450);
+    expect(back.epochState.pendingRewardPool).toBe(block.epochState.pendingRewardPool);
+    expect(typeof back.epochState.pendingRewardPool).toBe("bigint");
+  });
+
+  test("a truncated record is rejected", () => {
+    const buf = encodeBlock(sampleBlock());
+    expect(() => decodeBlock(buf.subarray(0, buf.length - 5))).toThrow(RangeError);
   });
 });
 
