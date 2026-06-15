@@ -170,12 +170,18 @@ export class BlockProducer {
   // node always agree (the strict demo boots both from a low-difficulty genesis).
   private readonly difficultyBits: number;
 
-  constructor(genesis: Block) {
+  /**
+   * @param opts.timeOffsetSec  Shifts this producer's block timestamps. A second
+   *   producer with a different offset builds a *distinct* competing branch from
+   *   the same genesis (different headers ⇒ different hashes) — used to drive
+   *   reorg tests/demos.
+   */
+  constructor(genesis: Block, opts: { timeOffsetSec?: number } = {}) {
     this.tipHeader = genesis.header;
     this.mirror    = initEpochState(0, genesis.header.timestamp);
     // Genesis occupies epoch slot 0 — same bootstrapping as JGCNode's constructor.
     applyBlockToEpoch(this.mirror, genesis.computeProofs, 0, 0n);
-    this.baseTime  = Math.floor(Date.now() / 1000);
+    this.baseTime  = Math.floor(Date.now() / 1000) + (opts.timeOffsetSec ?? 0);
     this.difficultyBits = genesis.header.difficultyBits;
   }
 
