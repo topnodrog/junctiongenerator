@@ -27,6 +27,7 @@ import {
 import { initEpochState, applyBlockToEpoch, computeEpochSettlement } from "../consensus/epoch.js";
 import { BLOCKS_PER_EPOCH } from "../consensus/emission.js";
 import { buildPublicInputs } from "../crypto/zkp.js";
+import { scriptPubKeyFromAddress } from "../crypto/signatures.js";
 import type { JGCNode, PeerConnection } from "../network/node.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -91,6 +92,21 @@ export function makeDummyTx(height: number): Transaction {
     outputs:  [{ value: 0n, scriptPubKey: "76a914" + "00".repeat(20) + "88ac" }],
     locktime: 0,
   };
+}
+
+/**
+ * Settlement-coinbase output script for a payout address. A real "1JGC"+hash160
+ * address is paid via its canonical P2PKH script — the exact script the wallet
+ * recognizes (p2pkhScript of the same key) and can later spend. Legacy simnet
+ * miners with placeholder (non-hex) addresses fall back to a deterministic
+ * marker script so existing demos/tests that never reach an epoch boundary keep
+ * working unchanged.
+ */
+const JGC_ADDRESS_RE = /^1JGC[0-9a-fA-F]{40}$/;
+export function payoutScript(address: string): string {
+  return JGC_ADDRESS_RE.test(address)
+    ? scriptPubKeyFromAddress(address)
+    : "76a914" + sha256d(Buffer.from(address)).slice(0, 40) + "88ac";
 }
 
 export function cloneEpochState(state: EpochState): EpochState {
@@ -204,7 +220,7 @@ export class BlockProducer {
         inputs:   [],   // coinbase convention: no inputs
         outputs:  settlement.payouts.map(p => ({
           value:        p.satoshis,
-          scriptPubKey: "76a914" + sha256d(Buffer.from(p.minerAddress)).slice(0, 40) + "88ac",
+          scriptPubKey: payoutScript(p.minerAddress),
         })),
         locktime: 0,
       }];
