@@ -21,6 +21,7 @@
     "utxo-live-demo": "node dist/scripts/utxo-live-demo.js",
     "persistence-demo": "node dist/scripts/persistence-demo.js",
     "multinode-demo": "node dist/scripts/multinode-demo.js",
+    "mempool-demo": "node dist/scripts/mempool-demo.js",
     "emission-table": "node dist/scripts/print-emission.js"
   },
   "dependencies": {

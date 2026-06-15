@@ -665,17 +665,16 @@ export async function validateBlock(
     );
     if (!coinbaseResult.valid) return coinbaseResult;
   } else {
-    // ── Non-boundary coinbase must NOT mint ─────────────────────────────────
-    // JGC defers all block reward to the epoch-boundary settlement, so tx[0] in
-    // every other block may create at most the collected fees (0 today). Without
-    // this, a miner could pay itself arbitrary outputs in any normal block —
-    // those become spendable UTXOs (acceptBlock adds tx[0] outputs). This is the
-    // inflation guard for the only place value is otherwise unconstrained.
+    // ── Non-boundary coinbase must NOT create value ─────────────────────────
+    // JGC defers ALL reward — subsidy AND fees — to the epoch-boundary settlement
+    // (fees are added to the epoch pool and distributed pro-rata). So tx[0] in
+    // every other block must mint nothing. Without this, a miner could pay itself
+    // arbitrary outputs in any normal block (acceptBlock adds tx[0] outputs to the
+    // UTXO set) — the inflation guard for the only otherwise-unconstrained value.
     const minted = block.transactions[0]!.outputs.reduce((s, o) => s + o.value, 0n);
-    if (minted > context.blockFees) {
+    if (minted > 0n) {
       return fail(ValidationError.INVALID_COINBASE,
-        `Non-boundary coinbase mints ${minted} > allowed fees ${context.blockFees} ` +
-        `(reward is paid only at the epoch boundary)`);
+        `Non-boundary coinbase mints ${minted} (reward + fees are paid only at the epoch boundary)`);
     }
   }
 
