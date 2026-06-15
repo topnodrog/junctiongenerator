@@ -26,16 +26,15 @@
  */
 
 import { EventEmitter } from "events";
-import { createHash } from "crypto";
 import type {
   Block, BlockHeader, PeerMessage, Transaction,
   MinerComputeContribution, ComputeBid, NodeConfig,
 } from "../types/index.js";
 import { MessageType as MT } from "../types/index.js";
 import { validateBlock } from "../consensus/validation.js";
-import { hashBlockHeader, serializeTransaction, computeTransactionMerkleRoot } from "../consensus/block.js";
+import { hashBlockHeader, computeTransactionMerkleRoot } from "../consensus/block.js";
 import { applyBlockToEpoch, initEpochState, computeEpochSettlement, computeContributionsMerkleRoot, computeEpochRoot } from "../consensus/epoch.js";
-import { UTXOSet } from "../consensus/utxo.js";
+import { UTXOSet, validateSpend, txid } from "../consensus/utxo.js";
 import { BlockStore } from "../storage/persistence.js";
 import { calculateNextDifficultyTarget, BLOCKS_PER_EPOCH, RETARGET_WINDOW_BLOCKS, encodeDifficultyBits, decodeDifficultyBits } from "../consensus/emission.js";
 import { globalBroker } from "../broker/compute-broker.js";
@@ -394,18 +393,57 @@ export class JGCNode extends EventEmitter {
     this.emit("block", block);
   }
 
-  private async handleTransaction(peer: PeerConnection, tx: Transaction): Promise<void> {
-    // Simple mempool acceptance — production: full UTXO script validation.
-    const txid = this.hashTx(tx);
-    if (this.mempool.has(txid)) return;
+  /**
+   * Validate a transaction against the UTXO set AND the current mempool, and add
+   * it to the mempool if valid. Returns whether it was newly accepted.
+   *
+   * Checks: ≥1 input, every input exists & is unspent (counting outputs already
+   * spent by mempool txs — no double-spend of pending coins), authorized (P2PKH),
+   * value conserved. BITCOIN ANALOG: AcceptToMemoryPool.
+   */
+  submitTransaction(tx: Transaction): { ok: boolean; error?: string } {
+    if (tx.inputs.length === 0) return { ok: false, error: "transaction has no inputs" };
+    const id = txid(tx);
+    if (this.mempool.has(id)) return { ok: false, error: "already in mempool" };
 
-    this.mempool.set(txid, tx);
+    // View = confirmed UTXOs minus everything the mempool already spends.
+    const view = this.chain.utxos.clone();
+    for (const m of this.mempool.values()) {
+      for (const input of m.inputs) view.spend(input.prevOut.txid, input.prevOut.vout);
+    }
+    const res = validateSpend(tx, view, this.chain.tipHeight + 1);
+    if (!res.ok) return { ok: false, error: res.error };
+
+    this.mempool.set(id, tx);
     this.emit("tx", tx);
+    return { ok: true };
+  }
 
-    // Relay to all other peers.
+  /** Submit a local transaction and relay it to ALL peers (user broadcast). */
+  async broadcastTransaction(tx: Transaction): Promise<{ ok: boolean; error?: string }> {
+    const res = this.submitTransaction(tx);
+    if (!res.ok) return res;
+    for (const [, p] of this.peers) void p.send(this.buildMessage(MT.TX, tx));
+    return { ok: true };
+  }
+
+  private async handleTransaction(peer: PeerConnection, tx: Transaction): Promise<void> {
+    // Validate before accepting; only relay genuinely-new, valid txs (so invalid
+    // or already-known txs don't propagate or cause relay loops).
+    if (!this.submitTransaction(tx).ok) return;
     for (const [pid, p] of this.peers) {
       if (pid !== peer.info.peerId) {
         void p.send(this.buildMessage(MT.TX, tx));
+      }
+    }
+  }
+
+  /** Drop mempool txs that are no longer spendable (confirmed by, or conflicting
+   *  with, a newly-accepted block). */
+  private pruneMempool(): void {
+    for (const [id, tx] of this.mempool) {
+      if (!validateSpend(tx, this.chain.utxos, this.chain.tipHeight + 1).ok) {
+        this.mempool.delete(id);
       }
     }
   }
@@ -561,20 +599,27 @@ export class JGCNode extends EventEmitter {
     this.chain.tipHash   = blockHash;
     this.chain.tipHeight = block.header.height;
 
+    // Fees MUST be summed BEFORE the inputs are spent from the UTXO set.
+    const blockFees = this.calculateBlockFees(block);
+
     // Update the UTXO set: tx[0] is the coinbase (adds outputs, spends nothing);
     // every other tx spends its inputs and creates its outputs.
     block.transactions.forEach((tx, i) =>
       this.chain.utxos.applyTransaction(tx, block.header.height, i === 0),
     );
 
-    // Update epoch state.
+    // Update epoch state. Fees join the epoch reward pool (deferred, distributed
+    // pro-rata at settlement — consistent with JGC's deferred-reward model).
     applyBlockToEpoch(
       this.chain.epochState,
       block.computeProofs,
       block.header.height,
-      this.calculateBlockFees(block),
+      blockFees,
     );
-    this.chain.epochFees += this.calculateBlockFees(block);
+    this.chain.epochFees += blockFees;
+
+    // Drop confirmed / now-conflicting transactions from the mempool.
+    this.pruneMempool();
 
     // Update timestamp tracking (for BIP 113 median and difficulty retarget).
     this.chain.recentBlockTimes.push(block.header.timestamp);
@@ -673,9 +718,25 @@ export class JGCNode extends EventEmitter {
     };
   }
 
-  private calculateBlockFees(_block: Block): bigint {
-    // Sum all outputs, subtract coinbase output (simplified fee calculation).
-    return 0n;  // Production: iterate UTXO set to compute actual fees.
+  /**
+   * Total fees of a block's non-coinbase transactions: Σ (inputs − outputs).
+   * MUST be called BEFORE the block's inputs are spent from chain.utxos (inputs
+   * are looked up there). tx[0] is the coinbase and is excluded.
+   */
+  private calculateBlockFees(block: Block): bigint {
+    let fees = 0n;
+    for (let i = 1; i < block.transactions.length; i++) {
+      const tx = block.transactions[i]!;
+      let inSum = 0n;
+      for (const input of tx.inputs) {
+        const entry = this.chain.utxos.get(input.prevOut.txid, input.prevOut.vout);
+        if (!entry) return fees;  // unspendable input — block is invalid; don't credit
+        inSum += entry.value;
+      }
+      const outSum = tx.outputs.reduce((s, o) => s + o.value, 0n);
+      fees += inSum - outSum;
+    }
+    return fees;
   }
 
   private computeMedianTime(timestamps: number[]): number {
@@ -691,10 +752,6 @@ export class JGCNode extends EventEmitter {
     return this.chain.heightIndex.get(header.height + 1) ?? null;
   }
 
-  private hashTx(tx: Transaction): Hash256 {
-    const data = serializeTransaction(tx);
-    return createHash("sha256").update(createHash("sha256").update(data).digest()).digest("hex");
-  }
 
   private async relayBlock(block: Block, excludePeerId: string): Promise<void> {
     for (const [pid, peer] of this.peers) {
