@@ -92,6 +92,13 @@ export default function WhitepaperPage() {
           $JGC serves multiple roles: mining rewards, compute payment, staking, governance, and OSCRP rewards. The supply model rewards early participants with halving schedules triggered by useful compute milestones rather than block counts, plus a burn mechanism creating deflationary pressure.
         </p>
 
+        <div style={{ background: "rgba(0,242,254,0.05)", border: "1px solid var(--glass-border)", borderRadius: 8, padding: "16px 20px", marginTop: 16 }}>
+          <strong style={{ color: "var(--color-purple)" }}>JGC vs JGT — not the same thing.</strong>
+          <p style={{ color: "var(--text-secondary)", margin: "8px 0 0" }}>
+            <strong>JGC</strong> is the protocol&apos;s native coin — earned by miners for verified useful compute, and the subject of this paper. It is pre-mainnet and exists today only on the testnet. <strong>JGT</strong> (Junction Generator Token) is a separate ERC-20 on Base, created to help support and promote the project. It is <strong>not</strong> the mining reward, <strong>not</strong> redeemable for JGC, and is not an investment.
+          </p>
+        </div>
+
         <h2 style={{ color: "var(--color-cyan)", marginTop: 32 }}>4. OSCRP — Open-Source Contributor Reward Protocol</h2>
         <p style={{ color: "var(--text-secondary)" }}>
           When a contributor merges code, the contribution is scored for scope, complexity, and criticality. The contributor receives an immediate $JGC payout plus Autonomy Equity (AE) — a stake in the protocol&apos;s treasury that vests over time.
@@ -145,7 +152,7 @@ export default function WhitepaperPage() {
           Junction Generator is open source and actively seeking contributors. Every contribution — code, documentation, research, or feedback — earns OSCRP rewards.
         </p>
         <div style={{ display: "flex", gap: 12, marginTop: 16, flexWrap: "wrap" }}>
-          <a href="https://github.com/topnodrog/Junction_Generator" target="_blank" rel="noopener noreferrer" className="btn-glow-purple" style={{ textDecoration: "none", fontSize: 13 }}>
+          <a href="https://github.com/topnodrog/junctiongenerator" target="_blank" rel="noopener noreferrer" className="btn-glow-purple" style={{ textDecoration: "none", fontSize: 13 }}>
             View on GitHub
           </a>
           <a href="/" className="btn-glow-cyan" style={{ textDecoration: "none", fontSize: 13 }}>
