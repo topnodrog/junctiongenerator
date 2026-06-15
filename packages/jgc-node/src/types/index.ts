@@ -436,4 +436,7 @@ export interface NodeConfig {
    *  VERSION handshake so peers can gossip it for discovery. Omit for a node that
    *  discovers/dials others but doesn't advertise itself (e.g. behind NAT). */
   advertiseUrl?: string;
+  /** Write a chainstate snapshot every N connected blocks (requires dataDir), so
+   *  restart replays only the tail above it. Default BLOCKS_PER_EPOCH; 0 disables. */
+  snapshotIntervalBlocks?: number;
 }

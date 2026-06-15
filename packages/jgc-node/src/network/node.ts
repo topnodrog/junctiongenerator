@@ -35,7 +35,7 @@ import { validateBlock } from "../consensus/validation.js";
 import { hashBlockHeader, computeTransactionMerkleRoot, serializeTransaction } from "../consensus/block.js";
 import { applyBlockToEpoch, initEpochState, computeContributionsMerkleRoot, computeEpochRoot } from "../consensus/epoch.js";
 import { UTXOSet, validateSpend, txid } from "../consensus/utxo.js";
-import { BlockStore } from "../storage/persistence.js";
+import { BlockStore, SnapshotStore, type ChainSnapshot } from "../storage/persistence.js";
 import { calculateNextDifficultyTarget, BLOCKS_PER_EPOCH, RETARGET_WINDOW_BLOCKS, encodeDifficultyBits, decodeDifficultyBits } from "../consensus/emission.js";
 import { globalBroker } from "../broker/compute-broker.js";
 import type { Hash256, EpochState } from "../types/index.js";
@@ -162,6 +162,10 @@ export class JGCNode extends EventEmitter {
   private readonly minRelayFeeRate: bigint;
   /** Durable block store (set when config.dataDir is provided). */
   private store?: BlockStore;
+  /** Chainstate snapshot store (set with dataDir; lets restart skip full replay). */
+  private snapshot?: SnapshotStore;
+  /** Snapshot cadence in blocks (0 disables). */
+  private readonly snapshotInterval: number;
   /** True while replaying persisted blocks on startup (suppresses append + logs). */
   private replaying = false;
   /** The genesis block — kept so a reorg can rebuild active state from height 0. */
@@ -173,8 +177,9 @@ export class JGCNode extends EventEmitter {
     super();
     this.config = config;
     this.genesis = genesisBlock;
-    this.maxMempoolTxs   = config.maxMempoolTxs   ?? DEFAULT_MAX_MEMPOOL_TXS;
-    this.minRelayFeeRate = config.minRelayFeeRate ?? DEFAULT_MIN_RELAY_FEERATE;
+    this.maxMempoolTxs    = config.maxMempoolTxs   ?? DEFAULT_MAX_MEMPOOL_TXS;
+    this.minRelayFeeRate  = config.minRelayFeeRate ?? DEFAULT_MIN_RELAY_FEERATE;
+    this.snapshotInterval = config.snapshotIntervalBlocks ?? BLOCKS_PER_EPOCH;
 
     // Initialize chain state from genesis.
     const genesisHash = hashBlockHeader(genesisBlock.header);
@@ -211,9 +216,12 @@ export class JGCNode extends EventEmitter {
       0n,
     );
 
-    // Durable storage: replay persisted blocks to rebuild full chain state.
+    // Durable storage: replay persisted blocks to rebuild full chain state,
+    // seeding from a chainstate snapshot when one is available (skips re-applying
+    // every transaction below the snapshot height).
     if (this.config.dataDir) {
       this.store = new BlockStore(this.config.dataDir);
+      this.snapshot = new SnapshotStore(this.config.dataDir);
       this.replayFromStore();
     }
   }
@@ -229,22 +237,82 @@ export class JGCNode extends EventEmitter {
     const blocks = this.store!.loadAll();
     if (blocks.length === 0) return;
     this.replaying = true;
+
+    // Seed active state from a snapshot when it's consistent with the log (the
+    // block at the snapshot height hashes to the snapshot's tip). Then only blocks
+    // ABOVE the snapshot are re-applied; everything at/below is registered as
+    // metadata so headers/blocks/heightIndex/chainWork stay complete for serving
+    // and future fork choice.
+    const snap = this.snapshot?.load() ?? null;
+    let applyFromHeight = 1;
+    if (snap) {
+      const atHeight = blocks.find(b => b.header.height === snap.tipHeight);
+      const consistent = atHeight !== undefined && hashBlockHeader(atHeight.header) === snap.tipHash;
+      if (consistent) {
+        this.loadSnapshotIntoChain(snap);
+        applyFromHeight = snap.tipHeight + 1;
+      } else {
+        console.warn(`[Node] snapshot at height ${snap.tipHeight} inconsistent with block log — full replay`);
+        this.snapshot!.clear();
+      }
+    }
+
+    let applied = 0;
     for (const block of blocks) {
+      const h = block.header.height;
       const blockHash = hashBlockHeader(block.header);
       const fail = (why: string): never => {
         this.replaying = false;
-        throw new Error(`Persistence replay integrity failure at height ${block.header.height}: ${why} (corrupt or tampered store?)`);
+        throw new Error(`Persistence replay integrity failure at height ${h}: ${why} (corrupt or tampered store?)`);
       };
-      if (block.header.prevHash !== this.chain.tipHash) fail("does not extend current tip");
-      if (!this.integrityCheck(this.chain, block)) fail("integrity check failed (root mismatch or non-boundary mint)");
-      // Record knowledge + work, then apply incrementally (replay is linear).
+      // Always register block metadata (cheap) so the index covers the full chain.
       this.chain.headers.set(blockHash, block.header);
       this.chain.blocks.set(blockHash, block);
       this.chain.chainWork.set(blockHash, (this.chain.chainWork.get(block.header.prevHash) ?? 0n) + this.blockWork(block.header));
+      this.chain.heightIndex.set(h, blockHash);
+      if (h < applyFromHeight) continue;  // covered by the snapshot
+
+      if (block.header.prevHash !== this.chain.tipHash) fail("does not extend current tip");
+      if (!this.integrityCheck(this.chain, block)) fail("integrity check failed (root mismatch or non-boundary mint)");
       this.applyBlockState(this.chain, block, blockHash);
+      applied++;
     }
     this.replaying = false;
-    console.log(`[Node] Replayed ${blocks.length} block(s) from ${this.config.dataDir} — tip height ${this.chain.tipHeight}`);
+    const from = applyFromHeight > 1 ? ` (from snapshot @${applyFromHeight - 1}, applied ${applied} tail block(s))` : "";
+    console.log(`[Node] Replayed ${blocks.length} block(s) from ${this.config.dataDir} — tip height ${this.chain.tipHeight}${from}`);
+  }
+
+  /** Replace active chain state (tip, scalars, epoch accumulator, UTXO set) with a
+   *  loaded snapshot. headers/blocks/heightIndex/chainWork are populated separately
+   *  by the replay metadata pass. */
+  private loadSnapshotIntoChain(snap: ChainSnapshot): void {
+    this.chain.tipHash               = snap.tipHash;
+    this.chain.tipHeight             = snap.tipHeight;
+    this.chain.epochState            = snap.epochState;
+    this.chain.currentDifficultyBits = snap.currentDifficultyBits;
+    this.chain.recentBlockTimes      = [...snap.recentBlockTimes];
+    this.chain.medianPastTime        = snap.medianPastTime;
+    this.chain.epochFees             = snap.epochFees;
+    const utxos = new UTXOSet();
+    for (const u of snap.utxos) {
+      utxos.add(u.txid, u.vout, { value: u.value, scriptPubKey: u.scriptPubKey, height: u.height, isCoinbase: u.isCoinbase });
+    }
+    this.chain.utxos = utxos;
+  }
+
+  /** Build a chainstate snapshot from the current active state. */
+  private buildSnapshot(): ChainSnapshot {
+    const utxos = [];
+    for (const { txid: id, vout, entry } of this.chain.utxos.entries()) {
+      utxos.push({ txid: id, vout, value: entry.value, scriptPubKey: entry.scriptPubKey, height: entry.height, isCoinbase: entry.isCoinbase });
+    }
+    return {
+      tipHash: this.chain.tipHash, tipHeight: this.chain.tipHeight,
+      currentDifficultyBits: this.chain.currentDifficultyBits,
+      medianPastTime: this.chain.medianPastTime, epochFees: this.chain.epochFees,
+      recentBlockTimes: [...this.chain.recentBlockTimes],
+      epochState: this.chain.epochState, utxos,
+    };
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -802,6 +870,11 @@ export class JGCNode extends EventEmitter {
 
     // Persist to the durable log (which mirrors the linear active chain).
     if (this.store && !this.replaying) this.store.append(block);
+    // Periodically snapshot chainstate so restart replays only the tail above it.
+    if (this.snapshot && !this.replaying && this.snapshotInterval > 0 &&
+        block.header.height % this.snapshotInterval === 0) {
+      this.snapshot.write(this.buildSnapshot());
+    }
     // Drop confirmed / now-conflicting transactions from the mempool.
     this.pruneMempool();
     // Clear proofs used in this block.
@@ -948,8 +1021,12 @@ export class JGCNode extends EventEmitter {
     this.pruneMempool();                                       // drop ones now confirmed
 
     // Keep the durable log equal to the (now-reorged) linear active chain, so
-    // replay stays simple and linear.
-    if (this.store && !this.replaying) this.rewriteStoreToActiveChain();
+    // replay stays simple and linear. The snapshot may name a now-abandoned tip,
+    // so drop it; the next interval rewrites one for the new chain.
+    if (this.store && !this.replaying) {
+      this.rewriteStoreToActiveChain();
+      this.snapshot?.clear();
+    }
     return true;
   }
 
