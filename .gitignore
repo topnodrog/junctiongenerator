@@ -50,6 +50,11 @@ yarn-error.log*
 .curlrc-gh
 .curlrc-jg
 
+# jgc wallet keystores (encrypted keys) + local testnet chain data — never commit
+*.keystore.json
+packages/jgc-node/testnet-data/
+packages/jgc-node/**/testnet-data/
+
 # vercel
 .vercel
 

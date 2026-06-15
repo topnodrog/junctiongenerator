@@ -192,11 +192,26 @@ export class BlockProducer {
    *   the same genesis (different headers ⇒ different hashes) — used to drive
    *   reorg tests/demos.
    */
-  constructor(genesis: Block, opts: { timeOffsetSec?: number } = {}) {
-    this.tipHeader = genesis.header;
-    this.mirror    = initEpochState(0, genesis.header.timestamp);
-    // Genesis occupies epoch slot 0 — same bootstrapping as JGCNode's constructor.
-    applyBlockToEpoch(this.mirror, genesis.computeProofs, 0, 0n);
+  constructor(
+    genesis: Block,
+    opts: {
+      timeOffsetSec?: number;
+      /** Resume a producer mid-chain (e.g. after a daemon restart) by seeding it
+       *  from a node's live tip instead of genesis. `epochState` MUST be the
+       *  node's current pre-next-block accumulator so epochRoot commitments agree. */
+      resume?: { tipHeader: BlockHeader; height: number; epochState: EpochState };
+    } = {},
+  ) {
+    if (opts.resume) {
+      this.tipHeader = opts.resume.tipHeader;
+      this.mirror    = cloneEpochState(opts.resume.epochState);
+      this.height    = opts.resume.height;
+    } else {
+      this.tipHeader = genesis.header;
+      this.mirror    = initEpochState(0, genesis.header.timestamp);
+      // Genesis occupies epoch slot 0 — same bootstrapping as JGCNode's constructor.
+      applyBlockToEpoch(this.mirror, genesis.computeProofs, 0, 0n);
+    }
     this.baseTime  = Math.floor(Date.now() / 1000) + (opts.timeOffsetSec ?? 0);
     this.difficultyBits = genesis.header.difficultyBits;
   }
@@ -206,7 +221,11 @@ export class BlockProducer {
    * At the epoch boundary the first tx is the settlement coinbase, computed
    * exactly as validation does: on a post-apply copy of the accumulator.
    */
-  produceBlock(contributions: MinerComputeContribution[], extraTxs: Transaction[] = []): Block {
+  produceBlock(
+    contributions: MinerComputeContribution[],
+    extraTxs: Transaction[] = [],
+    opts: { difficultyBits?: number; timestamp?: number } = {},
+  ): Block {
     const height          = this.height + 1;
     const isEpochBoundary = height % BLOCKS_PER_EPOCH === BLOCKS_PER_EPOCH - 1;
 
@@ -236,9 +255,9 @@ export class BlockProducer {
       transactions,
       contributions,
       this.mirror,                 // pre-apply accumulator → epochRoot commitment
-      this.difficultyBits,
+      opts.difficultyBits ?? this.difficultyBits,   // live-retargeted bits for a daemon
       height,
-      this.baseTime + height * 30,
+      opts.timestamp ?? this.baseTime + height * 30, // wall-clock stamp for a daemon
     );
   }
 
