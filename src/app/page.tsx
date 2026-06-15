@@ -5,10 +5,8 @@ import VibePlayground from "@/components/VibePlayground";
 import MiningTelemetry from "@/components/MiningTelemetry";
 import AgentConsole from "@/components/AgentConsole";
 import OSCRPCalculator from "@/components/OSCRPCalculator";
-import AttentionMining from "@/components/AttentionMining";
 import JGTRevenueHub from "@/components/JGTRevenueHub";
 import JGTStaking from "@/components/JGTStaking";
-import AdSlotManager from "@/components/AdSlotManager";
 
 export default function Home() {
   return (
@@ -25,10 +23,8 @@ export default function Home() {
             <li className="nav-link-item"><a href="#telemetry">Compute Grid</a></li>
             <li className="nav-link-item"><a href="#agents">C-Suite Console</a></li>
             <li className="nav-link-item"><a href="#rewards">OSCRP Stake</a></li>
-            <li className="nav-link-item"><a href="#mining">⛏️ Mine JGT</a></li>
             <li className="nav-link-item"><a href="#revenue">💰 Revenue</a></li>
             <li className="nav-link-item"><a href="#staking">🔒 Stake</a></li>
-            <li className="nav-link-item"><a href="#adslots">📢 Ad Slots</a></li>
             <li className="nav-link-item"><a href="/blog">📝 Blog</a></li>
             </ul>
         </nav>
@@ -66,39 +62,6 @@ export default function Home() {
               Explore Mining Grid
             </a>
           </div>
-
-          {/* Referral Program Banner */}
-          <div style={{ marginTop: "32px", display: "flex", justifyContent: "center" }}>
-            <div style={{
-              background: "linear-gradient(135deg, rgba(155,81,224,0.12) 0%, rgba(0,242,254,0.08) 100%)",
-              border: "1px solid rgba(155,81,224,0.25)",
-              borderRadius: 12,
-              padding: "14px 24px",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "12px",
-              flexWrap: "wrap",
-              justifyContent: "center",
-            }}>
-              <span style={{ fontSize: "20px" }}>🤝</span>
-              <span style={{ color: "var(--text-primary)", fontSize: "13px", fontWeight: 600 }}>
-                Refer an advertiser, earn <span style={{ color: "var(--color-neon-green)" }}>10% of their campaign spend</span> in JGT
-              </span>
-              <a href="#adslots" style={{
-                background: "rgba(155,81,224,0.2)",
-                border: "1px solid rgba(155,81,224,0.4)",
-                borderRadius: 6,
-                color: "var(--color-purple)",
-                padding: "4px 12px",
-                fontSize: "11px",
-                fontWeight: 700,
-                textDecoration: "none",
-                whiteSpace: "nowrap",
-              }}>
-                Learn More →
-              </a>
-            </div>
-          </div>
         </section>
 
         {/* Grid Sections */}
@@ -123,24 +86,14 @@ export default function Home() {
             <AgentConsole />
           </div>
 
-          {/* Section 5: Attention Mining (Earn JGT by watching ads) */}
-          <div id="mining" style={{ gridColumn: "span 2", scrollMarginTop: "100px" }}>
-            <AttentionMining />
-          </div>
-
-          {/* Section 6: JGT Revenue Hub (Airdrop + Buy + Donate) */}
+          {/* Section 5: JGT Revenue Hub (Airdrop + Buy + Donate) */}
           <div id="revenue" style={{ gridColumn: "span 2", scrollMarginTop: "100px" }}>
             <JGTRevenueHub />
           </div>
 
-          {/* Section 7: JGT Staking */}
+          {/* Section 6: JGT Staking */}
           <div id="staking" style={{ gridColumn: "span 2", scrollMarginTop: "100px" }}>
             <JGTStaking />
-          </div>
-
-          {/* Section 8: Ad Slot Manager (Self-Serve Ads) */}
-          <div id="adslots" style={{ gridColumn: "span 2", scrollMarginTop: "100px" }}>
-            <AdSlotManager />
           </div>
         </div>
       </main>
