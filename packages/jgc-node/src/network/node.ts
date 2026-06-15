@@ -33,7 +33,7 @@ import type {
 import { MessageType as MT } from "../types/index.js";
 import { validateBlock } from "../consensus/validation.js";
 import { hashBlockHeader, computeTransactionMerkleRoot, serializeTransaction } from "../consensus/block.js";
-import { applyBlockToEpoch, initEpochState, computeEpochSettlement, computeContributionsMerkleRoot, computeEpochRoot } from "../consensus/epoch.js";
+import { applyBlockToEpoch, initEpochState, computeContributionsMerkleRoot, computeEpochRoot } from "../consensus/epoch.js";
 import { UTXOSet, validateSpend, txid } from "../consensus/utxo.js";
 import { BlockStore } from "../storage/persistence.js";
 import { calculateNextDifficultyTarget, BLOCKS_PER_EPOCH, RETARGET_WINDOW_BLOCKS, encodeDifficultyBits, decodeDifficultyBits } from "../consensus/emission.js";
@@ -102,6 +102,13 @@ export interface ChainState {
   epochFees: bigint;
   /** Unspent transaction output set (chainstate / ledger). */
   utxos: UTXOSet;
+  /** blockHash → cumulative work (Σ per-block TFLOPS target from genesis). The
+   *  fork-choice metric: the active chain is the known block of greatest work.
+   *  Populated for every known block, on the active chain or a side branch. */
+  chainWork: Map<Hash256, bigint>;
+  /** Blocks whose parent we haven't seen yet, keyed by the missing parent hash.
+   *  Drained when that parent is connected (handles out-of-order arrival). */
+  orphans: Map<Hash256, Block[]>;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -149,10 +156,13 @@ export class JGCNode extends EventEmitter {
   private store?: BlockStore;
   /** True while replaying persisted blocks on startup (suppresses append + logs). */
   private replaying = false;
+  /** The genesis block — kept so a reorg can rebuild active state from height 0. */
+  private readonly genesis: Block;
 
   constructor(config: NodeConfig, genesisBlock: Block) {
     super();
     this.config = config;
+    this.genesis = genesisBlock;
     this.maxMempoolTxs   = config.maxMempoolTxs   ?? DEFAULT_MAX_MEMPOOL_TXS;
     this.minRelayFeeRate = config.minRelayFeeRate ?? DEFAULT_MIN_RELAY_FEERATE;
 
@@ -170,6 +180,8 @@ export class JGCNode extends EventEmitter {
       medianPastTime:        genesisBlock.header.timestamp - 1,
       epochFees:             0n,
       utxos:                 new UTXOSet(),
+      chainWork:             new Map([[genesisHash, this.blockWork(genesisBlock.header)]]),
+      orphans:               new Map(),
     };
 
     // Seed the UTXO set from genesis (its tx[0], if any, is the coinbase).
@@ -197,34 +209,29 @@ export class JGCNode extends EventEmitter {
   }
 
   /**
-   * Rebuild chain/UTXO/epoch state by replaying the persisted block log through
-   * the normal accept path. Each block must extend the current tip (guards
-   * against a store/genesis mismatch).
+   * Rebuild chain/UTXO/epoch state by replaying the persisted block log. The log
+   * is always the linear active chain (a reorg rewrites it via
+   * rewriteStoreToActiveChain), so each block must extend the current tip. The
+   * synchronous integrity checks (no ZK) catch tampering: changing a tx, proof,
+   * epoch commitment, or coinbase amount changes one of the committed roots.
    */
   private replayFromStore(): void {
     const blocks = this.store!.loadAll();
     if (blocks.length === 0) return;
     this.replaying = true;
     for (const block of blocks) {
-      const h = block.header.height;
+      const blockHash = hashBlockHeader(block.header);
       const fail = (why: string): never => {
         this.replaying = false;
-        throw new Error(`Persistence replay integrity failure at height ${h}: ${why} (corrupt or tampered store?)`);
+        throw new Error(`Persistence replay integrity failure at height ${block.header.height}: ${why} (corrupt or tampered store?)`);
       };
-      // Re-validate each persisted block before re-applying it. These checks are
-      // synchronous (no ZK) but catch any tampering: changing a tx, proof, epoch
-      // commitment, or coinbase amount changes one of the committed roots, and a
-      // re-linked block must still extend the current tip.
       if (block.header.prevHash !== this.chain.tipHash) fail("does not extend current tip");
-      if (computeTransactionMerkleRoot(block.transactions) !== block.header.merkleRoot) fail("merkleRoot mismatch");
-      if (computeContributionsMerkleRoot(block.computeProofs) !== block.header.computeRoot) fail("computeRoot mismatch");
-      if (computeEpochRoot(this.chain.epochState) !== block.header.epochRoot) fail("epochRoot mismatch");
-      // Non-boundary coinbase must not mint (the inflation guard, re-checked).
-      if (h % BLOCKS_PER_EPOCH !== BLOCKS_PER_EPOCH - 1) {
-        const minted = block.transactions[0]?.outputs.reduce((s, o) => s + o.value, 0n) ?? 0n;
-        if (minted > 0n) fail("non-boundary coinbase mints value");
-      }
-      this.acceptBlock(block, hashBlockHeader(block.header), h % BLOCKS_PER_EPOCH);
+      if (!this.integrityCheck(this.chain, block)) fail("integrity check failed (root mismatch or non-boundary mint)");
+      // Record knowledge + work, then apply incrementally (replay is linear).
+      this.chain.headers.set(blockHash, block.header);
+      this.chain.blocks.set(blockHash, block);
+      this.chain.chainWork.set(blockHash, (this.chain.chainWork.get(block.header.prevHash) ?? 0n) + this.blockWork(block.header));
+      this.applyBlockState(this.chain, block, blockHash);
     }
     this.replaying = false;
     console.log(`[Node] Replayed ${blocks.length} block(s) from ${this.config.dataDir} — tip height ${this.chain.tipHeight}`);
@@ -369,46 +376,84 @@ export class JGCNode extends EventEmitter {
     // Skip if already known.
     if (this.chain.blocks.has(blockHash)) return;
 
-    // Reject orphans (block extends unknown parent).
-    if (!this.chain.headers.has(block.header.prevHash) && block.header.height !== 0) {
-      console.warn(`[Node] Orphan block ${blockHash.slice(0, 16)}… — parent unknown`);
-      // In production: request missing headers from peer.
+    // Parent unknown → stash as an orphan; the headers-first path will fetch the
+    // gap, and drainOrphans re-processes it once the parent connects.
+    if (block.header.height !== 0 && !this.chain.headers.has(block.header.prevHash)) {
+      const waiting = this.chain.orphans.get(block.header.prevHash) ?? [];
+      if (!waiting.some(b => hashBlockHeader(b.header) === blockHash)) waiting.push(block);
+      this.chain.orphans.set(block.header.prevHash, waiting);
+      console.warn(`[Node] Orphan block ${blockHash.slice(0, 16)}… — parent unknown (stashed)`);
       return;
     }
 
-    // Calculate epoch block index.
-    const epochBlockIndex = block.header.height % BLOCKS_PER_EPOCH;
+    // Ingest under full (ZK) validation; on success persist, relay, and drain
+    // any orphans that were waiting on this block.
+    const connected = await this.ingestBlock(block, blockHash, (chain, b) => this.validateAgainst(chain, b));
+    if (connected) {
+      await this.relayBlock(block, peer.info.peerId);
+      this.emit("block", block);
+      await this.drainOrphans(blockHash);
+    }
+  }
 
-    // Run full validation pipeline.
-    const result = await validateBlock(block, {
-      prevHash:               this.chain.tipHash,
-      expectedHeight:         this.chain.tipHeight + 1,
-      nowUnix:                Math.floor(Date.now() / 1000),
-      medianPastTime:         this.chain.medianPastTime,
-      expectedDifficultyBits: this.getExpectedDifficultyBits(block.header.height),
-      epochState:             this.chain.epochState,
-      blockFees:              this.calculateBlockFees(block),
-      epochBlockIndex,
-      epochFees:              this.chain.epochFees,
-      utxos:                  this.chain.utxos,
-    });
+  /** Re-process orphans that were waiting on `parentHash` now that it's known. */
+  private async drainOrphans(parentHash: Hash256): Promise<void> {
+    const waiting = this.chain.orphans.get(parentHash);
+    if (!waiting) return;
+    this.chain.orphans.delete(parentHash);
+    for (const orphan of waiting) {
+      const h = hashBlockHeader(orphan.header);
+      const connected = await this.ingestBlock(orphan, h, (chain, b) => this.validateAgainst(chain, b));
+      if (connected) {
+        this.emit("block", orphan);
+        await this.drainOrphans(h);
+      }
+    }
+  }
 
-    if (!result.valid) {
-      console.error(
-        `[Node] Block ${blockHash.slice(0, 16)}… REJECTED: ${result.errors.join(", ")} ` +
-        `(${result.warnings.join("; ")})`
-      );
-      return;
+  /**
+   * Record a known block, score it, and apply fork choice.
+   *
+   *  - extends the active tip  → verify against current state, apply incrementally;
+   *  - heavier side branch     → reorg (rebuild active state to follow it);
+   *  - otherwise               → retain as an inactive branch (no state change).
+   *
+   * `verify(chain, block)` returns whether the block is valid against `chain`'s
+   * state — async full validation for live blocks, a sync integrity check for
+   * replay. Returns whether the block became part of the active chain.
+   */
+  private async ingestBlock(
+    block: Block,
+    blockHash: Hash256,
+    verify: (chain: ChainState, block: Block) => boolean | Promise<boolean>,
+  ): Promise<boolean> {
+    // Record knowledge + cumulative work (parent is known by the caller's guard).
+    this.chain.headers.set(blockHash, block.header);
+    this.chain.blocks.set(blockHash, block);
+    const parentWork = this.chain.chainWork.get(block.header.prevHash) ?? 0n;
+    this.chain.chainWork.set(blockHash, parentWork + this.blockWork(block.header));
+    const forget = (): void => {
+      this.chain.headers.delete(blockHash); this.chain.blocks.delete(blockHash); this.chain.chainWork.delete(blockHash);
+    };
+
+    if (block.header.prevHash === this.chain.tipHash) {
+      // Fast path: extends the active tip.
+      if (!(await verify(this.chain, block))) { forget(); return false; }
+      this.applyLiveBlock(block, blockHash);
+      return true;
     }
 
-    // Accept block: update chain state, then persist it durably.
-    this.acceptBlock(block, blockHash, epochBlockIndex);
-    if (this.store) this.store.append(block);
+    const work    = this.chain.chainWork.get(blockHash)!;
+    const tipWork = this.chain.chainWork.get(this.chain.tipHash) ?? 0n;
+    if (work > tipWork) {
+      // Heavier branch that doesn't extend the tip → reorganize onto it.
+      const ok = await this.reorgToBlock(blockHash, verify);
+      if (!ok) { forget(); return false; }
+      return true;
+    }
 
-    // Relay to other peers (same as Bitcoin's block relay).
-    await this.relayBlock(block, peer.info.peerId);
-
-    this.emit("block", block);
+    // Equal or lighter: keep as a known inactive branch (first-seen tip wins ties).
+    return false;
   }
 
   /**
@@ -658,79 +703,219 @@ export class JGCNode extends EventEmitter {
   // Chain State Updates
   // ─────────────────────────────────────────────────────────────────────────
 
-  private acceptBlock(block: Block, blockHash: Hash256, epochBlockIndex: number): void {
-    this.chain.headers.set(blockHash, block.header);
-    this.chain.blocks.set(blockHash, block);
-    this.chain.heightIndex.set(block.header.height, blockHash);
-    this.chain.tipHash   = blockHash;
-    this.chain.tipHeight = block.header.height;
+  /**
+   * Apply a block's state transition to `chain`: UTXO, epoch accumulator,
+   * timestamps, difficulty retarget, tip, and height index. Pure with respect to
+   * node I/O — no mempool/store/relay/emit — so it serves both the live fast path
+   * (chain === this.chain) and the reorg rebuild (chain === a scratch state).
+   *
+   * Returns the settled epoch index when this block is an epoch boundary (so the
+   * live caller can log/emit), else undefined.
+   */
+  private applyBlockState(chain: ChainState, block: Block, blockHash: Hash256): number | undefined {
+    const height = block.header.height;
+    chain.headers.set(blockHash, block.header);
+    chain.blocks.set(blockHash, block);
+    chain.heightIndex.set(height, blockHash);
+    chain.tipHash   = blockHash;
+    chain.tipHeight = height;
 
-    // Fees MUST be summed BEFORE the inputs are spent from the UTXO set.
-    const blockFees = this.calculateBlockFees(block);
+    // Fees MUST be summed BEFORE the inputs are spent. tx[0] is the coinbase
+    // (adds outputs, spends nothing); every other tx spends its inputs.
+    const blockFees = this.calculateBlockFees(block, chain.utxos);
+    block.transactions.forEach((tx, i) => chain.utxos.applyTransaction(tx, height, i === 0));
 
-    // Update the UTXO set: tx[0] is the coinbase (adds outputs, spends nothing);
-    // every other tx spends its inputs and creates its outputs.
-    block.transactions.forEach((tx, i) =>
-      this.chain.utxos.applyTransaction(tx, block.header.height, i === 0),
-    );
+    // Fees join the epoch reward pool (deferred, distributed pro-rata at settlement).
+    applyBlockToEpoch(chain.epochState, block.computeProofs, height, blockFees);
+    chain.epochFees += blockFees;
 
-    // Update epoch state. Fees join the epoch reward pool (deferred, distributed
-    // pro-rata at settlement — consistent with JGC's deferred-reward model).
-    applyBlockToEpoch(
-      this.chain.epochState,
-      block.computeProofs,
-      block.header.height,
-      blockFees,
-    );
-    this.chain.epochFees += blockFees;
+    chain.recentBlockTimes.push(block.header.timestamp);
+    if (chain.recentBlockTimes.length > RETARGET_WINDOW_BLOCKS + 1) chain.recentBlockTimes.shift();
+    chain.medianPastTime = this.computeMedianTime(chain.recentBlockTimes.slice(-11));
 
+    let settledEpoch: number | undefined;
+    if (height % BLOCKS_PER_EPOCH === BLOCKS_PER_EPOCH - 1) {
+      settledEpoch = Math.floor(height / BLOCKS_PER_EPOCH);
+      chain.epochState = initEpochState(height + 1, block.header.timestamp);
+      chain.epochFees = 0n;
+    }
+
+    if (height % RETARGET_WINDOW_BLOCKS === 0 && height > 0) {
+      chain.currentDifficultyBits = this.retargetDifficulty(chain, height);
+    }
+    return settledEpoch;
+  }
+
+  /**
+   * Connect a block that extends the active tip (the common case): mutate the live
+   * chain, then do the node-level side effects (mempool prune, pending-proof reset,
+   * epoch-settle log/emit, accepted log).
+   */
+  private applyLiveBlock(block: Block, blockHash: Hash256): void {
+    const settledEpoch = this.applyBlockState(this.chain, block, blockHash);
+
+    // Persist to the durable log (which mirrors the linear active chain).
+    if (this.store && !this.replaying) this.store.append(block);
     // Drop confirmed / now-conflicting transactions from the mempool.
     this.pruneMempool();
-
-    // Update timestamp tracking (for BIP 113 median and difficulty retarget).
-    this.chain.recentBlockTimes.push(block.header.timestamp);
-    if (this.chain.recentBlockTimes.length > RETARGET_WINDOW_BLOCKS + 1) {
-      this.chain.recentBlockTimes.shift();
-    }
-    this.chain.medianPastTime = this.computeMedianTime(
-      this.chain.recentBlockTimes.slice(-11)
-    );
-
-    // Epoch boundary: settle payouts, reset accumulator.
-    if (epochBlockIndex === BLOCKS_PER_EPOCH - 1) {
-      const epochIndex = Math.floor(block.header.height / BLOCKS_PER_EPOCH);
-      const settlement = computeEpochSettlement(this.chain.epochState, epochIndex);
-      console.log(
-        `[Node] EPOCH ${epochIndex} SETTLED: ` +
-        `${settlement.payouts.length} miners, ` +
-        `pool: ${Number(settlement.totalRewardPool) / 1e16} JGC, ` +
-        `total TFLOPS: ${settlement.totalTFLOPS.toFixed(2)}`
-      );
-      this.emit("epochSettle", epochIndex);
-
-      // Reset epoch state for the next epoch.
-      this.chain.epochState = initEpochState(
-        block.header.height + 1,
-        block.header.timestamp,
-      );
-      this.chain.epochFees = 0n;
-    }
-
-    // Difficulty retarget every 2016 blocks.
-    if (block.header.height % RETARGET_WINDOW_BLOCKS === 0 && block.header.height > 0) {
-      this.chain.currentDifficultyBits = this.retargetDifficulty(block.header.height);
-    }
-
     // Clear proofs used in this block.
     this.pendingProofs = [];
 
+    if (settledEpoch !== undefined) {
+      this.emit("epochSettle", settledEpoch);
+      if (!this.replaying) console.log(`[Node] EPOCH ${settledEpoch} SETTLED at height ${block.header.height}`);
+    }
     if (!this.replaying) {
       console.log(
         `[Node] Block accepted: height=${block.header.height} ` +
-        `hash=${blockHash.slice(0, 16)}… ` +
-        `proofs=${block.computeProofs.length} ` +
-        `txs=${block.transactions.length}`
+        `hash=${blockHash.slice(0, 16)}… proofs=${block.computeProofs.length} txs=${block.transactions.length}`
       );
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Fork choice & reorganization
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /** Per-block work for fork choice: the block's TFLOPS difficulty target,
+   *  rounded to an integer (the PoUC analog of Bitcoin's per-block chainwork). */
+  private blockWork(header: BlockHeader): bigint {
+    return BigInt(Math.max(1, Math.round(decodeDifficultyBits(header.difficultyBits))));
+  }
+
+  /** Hashes from genesis (inclusive) up to `hash`, oldest-first, via prevHash. */
+  private ancestryFromGenesis(hash: Hash256): Hash256[] {
+    const path: Hash256[] = [];
+    let cur: Hash256 | undefined = hash;
+    while (cur) {
+      path.push(cur);
+      const header = this.chain.headers.get(cur);
+      if (!header || header.height === 0) break;
+      cur = header.prevHash;
+    }
+    return path.reverse();
+  }
+
+  /** Full (ZK) validation of `block` against `chain`'s state — the live verifier. */
+  private async validateAgainst(chain: ChainState, block: Block): Promise<boolean> {
+    const result = await validateBlock(block, {
+      prevHash:               chain.tipHash,
+      expectedHeight:         chain.tipHeight + 1,
+      nowUnix:                Math.floor(Date.now() / 1000),
+      medianPastTime:         chain.medianPastTime,
+      expectedDifficultyBits: chain.currentDifficultyBits,
+      epochState:             chain.epochState,
+      blockFees:              this.calculateBlockFees(block, chain.utxos),
+      epochBlockIndex:        block.header.height % BLOCKS_PER_EPOCH,
+      epochFees:              chain.epochFees,
+      utxos:                  chain.utxos,
+    });
+    if (!result.valid) {
+      console.error(`[Node] Block ${hashBlockHeader(block.header).slice(0, 16)}… REJECTED: ${result.errors.join(", ")} (${result.warnings.join("; ")})`);
+    }
+    return result.valid;
+  }
+
+  /**
+   * Synchronous integrity check (no ZK) for replaying our own persisted blocks
+   * against `chain`'s state — mirrors the prior replay guards: linkage, the three
+   * committed roots, and the non-boundary no-mint rule.
+   */
+  private integrityCheck(chain: ChainState, block: Block): boolean {
+    const h = block.header.height;
+    if (block.header.prevHash !== chain.tipHash) return false;
+    if (computeTransactionMerkleRoot(block.transactions) !== block.header.merkleRoot) return false;
+    if (computeContributionsMerkleRoot(block.computeProofs) !== block.header.computeRoot) return false;
+    if (computeEpochRoot(chain.epochState) !== block.header.epochRoot) return false;
+    if (h % BLOCKS_PER_EPOCH !== BLOCKS_PER_EPOCH - 1) {
+      const minted = block.transactions[0]?.outputs.reduce((s, o) => s + o.value, 0n) ?? 0n;
+      if (minted > 0n) return false;
+    }
+    return true;
+  }
+
+  /**
+   * Switch the active chain to follow `targetHash` (a known block of greater work
+   * that does not extend the current tip). Rebuilds active state by replaying
+   * genesis→target into a scratch ChainState — blocks already on the active chain
+   * are trusted (state-only); blocks unique to the new branch are re-verified.
+   * Atomic: if any new block fails verification the scratch is discarded and
+   * this.chain is left untouched (no partial mutation). On success the scratch is
+   * swapped in and the mempool reconciled (disconnected txs re-added, then pruned).
+   */
+  private async reorgToBlock(
+    targetHash: Hash256,
+    verify: (chain: ChainState, block: Block) => boolean | Promise<boolean>,
+  ): Promise<boolean> {
+    const oldChain = this.chain;
+    const targetPath = this.ancestryFromGenesis(targetHash); // genesis-first
+
+    // Scratch shares the append-only knowledge maps (headers/blocks/chainWork) so
+    // we never lose awareness of other branches; active state is rebuilt fresh.
+    const genesisHash = targetPath[0]!;
+    const scratch: ChainState = {
+      tipHash: genesisHash, tipHeight: 0,
+      headers: oldChain.headers, blocks: oldChain.blocks, chainWork: oldChain.chainWork,
+      heightIndex: new Map([[0, genesisHash]]),
+      epochState: initEpochState(0, this.genesis.header.timestamp),
+      currentDifficultyBits: this.genesis.header.difficultyBits,
+      recentBlockTimes: [this.genesis.header.timestamp],
+      medianPastTime: this.genesis.header.timestamp - 1,
+      epochFees: 0n,
+      utxos: new UTXOSet(),
+      orphans: oldChain.orphans,
+    };
+    this.genesis.transactions.forEach((tx, i) => scratch.utxos.applyTransaction(tx, 0, i === 0));
+    applyBlockToEpoch(scratch.epochState, this.genesis.computeProofs, 0, 0n);
+
+    // Replay genesis→target. A block currently on the active chain was validated
+    // when connected (state-only); a block unique to the new branch is verified.
+    for (const hash of targetPath.slice(1)) {
+      const block = oldChain.blocks.get(hash)!;
+      const onActiveChain = oldChain.heightIndex.get(block.header.height) === hash;
+      if (!onActiveChain && !(await verify(scratch, block))) {
+        return false; // invalid branch — abort, this.chain untouched
+      }
+      this.applyBlockState(scratch, block, hash);
+    }
+
+    // Fork point = highest target block that was on the old active chain.
+    let forkHeight = 0;
+    for (const hash of targetPath) {
+      const hgt = oldChain.headers.get(hash)!.height;
+      if (oldChain.heightIndex.get(hgt) === hash) forkHeight = hgt; else break;
+    }
+    // Disconnected txs (old active blocks above the fork) return to the mempool.
+    const disconnected: Transaction[] = [];
+    for (let hgt = forkHeight + 1; hgt <= oldChain.tipHeight; hgt++) {
+      const hash = oldChain.heightIndex.get(hgt);
+      const blk = hash ? oldChain.blocks.get(hash) : undefined;
+      if (blk) for (let i = 1; i < blk.transactions.length; i++) disconnected.push(blk.transactions[i]!);
+    }
+
+    this.chain = scratch;
+    this.pendingProofs = [];
+    if (!this.replaying) {
+      console.log(`[Node] REORG to ${targetHash.slice(0, 16)}… (fork@${forkHeight}, new tip height ${scratch.tipHeight}); ${disconnected.length} tx(s) returned to mempool`);
+    }
+    for (const tx of disconnected) this.submitTransaction(tx); // re-validates vs new state
+    this.pruneMempool();                                       // drop ones now confirmed
+
+    // Keep the durable log equal to the (now-reorged) linear active chain, so
+    // replay stays simple and linear.
+    if (this.store && !this.replaying) this.rewriteStoreToActiveChain();
+    return true;
+  }
+
+  /** Rewrite the durable block log to exactly the active chain (heights 1..tip),
+   *  used after a reorg so the persisted log stays linear. */
+  private rewriteStoreToActiveChain(): void {
+    if (!this.store) return;
+    this.store.clear();
+    for (let h = 1; h <= this.chain.tipHeight; h++) {
+      const hash = this.chain.heightIndex.get(h);
+      const blk = hash ? this.chain.blocks.get(hash) : undefined;
+      if (blk) this.store.append(blk);
     }
   }
 
@@ -739,25 +924,23 @@ export class JGCNode extends EventEmitter {
   // BITCOIN ANALOG: pow.cpp CalculateNextWorkRequired()
   // ─────────────────────────────────────────────────────────────────────────
 
-  private retargetDifficulty(height: number): number {
-    const times = this.chain.recentBlockTimes;
-    if (times.length < 2) return this.chain.currentDifficultyBits;
+  private retargetDifficulty(chain: ChainState, height: number): number {
+    const times = chain.recentBlockTimes;
+    if (times.length < 2) return chain.currentDifficultyBits;
 
     const actualTimespan = times[times.length - 1] - times[Math.max(0, times.length - RETARGET_WINDOW_BLOCKS - 1)];
-    const oldTarget      = decodeDifficultyBits(this.chain.currentDifficultyBits);
+    const oldTarget      = decodeDifficultyBits(chain.currentDifficultyBits);
     const newTarget      = calculateNextDifficultyTarget(oldTarget, actualTimespan);
 
     const newBits = encodeDifficultyBits(newTarget);
-    console.log(
-      `[Node] Difficulty retarget at height ${height}: ` +
-      `${oldTarget.toFixed(2)} → ${newTarget.toFixed(2)} TFLOPS ` +
-      `(actual=${actualTimespan}s, target=${RETARGET_WINDOW_BLOCKS * 600}s)`
-    );
+    if (!this.replaying) {
+      console.log(
+        `[Node] Difficulty retarget at height ${height}: ` +
+        `${oldTarget.toFixed(2)} → ${newTarget.toFixed(2)} TFLOPS ` +
+        `(actual=${actualTimespan}s, target=${RETARGET_WINDOW_BLOCKS * 600}s)`
+      );
+    }
     return newBits;
-  }
-
-  private getExpectedDifficultyBits(_height: number): number {
-    return this.chain.currentDifficultyBits;
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -800,8 +983,8 @@ export class JGCNode extends EventEmitter {
    * (the block is rejected by validateBlock anyway) — never truncate the remaining
    * txs' fees, and never throw.
    */
-  private calculateBlockFees(block: Block): bigint {
-    const view = this.chain.utxos.clone();
+  private calculateBlockFees(block: Block, utxo: UTXOSet = this.chain.utxos): bigint {
+    const view = utxo.clone();
     let fees = 0n;
     for (let i = 1; i < block.transactions.length; i++) {
       const tx = block.transactions[i]!;
