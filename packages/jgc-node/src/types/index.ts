@@ -403,6 +403,8 @@ export enum MessageType {
   COMPUTE_PROOF = "COMPUTE_PROOF",   // JGC-specific: propagate new proof
   EPOCH_SETTLE  = "EPOCH_SETTLE",    // JGC-specific: epoch settlement tx
   BROKER_BID    = "BROKER_BID",      // JGC-specific: new compute bid
+  GETADDR       = "GETADDR",         // request known peer addresses
+  ADDR          = "ADDR",            // advertise known peer addresses (gossip)
 }
 
 export interface PeerMessage {
@@ -430,4 +432,11 @@ export interface NodeConfig {
   /** Minimum relay fee rate in base units per serialized byte; txs paying less
    *  are rejected at admission (anti-spam). Default DEFAULT_MIN_RELAY_FEERATE. */
   minRelayFeeRate?: bigint;
+  /** This node's own dialable URL (e.g. "ws://host:port"), advertised in the
+   *  VERSION handshake so peers can gossip it for discovery. Omit for a node that
+   *  discovers/dials others but doesn't advertise itself (e.g. behind NAT). */
+  advertiseUrl?: string;
+  /** Write a chainstate snapshot every N connected blocks (requires dataDir), so
+   *  restart replays only the tail above it. Default BLOCKS_PER_EPOCH; 0 disables. */
+  snapshotIntervalBlocks?: number;
 }

@@ -22,6 +22,8 @@
     "persistence-demo": "node dist/scripts/persistence-demo.js",
     "multinode-demo": "node dist/scripts/multinode-demo.js",
     "mempool-demo": "node dist/scripts/mempool-demo.js",
+    "reorg-demo": "node dist/scripts/reorg-demo.js",
+    "discovery-demo": "node dist/scripts/discovery-demo.js",
     "wallet-demo": "node dist/scripts/wallet-demo.js",
     "wallet": "node dist/scripts/wallet-cli.js",
     "emission-table": "node dist/scripts/print-emission.js"
