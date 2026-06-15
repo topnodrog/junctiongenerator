@@ -720,19 +720,34 @@ export class JGCNode extends EventEmitter {
 
   /**
    * Total fees of a block's non-coinbase transactions: Σ (inputs − outputs).
-   * MUST be called BEFORE the block's inputs are spent from chain.utxos (inputs
-   * are looked up there). tx[0] is the coinbase and is excluded.
+   * MUST be called BEFORE the block's inputs are spent from chain.utxos. tx[0] is
+   * the coinbase and is excluded.
+   *
+   * Inputs are resolved against a PROGRESSIVE view (a clone of chain.utxos that
+   * each tx's outputs are applied to as we go), so a child tx that spends an
+   * earlier tx's output in the SAME block is counted correctly — validateBlock
+   * (Step 2b) permits such in-block chaining. Resolving only against the
+   * pre-block set would miss in-block parents and silently burn those fees.
+   *
+   * This may run before validateBlock (to build its context), so a block can be
+   * invalid here: on an unresolvable input we skip that one tx's fee and CONTINUE
+   * (the block is rejected by validateBlock anyway) — never truncate the remaining
+   * txs' fees, and never throw.
    */
   private calculateBlockFees(block: Block): bigint {
+    const view = this.chain.utxos.clone();
     let fees = 0n;
     for (let i = 1; i < block.transactions.length; i++) {
       const tx = block.transactions[i]!;
       let inSum = 0n;
+      let resolved = true;
       for (const input of tx.inputs) {
-        const entry = this.chain.utxos.get(input.prevOut.txid, input.prevOut.vout);
-        if (!entry) return fees;  // unspendable input — block is invalid; don't credit
+        const entry = view.get(input.prevOut.txid, input.prevOut.vout);
+        if (!entry) { resolved = false; break; }  // invalid block; skip this tx's fee
         inSum += entry.value;
       }
+      view.applyTransaction(tx, block.header.height, false);  // expose outputs to later txs
+      if (!resolved) continue;
       const outSum = tx.outputs.reduce((s, o) => s + o.value, 0n);
       fees += inSum - outSum;
     }
