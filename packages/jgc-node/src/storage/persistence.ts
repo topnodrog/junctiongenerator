@@ -22,7 +22,7 @@
  * fsync/atomic writes before any real deployment.
  */
 
-import { appendFileSync, readFileSync, existsSync, mkdirSync, rmSync } from "fs";
+import { appendFileSync, readFileSync, writeFileSync, renameSync, existsSync, mkdirSync, rmSync } from "fs";
 import { join } from "path";
 import type { Block, EpochState, MinerComputeContribution } from "../types/index.js";
 import { ComputeTaskType } from "../types/index.js";
@@ -234,5 +234,110 @@ export class BlockStore {
   /** Delete the store (fresh start). */
   clear(): void {
     if (existsSync(this.file)) rmSync(this.file);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Chainstate snapshot (UTXO + epoch accumulator at a height)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** A single unspent output as carried in a snapshot (mirrors UTXOEntry + outpoint). */
+export interface SnapshotUTXO {
+  txid: string; vout: number; value: bigint; scriptPubKey: string; height: number; isCoinbase: boolean;
+}
+
+/**
+ * A point-in-time snapshot of everything restart needs that ISN'T recomputable
+ * from a single block: the UTXO set and the derived chain scalars/accumulator at
+ * `tipHeight`. With it, restart replays only the blocks ABOVE the snapshot
+ * instead of the whole chain.
+ */
+export interface ChainSnapshot {
+  tipHash: string;
+  tipHeight: number;
+  currentDifficultyBits: number;
+  medianPastTime: number;
+  epochFees: bigint;
+  recentBlockTimes: number[];
+  epochState: EpochState;
+  utxos: SnapshotUTXO[];
+}
+
+const SNAPSHOT_VERSION = 1;
+
+/**
+ * Single-file chainstate snapshot at `<dataDir>/chainstate.snapshot` (binary,
+ * versioned). Written atomically (tmp + rename) so a crash mid-write can't leave
+ * a torn snapshot. The node writes one periodically and DELETES it on a reorg
+ * (the snapshot's tip may then be on an abandoned branch); restart loads it only
+ * when it's consistent with the block log, else falls back to full replay.
+ */
+export class SnapshotStore {
+  private readonly file: string;
+  private readonly tmp: string;
+
+  constructor(dataDir: string) {
+    mkdirSync(dataDir, { recursive: true });
+    this.file = join(dataDir, "chainstate.snapshot");
+    this.tmp  = join(dataDir, "chainstate.snapshot.tmp");
+  }
+
+  exists(): boolean { return existsSync(this.file); }
+
+  write(snap: ChainSnapshot): void {
+    const w = new Writer();
+    w.u32(SNAPSHOT_VERSION);
+    w.raw(Buffer.from(snap.tipHash, "hex"));   // 32 bytes
+    w.u64(snap.tipHeight);
+    w.u32(snap.currentDifficultyBits);
+    w.u64(snap.medianPastTime);
+    w.u128(snap.epochFees);
+    w.varint(snap.recentBlockTimes.length);
+    for (const t of snap.recentBlockTimes) w.u64(t);
+    encodeEpochState(w, snap.epochState);
+    w.varint(snap.utxos.length);
+    for (const u of snap.utxos) {
+      w.raw(Buffer.from(u.txid, "hex"));        // 32 bytes
+      w.u32(u.vout);
+      w.u128(u.value);
+      w.str(u.scriptPubKey);
+      w.u64(u.height);
+      w.raw(Buffer.from([u.isCoinbase ? 1 : 0]));
+    }
+    writeFileSync(this.tmp, w.build());
+    renameSync(this.tmp, this.file);            // atomic replace
+  }
+
+  load(): ChainSnapshot | null {
+    if (!existsSync(this.file)) return null;
+    const r = new Reader(readFileSync(this.file));
+    const version = r.u32();
+    if (version !== SNAPSHOT_VERSION) return null;  // unknown format → ignore
+    const tipHash = r.raw(32).toString("hex");
+    const tipHeight = r.u64();
+    const currentDifficultyBits = r.u32();
+    const medianPastTime = r.u64();
+    const epochFees = r.u128();
+    const recentBlockTimes: number[] = [];
+    const tCount = r.varint();
+    for (let i = 0; i < tCount; i++) recentBlockTimes.push(r.u64());
+    const epochState = decodeEpochState(r);
+    const utxos: SnapshotUTXO[] = [];
+    const uCount = r.varint();
+    for (let i = 0; i < uCount; i++) {
+      const txid = r.raw(32).toString("hex");
+      const vout = r.u32();
+      const value = r.u128();
+      const scriptPubKey = r.str();
+      const height = r.u64();
+      const isCoinbase = r.raw(1)[0] === 1;
+      utxos.push({ txid, vout, value, scriptPubKey, height, isCoinbase });
+    }
+    return { tipHash, tipHeight, currentDifficultyBits, medianPastTime, epochFees, recentBlockTimes, epochState, utxos };
+  }
+
+  clear(): void {
+    if (existsSync(this.file)) rmSync(this.file);
+    if (existsSync(this.tmp)) rmSync(this.tmp);
   }
 }
