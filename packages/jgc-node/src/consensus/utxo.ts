@@ -63,6 +63,16 @@ export class UTXOSet {
   get(id: Hash256, vout: number): UTXOEntry | undefined { return this.m.get(UTXOSet.key(id, vout)); }
   has(id: Hash256, vout: number): boolean { return this.m.has(UTXOSet.key(id, vout)); }
 
+  /** Iterate every unspent output as { txid, vout, entry } (read-only view, e.g.
+   *  for a wallet scanning its coins). Mutating the set during iteration is the
+   *  caller's responsibility. */
+  *entries(): IterableIterator<{ txid: Hash256; vout: number; entry: UTXOEntry }> {
+    for (const [k, entry] of this.m) {
+      const sep = k.lastIndexOf(":");
+      yield { txid: k.slice(0, sep), vout: Number(k.slice(sep + 1)), entry };
+    }
+  }
+
   add(id: Hash256, vout: number, entry: UTXOEntry): void {
     this.m.set(UTXOSet.key(id, vout), entry);
   }

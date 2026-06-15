@@ -79,6 +79,11 @@ export function generateKeyPair(): { privateKey: string; publicKey: string } {
   return { privateKey: toHex(priv), publicKey: toHex(secp.getPublicKey(priv, true)) };
 }
 
+/** Compressed public key (hex) for a 32-byte private key (hex). */
+export function publicKeyFromPrivate(privateKeyHex: string): string {
+  return toHex(secp.getPublicKey(toBytes(privateKeyHex), true));
+}
+
 /**
  * Canonical 32-byte digest a contribution signature commits to:
  *   SHA256d( minerAddress | taskCommitment | circuitId | tflopsWeight | height ).
@@ -168,6 +173,23 @@ export function verifyP2PKHSpend(
 /** Build a P2PKH scriptSig from a signature hex and compressed pubkey hex. */
 export function p2pkhScriptSig(sigHex: string, publicKeyHex: string): string {
   return sigHex + publicKeyHex;
+}
+
+/**
+ * P2PKH scriptPubKey paying a JGC address ("1JGC" + hash160 hex). Inverse of
+ * {@link addressFromScriptPubKey}. Throws on a malformed address so a typo can
+ * never silently send coins to an unspendable script.
+ */
+export function scriptPubKeyFromAddress(address: string): string {
+  const m = /^1JGC([0-9a-fA-F]{40})$/.exec(address);
+  if (!m) throw new Error(`invalid JGC address: ${address}`);
+  return "76a914" + m[1]!.toLowerCase() + "88ac";
+}
+
+/** The JGC address a P2PKH output pays to, or null if the script isn't P2PKH. */
+export function addressFromScriptPubKey(scriptPubKey: string): string | null {
+  const h = hash160FromP2PKH(scriptPubKey);
+  return h === null ? null : "1JGC" + h;
 }
 
 /**
