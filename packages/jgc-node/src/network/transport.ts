@@ -192,3 +192,68 @@ export function connectToPeers(
     },
   };
 }
+
+/**
+ * Discovery-aware connection manager: dial the seed URLs, then keep outbound
+ * slots full by dialing peers the node has *learned about* via ADDR gossip
+ * (node.getDialCandidates()), up to `maxOutbound`. Seeds reconnect on drop;
+ * discovered peers are re-evaluated each fill tick and whenever a new address
+ * arrives. This is the no-central-seed path: a node that knows one peer reaches
+ * the rest of the network as addresses propagate.
+ *
+ * BITCOIN ANALOG: CConnman's outbound connection slots fed by addrman.
+ */
+export function maintainPeers(
+  node: JGCNode,
+  seeds: string[],
+  opts: { retryMs?: number; maxOutbound?: number; fillIntervalMs?: number } = {},
+): PeerLinks {
+  const retryMs        = opts.retryMs ?? 2000;
+  const fillIntervalMs = opts.fillIntervalMs ?? 2000;
+  const maxOutbound    = opts.maxOutbound ?? node.maxPeerLimit;
+  let stopped = false;
+  const timers  = new Set<ReturnType<typeof setTimeout>>();
+  const sockets = new Set<WebSocket>();
+  const dialing = new Set<string>(); // URLs this manager has in flight / connected
+
+  const dial = (url: string, isSeed: boolean): void => {
+    if (stopped || dialing.has(url)) return;
+    dialing.add(url);
+    const ws = new WebSocket(url);
+    sockets.add(ws);
+    ws.on("open",  () => { if (stopped) ws.terminate(); else attachSocket(node, ws, url, false); });
+    ws.on("error", () => { /* "close" follows */ });
+    ws.on("close", () => {
+      sockets.delete(ws);
+      dialing.delete(url);
+      if (stopped) return;
+      // Seeds are kept warm; discovered peers are re-dialed by the fill loop.
+      if (isSeed) { const t = setTimeout(() => { timers.delete(t); dial(url, true); }, retryMs); timers.add(t); }
+    });
+  };
+
+  const fillOnce = (): void => {
+    if (stopped || node.peerCount() >= maxOutbound) return;
+    for (const url of node.getDialCandidates()) {
+      if (node.peerCount() >= maxOutbound) break;
+      if (!dialing.has(url)) dial(url, false);
+    }
+  };
+  const tick = (): void => { if (stopped) return; fillOnce(); const t = setTimeout(tick, fillIntervalMs); timers.add(t); };
+
+  for (const url of seeds) dial(url, true);
+  const t0 = setTimeout(tick, fillIntervalMs); timers.add(t0);
+  const onAddr = (): void => fillOnce();   // dial promptly when new addresses arrive
+  node.on("addr", onAddr);
+
+  return {
+    close(): void {
+      stopped = true;
+      node.off("addr", onAddr);
+      for (const t of timers) clearTimeout(t);
+      timers.clear();
+      for (const ws of sockets) ws.terminate();
+      sockets.clear();
+    },
+  };
+}
