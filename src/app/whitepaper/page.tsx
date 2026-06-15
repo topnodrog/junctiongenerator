@@ -84,7 +84,7 @@ export default function WhitepaperPage() {
 
         <h3 style={{ color: "var(--color-purple)", marginTop: 20 }}>2.3 Verification</h3>
         <p style={{ color: "var(--text-secondary)" }}>
-          JGC uses a multi-layered verification approach: redundant execution across multiple miners, random spot checks by verifier nodes, cryptographic attestation via trusted execution environments, and statistical validation of output distributions.
+          JGC verifies useful work with <strong>zero-knowledge proofs</strong> rather than trust or re-execution. Each miner submits a succinct zk-SNARK — Groth16 over the BN254 curve — attesting that it ran its assigned compute correctly. The network confirms the work with a constant-time pairing check: it never re-runs the workload and never relies on trusted hardware. A Conv1D proving circuit is implemented and verified end-to-end today, with inference and training circuit families in development.
         </p>
 
         <h2 style={{ color: "var(--color-cyan)", marginTop: 32 }}>3. Token Economics ($JGC)</h2>
@@ -110,32 +110,32 @@ export default function WhitepaperPage() {
             <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
               <td style={{ padding: "8px" }}>1. Concept & Design</td>
               <td style={{ padding: "8px", color: "var(--color-neon-green)" }}>✅ Complete</td>
-              <td style={{ padding: "8px" }}>Core concept validated</td>
+              <td style={{ padding: "8px" }}>PoUC concept + cryptoeconomic design</td>
             </tr>
             <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
-              <td style={{ padding: "8px" }}>2. Frontend & Demo</td>
+              <td style={{ padding: "8px" }}>2. Demo Site & Whitepaper</td>
+              <td style={{ padding: "8px", color: "var(--color-neon-green)" }}>✅ Complete</td>
+              <td style={{ padding: "8px" }}>Interactive site + this whitepaper</td>
+            </tr>
+            <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
+              <td style={{ padding: "8px" }}>3. PoUC Node & Local Testnet</td>
               <td style={{ padding: "8px", color: "var(--color-cyan)" }}>🔄 In Progress</td>
-              <td style={{ padding: "8px" }}>Interactive demo site</td>
+              <td style={{ padding: "8px" }}>ZK-verified blocks, epoch settlement, restart-safe testnet mining</td>
             </tr>
             <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
-              <td style={{ padding: "8px" }}>3. Protocol Spec</td>
-              <td style={{ padding: "8px", color: "var(--text-muted)" }}>⬜ Planned</td>
-              <td style={{ padding: "8px" }}>Formal PoUC specification</td>
+              <td style={{ padding: "8px" }}>4. Public Testnet & Explorer</td>
+              <td style={{ padding: "8px", color: "var(--text-muted)" }}>⬜ Next</td>
+              <td style={{ padding: "8px" }}>P2P sync, public node, block explorer</td>
             </tr>
             <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
-              <td style={{ padding: "8px" }}>4. Mining Client MVP</td>
+              <td style={{ padding: "8px" }}>5. GPU Mining Client & Workloads</td>
               <td style={{ padding: "8px", color: "var(--text-muted)" }}>⬜ Planned</td>
-              <td style={{ padding: "8px" }}>GPU mining client</td>
-            </tr>
-            <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
-              <td style={{ padding: "8px" }}>5. AI Marketplace</td>
-              <td style={{ padding: "8px", color: "var(--text-muted)" }}>⬜ Planned</td>
-              <td style={{ padding: "8px" }}>Compute marketplace</td>
+              <td style={{ padding: "8px" }}>Miner client + inference/training circuits</td>
             </tr>
             <tr>
               <td style={{ padding: "8px" }}>6. Mainnet Launch</td>
               <td style={{ padding: "8px", color: "var(--text-muted)" }}>⬜ Planned</td>
-              <td style={{ padding: "8px" }}>$JGC token launch</td>
+              <td style={{ padding: "8px" }}>$JGC mainnet</td>
             </tr>
           </tbody>
         </table>
