@@ -3,8 +3,16 @@ const solc = require("solc");
 const fs = require("fs");
 const path = require("path");
 
-const RPC_URL = "https://mainnet.base.org";
-const PRIVATE_KEY = "***REMOVED***";
+try { require("dotenv").config(); } catch { /* optional: npm i dotenv */ }
+const RPC_URL = process.env.BASE_RPC_URL || "https://mainnet.base.org";
+// SECURITY: never hard-code a private key. Provide it via the PRIVATE_KEY env var
+// (e.g. an untracked .env). The key previously committed here was leaked and must
+// stay retired — deploy only from a fresh, secured wallet.
+const PRIVATE_KEY = process.env.PRIVATE_KEY;
+if (!PRIVATE_KEY) {
+  console.error("PRIVATE_KEY not set. Put it in your environment or an untracked .env (never commit it).");
+  process.exit(1);
+}
 const JGT_TOKEN_ADDRESS = "0x7Fe2E89075F570ABcCf5451A00Bf780787FEc587";
 
 async function main() {
