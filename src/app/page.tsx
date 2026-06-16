@@ -6,6 +6,7 @@ import MiningTelemetry from "@/components/MiningTelemetry";
 import AgentConsole from "@/components/AgentConsole";
 import OSCRPCalculator from "@/components/OSCRPCalculator";
 import BackTheProject from "@/components/BackTheProject";
+import NewsletterSignup from "@/components/NewsletterSignup";
 
 export default function Home() {
   return (
@@ -22,6 +23,7 @@ export default function Home() {
             <li className="nav-link-item"><a href="#telemetry">Compute Grid</a></li>
             <li className="nav-link-item"><a href="#agents">C-Suite Console</a></li>
             <li className="nav-link-item"><a href="#rewards">OSCRP Stake</a></li>
+            <li className="nav-link-item"><a href="#newsletter">📨 Newsletter</a></li>
             <li className="nav-link-item"><a href="#support">🤝 Support</a></li>
             <li className="nav-link-item"><a href="/blog">📝 Blog</a></li>
             </ul>
@@ -60,6 +62,11 @@ export default function Home() {
               Explore Mining Grid
             </a>
           </div>
+        </section>
+
+        {/* Newsletter signup — gauge interest + build the weekly list */}
+        <section id="newsletter" style={{ marginBottom: "60px", scrollMarginTop: "100px" }}>
+          <NewsletterSignup />
         </section>
 
         {/* Grid Sections */}
