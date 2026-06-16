@@ -5,6 +5,7 @@ import VibePlayground from "@/components/VibePlayground";
 import MiningTelemetry from "@/components/MiningTelemetry";
 import AgentConsole from "@/components/AgentConsole";
 import OSCRPCalculator from "@/components/OSCRPCalculator";
+import BackTheProject from "@/components/BackTheProject";
 
 export default function Home() {
   return (
@@ -21,6 +22,7 @@ export default function Home() {
             <li className="nav-link-item"><a href="#telemetry">Compute Grid</a></li>
             <li className="nav-link-item"><a href="#agents">C-Suite Console</a></li>
             <li className="nav-link-item"><a href="#rewards">OSCRP Stake</a></li>
+            <li className="nav-link-item"><a href="#support">🤝 Support</a></li>
             <li className="nav-link-item"><a href="/blog">📝 Blog</a></li>
             </ul>
         </nav>
@@ -80,6 +82,11 @@ export default function Home() {
           {/* Section 4: C-Suite Agent Console */}
           <div id="agents" style={{ gridColumn: "span 2", scrollMarginTop: "100px" }}>
             <AgentConsole />
+          </div>
+
+          {/* Support / donations — honest, no-token funding path */}
+          <div id="support" style={{ gridColumn: "span 2", scrollMarginTop: "100px" }}>
+            <BackTheProject />
           </div>
         </div>
       </main>
