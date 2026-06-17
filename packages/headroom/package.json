@@ -1,0 +1,17 @@
+{
+  "name": "@junction-generator/headroom",
+  "version": "1.0.0",
+  "description": "Instrumented Anthropic client (headroom-ai compute accounting) for JunctionGenerator",
+  "main": "index.js",
+  "type": "commonjs",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.104.1",
+    "headroom-ai": "^0.22.4"
+  }
+}
