@@ -69,6 +69,17 @@ export interface InferenceResult {
 export interface InferenceBackend {
   readonly name: string;
   run(req: InferenceRequest): Promise<InferenceResult>;
+  /**
+   * Optional honest compute basis: FLOPs per token processed for `model`,
+   * ≈ 2 × parameter count (one multiply-add per parameter per token in a
+   * transformer forward pass). Returns undefined if undeterminable.
+   *
+   * TRUST CAVEAT: a value the node derives from its own model is NOT yet
+   * trust-hardened — a cheater could claim a bigger model. In the verification
+   * model (L5) this registered-model → FLOPs/token mapping should be
+   * consensus-published, not self-reported. See [[project-jg-vision]].
+   */
+  flopsPerToken?(model: string): Promise<number | undefined>;
 }
 
 /**
@@ -84,6 +95,12 @@ export class FakeInferenceBackend implements InferenceBackend {
     const outputTokens = Math.min(req.maxTokens, approxTokens(text));
     return { text, promptTokens, outputTokens, backend: this.name, model: req.model };
   }
+}
+
+/** Subset of Ollama's POST /api/show response we rely on. */
+interface OllamaShowResponse {
+  details?:    { parameter_size?: string };       // human, e.g. "5.1B"
+  model_info?: Record<string, unknown>;           // has "general.parameter_count"
 }
 
 /** Subset of Ollama's POST /api/chat response we rely on. */
@@ -109,9 +126,31 @@ interface OllamaChatResponse {
 export class OllamaInferenceBackend implements InferenceBackend {
   readonly name = "ollama";
   private readonly endpoint: string;
+  /** model → FLOPs/token, cached (one /api/show per model). */
+  private readonly flopsCache = new Map<string, number>();
 
   constructor(endpoint?: string) {
     this.endpoint = endpoint ?? process.env.OLLAMA_ENDPOINT ?? "http://127.0.0.1:11434";
+  }
+
+  /** Honest FLOPs/token ≈ 2 × parameter count, read from /api/show (cached). */
+  async flopsPerToken(model: string): Promise<number | undefined> {
+    const cached = this.flopsCache.get(model);
+    if (cached !== undefined) return cached;
+
+    const res = await fetch(`${this.endpoint}/api/show`, {
+      method:  "POST",
+      headers: { "content-type": "application/json" },
+      body:    JSON.stringify({ model }),
+    });
+    if (!res.ok) return undefined;
+
+    const params = extractParamCount((await res.json()) as OllamaShowResponse);
+    if (params === undefined) return undefined;
+
+    const fpt = 2 * params;
+    this.flopsCache.set(model, fpt);
+    return fpt;
   }
 
   async run(req: InferenceRequest): Promise<InferenceResult> {
@@ -191,7 +230,8 @@ export interface JunctioningOptions {
   seed?:          number;
 }
 
-/** Default ≈ 2 × 2.6e9 params (gemma2:2b-class). Override per model. */
+/** Fallback only, when a backend can't report its param count (≈ 2 × 2.6e9,
+ *  gemma2:2b-class). Live backends override this via {@link InferenceBackend.flopsPerToken}. */
 export const DEFAULT_FLOPS_PER_TOKEN = 5.2e9;
 
 /**
@@ -213,12 +253,19 @@ export async function runJunctioning(
   backend: InferenceBackend,
   opts:    JunctioningOptions = {},
 ): Promise<JunctioningResult> {
-  const model         = opts.model ?? process.env.JUNCTIONING_MODEL ?? "gemma2:2b";
-  const maxTokens     = opts.maxTokens ?? 1024;
-  const flopsPerToken = opts.flopsPerToken ?? DEFAULT_FLOPS_PER_TOKEN;
-  const temperature   = opts.temperature ?? 0;
-  const seed          = opts.seed ?? DEFAULT_SEED;
-  const prompt        = task.prompt ?? task.description;
+  const model       = opts.model ?? process.env.JUNCTIONING_MODEL ?? "gemma2:2b";
+  const maxTokens   = opts.maxTokens ?? 1024;
+  const temperature = opts.temperature ?? 0;
+  const seed        = opts.seed ?? DEFAULT_SEED;
+  const prompt      = task.prompt ?? task.description;
+
+  // Honest compute basis: explicit override → backend's measured value
+  // (2 × param count) → documented fallback constant.
+  let flopsPerToken = opts.flopsPerToken;
+  if (flopsPerToken === undefined && backend.flopsPerToken) {
+    flopsPerToken = await backend.flopsPerToken(model);
+  }
+  flopsPerToken = flopsPerToken ?? DEFAULT_FLOPS_PER_TOKEN;
 
   const startedAt = Date.now();
   const inf       = await backend.run({ prompt, model, maxTokens, temperature, seed });
@@ -250,4 +297,23 @@ export async function runJunctioning(
  */
 function approxTokens(text: string): number {
   return Math.max(1, Math.ceil(text.length / 4));
+}
+
+/** Pull an exact parameter count from an /api/show payload, else parse the
+ *  human "parameter_size" (e.g. "5.1B"). Returns undefined if neither works. */
+function extractParamCount(show: OllamaShowResponse): number | undefined {
+  const exact = show.model_info?.["general.parameter_count"];
+  if (typeof exact === "number" && exact > 0) return exact;
+  return show.details?.parameter_size ? parseParamSize(show.details.parameter_size) : undefined;
+}
+
+/** Parse "5.1B" / "270M" / "7000000000" → a parameter count. */
+function parseParamSize(s: string): number | undefined {
+  const m = /^([\d.]+)\s*([BMK])?$/i.exec(s.trim());
+  if (!m) return undefined;
+  const n = parseFloat(m[1]!);
+  if (!Number.isFinite(n)) return undefined;
+  const suffix = (m[2] ?? "").toUpperCase();
+  const mult   = suffix === "B" ? 1e9 : suffix === "M" ? 1e6 : suffix === "K" ? 1e3 : 1;
+  return n * mult;
 }
