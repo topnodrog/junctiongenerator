@@ -101,6 +101,18 @@ export class ComputeBroker {
   /** JG internal cluster task definitions (highest priority). */
   private jgTaskQueue: JGClusterTask[] = [];
 
+  /** Optional junctioning executor — runs an assigned JG task's local inference.
+   *  Unset by default; the broker remains pure orchestration until wired. */
+  private jgExecutor?: JGClusterExecutor;
+
+  /**
+   * Wire the junctioning executor (local Gemma inference) that runs whenever a
+   * JG-cluster task is assigned to a node. See broker/junctioning.ts.
+   */
+  setJGClusterExecutor(executor: JGClusterExecutor): void {
+    this.jgExecutor = executor;
+  }
+
   /**
    * Register or update a node's capacity snapshot.
    * Called on each node heartbeat (every ~30 seconds).
@@ -234,6 +246,16 @@ export class ComputeBroker {
         `[Broker] JG Cluster task ${task.taskId} assigned to node ${node.nodePublicKey.slice(0, 16)}… ` +
         `(${task.requiredTFLOPS} TFLOPS)`
       );
+
+      // Fire the junctioning executor (local inference) for the assigned task.
+      // Fire-and-forget: allocation must not block on model latency. Errors are
+      // logged, not thrown, so one bad task can't wedge the allocation cycle.
+      if (this.jgExecutor) {
+        const executor = this.jgExecutor;
+        Promise.resolve(executor(task)).catch((err: unknown) =>
+          console.error(`[Broker] junctioning executor failed for task ${task.taskId}:`, err)
+        );
+      }
     }
   }
 
@@ -493,7 +515,18 @@ export interface JGClusterTask {
   taskPayloadHash: Hash256;
   /** Priority within JG tasks (lower = higher priority). */
   priority:      number;
+  /** The actual inference prompt for the junctioning executor. Falls back to
+   *  `description` when unset. See broker/junctioning.ts. */
+  prompt?:       string;
 }
+
+/**
+ * Hook the broker fires when a JG-cluster task is assigned to a node — the seam
+ * where the junctioning executor (local Gemma inference) actually runs the work.
+ * Unset by default (the broker stays pure orchestration + testable without a
+ * model); wire it via {@link ComputeBroker.setJGClusterExecutor}.
+ */
+export type JGClusterExecutor = (task: JGClusterTask) => void | Promise<void>;
 
 /** Snapshot of broker system state for monitoring. */
 export interface BrokerStatus {
