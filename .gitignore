@@ -3,6 +3,7 @@
 # dependencies (root and workspaces)
 /node_modules
 packages/*/node_modules
+tools/*/node_modules
 /.pnp
 .pnp.*
 .yarn/*
@@ -24,6 +25,13 @@ packages/web/out/
 # jgc-node build output
 packages/jgc-node/dist/
 packages/jgc-node/rust/pkg/
+
+# jgc-node local testnet (data + run script — never commit)
+packages/jgc-node/testnet-data/
+packages/jgc-node/run-testnet.ps1
+
+# scripts staging (2BDeleted = pending review for removal)
+scripts/2BDeleted/
 
 # rust build artifacts (Cargo target dirs — multi-GB, never commit)
 target/
@@ -49,6 +57,8 @@ yarn-error.log*
 .gh_token
 .curlrc-gh
 .curlrc-jg
+packages/jgc-node/wallet.keystore.json
+*.keystore.json
 
 # vercel
 .vercel
