@@ -41,7 +41,7 @@ async function main(): Promise<void> {
   const done = new Promise<JunctioningResult>((res, rej) => { resolve = res; reject = rej; });
 
   broker.setJGClusterExecutor(async (task) => {
-    try { resolve(await runJunctioning(task, backend, { model, maxTokens: 64 })); }
+    try { resolve(await runJunctioning(task, backend, { model, maxTokens: 1024 })); }
     catch (err) { reject(err); }
   });
 
@@ -76,10 +76,16 @@ async function main(): Promise<void> {
   const result = await done;
 
   console.log("──────────────────────────────────────────────────────────────");
+  if (result.thinking && result.thinking.trim().length > 0) {
+    const trace = result.thinking.trim();
+    const preview = trace.length > 400 ? trace.slice(0, 400) + " …" : trace;
+    console.log(`[Smoke] Reasoning trace (${trace.length} chars):\n  ${preview}`);
+    console.log("──────────────────────────────────────────────────────────────");
+  }
   console.log(`[Smoke] Model answer:\n  ${result.text.trim()}`);
   console.log("──────────────────────────────────────────────────────────────");
   console.log(`[Smoke] prompt tokens:  ${result.promptTokens}`);
-  console.log(`[Smoke] output tokens:  ${result.outputTokens}`);
+  console.log(`[Smoke] output tokens:  ${result.outputTokens} (reasoning + answer)`);
   console.log(`[Smoke] elapsed:        ${result.elapsedMs} ms`);
   console.log(`[Smoke] est. compute:   ${result.tflopsSeconds.toExponential(3)} TFLOP-seconds (token-proxy)`);
   console.log("──────────────────────────────────────────────────────────────");
