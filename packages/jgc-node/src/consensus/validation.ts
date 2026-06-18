@@ -54,7 +54,7 @@ import { computeTransactionMerkleRoot } from "./block.js";
 import { computeContributionsMerkleRoot, computeEpochRoot, computeEpochSettlement, applyBlockToEpoch } from "./epoch.js";
 import { decodeDifficultyBits, BLOCKS_PER_EPOCH, HARD_CAP_SATOSHIS } from "./emission.js";
 import { batchVerifyComputeProofs, getVerifierMode } from "../crypto/zkp.js";
-import { verifyContributionSignature } from "../crypto/signatures.js";
+import { verifyContributionSignature, scriptPubKeyFromAddress } from "../crypto/signatures.js";
 import { UTXOSet, validateSpend } from "./utxo.js";
 import { verifyMerkleProof, getMerkleProof, buildMerkleTree, hashComputeProof } from "../crypto/merkle.js";
 
@@ -441,31 +441,37 @@ export function validateCoinbaseTx(
   _epochFees:  JGCSatoshis,
   epochIndex:  number,
 ): ValidationResult {
-  // Compute expected payouts.
   const settlement = computeEpochSettlement(epochState, epochIndex);
-  const expectedPool = settlement.totalRewardPool;
 
-  // Sum actual coinbase outputs.
-  const actualTotal = coinbaseTx.outputs.reduce(
-    (sum, o) => sum + o.value, 0n
-  );
-
-  // Allow a tiny rounding dust (max 1 satoshi per miner due to integer floor).
-  const maxAllowed = expectedPool + BigInt(settlement.payouts.length);
-  if (actualTotal > maxAllowed) {
-    return fail(
-      ValidationError.COINBASE_OVERFLOW,
-      `Coinbase output ${actualTotal} sats > expected pool ${expectedPool} + dust allowance`
-    );
-  }
-
-  // Verify each payout output matches the expected settlement entry.
-  // (Simple check: output count and addresses match. Production: verify amounts.)
   if (coinbaseTx.outputs.length !== settlement.payouts.length) {
     return fail(
       ValidationError.INVALID_EPOCH_SETTLEMENT,
       `Coinbase has ${coinbaseTx.outputs.length} outputs, expected ${settlement.payouts.length}`
     );
+  }
+
+  // Verify each output's exact script and amount against the settlement.
+  // computeEpochSettlement guarantees sum(payouts[i].satoshis) === pool exactly
+  // (the lowest-TFLOPS miner absorbs the floor residual), so per-output exact
+  // checks are sufficient — no separate total-pool guard needed.
+  for (let i = 0; i < settlement.payouts.length; i++) {
+    const payout = settlement.payouts[i]!;
+    const output = coinbaseTx.outputs[i]!;
+    const expectedScript = scriptPubKeyFromAddress(payout.minerAddress);
+
+    if (output.scriptPubKey !== expectedScript) {
+      return fail(
+        ValidationError.INVALID_EPOCH_SETTLEMENT,
+        `Coinbase output ${i}: scriptPubKey ${output.scriptPubKey} does not match miner ${payout.minerAddress}`
+      );
+    }
+
+    if (output.value !== payout.satoshis) {
+      return fail(
+        ValidationError.INVALID_EPOCH_SETTLEMENT,
+        `Coinbase output ${i}: value ${output.value} != expected ${payout.satoshis} for miner ${payout.minerAddress}`
+      );
+    }
   }
 
   return ok();
