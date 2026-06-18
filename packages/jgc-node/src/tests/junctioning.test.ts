@@ -113,6 +113,37 @@ describe("runJunctioning", () => {
     expect(DEFAULT_FLOPS_PER_TOKEN).toBeGreaterThan(0);
   });
 
+  it("uses the backend's measured flopsPerToken when opts doesn't override", async () => {
+    const backend: InferenceBackend = {
+      name: "measured",
+      async run(req: InferenceRequest): Promise<InferenceResult> {
+        return { text: "", promptTokens: 10, outputTokens: 10, backend: "measured", model: req.model };
+      },
+      async flopsPerToken(): Promise<number> { return 1e12; },
+    };
+    const res = await runJunctioning(jgTask(), backend);
+    // (10 + 10) tokens × 1e12 / 1e12 = 20
+    expect(res.tflopsSeconds).toBeCloseTo(20, 6);
+  });
+
+  it("lets opts.flopsPerToken override the backend's measured value", async () => {
+    const backend: InferenceBackend = {
+      name: "measured",
+      async run(req: InferenceRequest): Promise<InferenceResult> {
+        return { text: "", promptTokens: 10, outputTokens: 10, backend: "measured", model: req.model };
+      },
+      async flopsPerToken(): Promise<number> { return 1e12; },
+    };
+    const res = await runJunctioning(jgTask(), backend, { flopsPerToken: 2e12 });
+    // (10 + 10) × 2e12 / 1e12 = 40
+    expect(res.tflopsSeconds).toBeCloseTo(40, 6);
+  });
+
+  it("falls back to the default when the backend has no flopsPerToken", async () => {
+    const res = await runJunctioning(jgTask(), new FakeInferenceBackend());
+    expect(res.tflopsSeconds).toBeGreaterThan(0);
+  });
+
   it("defaults to deterministic sampling (temperature 0, fixed seed)", async () => {
     let captured: InferenceRequest | undefined;
     const capture: InferenceBackend = {

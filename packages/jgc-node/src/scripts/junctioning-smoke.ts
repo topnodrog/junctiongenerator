@@ -87,7 +87,7 @@ async function main(): Promise<void> {
   console.log(`[Smoke] prompt tokens:  ${result.promptTokens}`);
   console.log(`[Smoke] output tokens:  ${result.outputTokens} (reasoning + answer)`);
   console.log(`[Smoke] elapsed:        ${result.elapsedMs} ms`);
-  console.log(`[Smoke] est. compute:   ${result.tflopsSeconds.toExponential(3)} TFLOP-seconds (token-proxy)`);
+  console.log(`[Smoke] est. compute:   ${result.tflopsSeconds.toExponential(3)} TFLOP-seconds (≈2·params·tokens)`);
   console.log("──────────────────────────────────────────────────────────────");
   console.log("[Smoke] ✓ broker → junctioning → Ollama → Gemma path is live");
 }
