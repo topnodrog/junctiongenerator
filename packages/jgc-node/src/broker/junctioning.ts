@@ -200,6 +200,20 @@ export class OllamaInferenceBackend implements InferenceBackend {
 // Junctioning Executor
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * The fully-determining spec of a junctioning run — every input that fixes the
+ * output. A challenger replays exactly this to verify a node's claimed result
+ * (see broker/verification.ts). Determinism (temperature 0 + seed) is what makes
+ * the replay reproducible.
+ */
+export interface VerifiableTask {
+  prompt:      string;
+  model:       string;
+  maxTokens:   number;
+  temperature: number;
+  seed:        number;
+}
+
 /** Result of running one JG-cluster task through local inference. */
 export interface JunctioningResult {
   taskId:        string;
@@ -213,6 +227,8 @@ export interface JunctioningResult {
   tflopsSeconds: number;
   backend:       string;
   model:         string;
+  /** The exact spec that produced this result — replay it to verify. */
+  spec:          VerifiableTask;
 }
 
 /** Options for {@link runJunctioning}. */
@@ -284,6 +300,7 @@ export async function runJunctioning(
     tflopsSeconds,
     backend:       inf.backend,
     model:         inf.model,
+    spec:          { prompt, model, maxTokens, temperature, seed },
   };
 }
 
