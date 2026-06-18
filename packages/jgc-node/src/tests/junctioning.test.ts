@@ -11,6 +11,7 @@ import {
   FakeInferenceBackend,
   runJunctioning,
   DEFAULT_FLOPS_PER_TOKEN,
+  DEFAULT_SEED,
   type InferenceBackend,
   type InferenceRequest,
   type InferenceResult,
@@ -110,6 +111,34 @@ describe("runJunctioning", () => {
 
   it("exposes a sane default flopsPerToken", () => {
     expect(DEFAULT_FLOPS_PER_TOKEN).toBeGreaterThan(0);
+  });
+
+  it("defaults to deterministic sampling (temperature 0, fixed seed)", async () => {
+    let captured: InferenceRequest | undefined;
+    const capture: InferenceBackend = {
+      name: "capture",
+      async run(req: InferenceRequest): Promise<InferenceResult> {
+        captured = req;
+        return { text: "", promptTokens: 1, outputTokens: 1, backend: "capture", model: req.model };
+      },
+    };
+    await runJunctioning(jgTask(), capture);
+    expect(captured?.temperature).toBe(0);
+    expect(captured?.seed).toBe(DEFAULT_SEED);
+  });
+
+  it("lets callers override sampling controls", async () => {
+    let captured: InferenceRequest | undefined;
+    const capture: InferenceBackend = {
+      name: "capture",
+      async run(req: InferenceRequest): Promise<InferenceResult> {
+        captured = req;
+        return { text: "", promptTokens: 1, outputTokens: 1, backend: "capture", model: req.model };
+      },
+    };
+    await runJunctioning(jgTask(), capture, { temperature: 0.7, seed: 42 });
+    expect(captured?.temperature).toBe(0.7);
+    expect(captured?.seed).toBe(42);
   });
 });
 

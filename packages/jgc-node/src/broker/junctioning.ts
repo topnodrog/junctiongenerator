@@ -44,6 +44,10 @@ export interface InferenceRequest {
   prompt:    string;
   model:     string;   // e.g. "gemma2:2b" for Ollama
   maxTokens: number;
+  /** Sampling temperature. 0 = greedy/deterministic (the PoUC default). */
+  temperature?: number;
+  /** RNG seed. Pins sampling when temperature > 0; harmless at 0. */
+  seed?:        number;
 }
 
 /** Raw inference output plus the token accounting the backend reports. */
@@ -100,14 +104,19 @@ export class OllamaInferenceBackend implements InferenceBackend {
   }
 
   async run(req: InferenceRequest): Promise<InferenceResult> {
+    // Pass only defined sampling controls through to Ollama's options.
+    const options: Record<string, number> = { num_predict: req.maxTokens };
+    if (req.temperature !== undefined) options.temperature = req.temperature;
+    if (req.seed !== undefined)        options.seed        = req.seed;
+
     const res = await fetch(`${this.endpoint}/api/generate`, {
       method:  "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        model:   req.model,
-        prompt:  req.prompt,
-        stream:  false,
-        options: { num_predict: req.maxTokens },
+        model:  req.model,
+        prompt: req.prompt,
+        stream: false,
+        options,
       }),
     });
     if (!res.ok) {
@@ -149,10 +158,23 @@ export interface JunctioningOptions {
   maxTokens?:     number;
   /** FLOPs per token processed (≈ 2 × model param count). Default ~2.6B-param. */
   flopsPerToken?: number;
+  /** Sampling temperature. Default 0 (deterministic — required for replay). */
+  temperature?:   number;
+  /** RNG seed. Default DEFAULT_SEED. */
+  seed?:          number;
 }
 
 /** Default ≈ 2 × 2.6e9 params (gemma2:2b-class). Override per model. */
 export const DEFAULT_FLOPS_PER_TOKEN = 5.2e9;
+
+/**
+ * Fixed default seed. Combined with temperature 0 (greedy decoding) this makes a
+ * task's output reproducible ON THE SAME backend — the precondition for any
+ * replay-based verification (L5). Note: bit-exact reproducibility ACROSS
+ * different machines is a harder, separate problem (FP reduction order varies
+ * with thread count / build), to be addressed when the verification model lands.
+ */
+export const DEFAULT_SEED = 0;
 
 /**
  * Run one JG-cluster task through a local-inference backend and return the
@@ -167,10 +189,12 @@ export async function runJunctioning(
   const model         = opts.model ?? process.env.JUNCTIONING_MODEL ?? "gemma2:2b";
   const maxTokens     = opts.maxTokens ?? 512;
   const flopsPerToken = opts.flopsPerToken ?? DEFAULT_FLOPS_PER_TOKEN;
+  const temperature   = opts.temperature ?? 0;
+  const seed          = opts.seed ?? DEFAULT_SEED;
   const prompt        = task.prompt ?? task.description;
 
   const startedAt = Date.now();
-  const inf       = await backend.run({ prompt, model, maxTokens });
+  const inf       = await backend.run({ prompt, model, maxTokens, temperature, seed });
   const elapsedMs = Date.now() - startedAt;
 
   const totalTokens   = inf.promptTokens + inf.outputTokens;
