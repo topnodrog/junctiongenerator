@@ -53,8 +53,11 @@ export interface InferenceRequest {
 /** Raw inference output plus the token accounting the backend reports. */
 export interface InferenceResult {
   text:         string;
+  /** Reasoning trace for thinking models (Gemma 4 etc.); undefined otherwise.
+   *  These tokens ARE compute — they're included in outputTokens. */
+  thinking?:    string;
   promptTokens: number;
-  outputTokens: number;
+  outputTokens: number;   // all generated tokens (reasoning + answer)
   backend:      string;   // backend identifier, e.g. "ollama" | "fake"
   model:        string;
 }
@@ -83,17 +86,25 @@ export class FakeInferenceBackend implements InferenceBackend {
   }
 }
 
-/** Subset of Ollama's POST /api/generate response we rely on. */
-interface OllamaGenerateResponse {
-  response?:          string;
+/** Subset of Ollama's POST /api/chat response we rely on. */
+interface OllamaChatResponse {
+  message?: {
+    content?:  string;
+    thinking?: string;   // reasoning trace on thinking models (Gemma 4 etc.)
+  };
   prompt_eval_count?: number;   // tokens in the prompt
-  eval_count?:        number;   // tokens generated
+  eval_count?:        number;   // tokens generated (reasoning + answer)
+  done_reason?:       string;   // "stop" | "length" | ...
 }
 
 /**
  * Live backend talking to a local Ollama server (default 127.0.0.1:11434).
- * Override the endpoint with OLLAMA_ENDPOINT. Uses non-streaming /api/generate;
- * Ollama returns prompt_eval_count / eval_count for exact token accounting.
+ * Override the endpoint with OLLAMA_ENDPOINT.
+ *
+ * Uses non-streaming /api/chat (NOT /api/generate): Gemma models are
+ * instruction-tuned and need the chat template applied, and chat returns
+ * `message.thinking` separately from `message.content` for reasoning models.
+ * prompt_eval_count / eval_count give exact token accounting.
  */
 export class OllamaInferenceBackend implements InferenceBackend {
   readonly name = "ollama";
@@ -109,22 +120,35 @@ export class OllamaInferenceBackend implements InferenceBackend {
     if (req.temperature !== undefined) options.temperature = req.temperature;
     if (req.seed !== undefined)        options.seed        = req.seed;
 
-    const res = await fetch(`${this.endpoint}/api/generate`, {
+    const res = await fetch(`${this.endpoint}/api/chat`, {
       method:  "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        model:  req.model,
-        prompt: req.prompt,
-        stream: false,
+        model:    req.model,
+        messages: [{ role: "user", content: req.prompt }],
+        stream:   false,
         options,
       }),
     });
     if (!res.ok) {
       throw new Error(`Ollama ${res.status} ${res.statusText}: ${await res.text()}`);
     }
-    const data = (await res.json()) as OllamaGenerateResponse;
+    const data = (await res.json()) as OllamaChatResponse;
+    const content = data.message?.content ?? "";
+
+    // A thinking model can burn the whole token budget reasoning and never reach
+    // the answer (done_reason "length" + empty content). Surface that clearly
+    // rather than returning a silently-empty result.
+    if (content.length === 0 && data.done_reason === "length") {
+      throw new Error(
+        `Ollama hit the token cap (num_predict=${req.maxTokens}) while still reasoning — ` +
+        `no answer produced. Raise maxTokens for this reasoning model.`
+      );
+    }
+
     return {
-      text:         data.response ?? "",
+      text:         content,
+      thinking:     data.message?.thinking,
       promptTokens: data.prompt_eval_count ?? 0,
       outputTokens: data.eval_count ?? 0,
       backend:      this.name,
@@ -141,6 +165,8 @@ export class OllamaInferenceBackend implements InferenceBackend {
 export interface JunctioningResult {
   taskId:        string;
   text:          string;
+  /** Reasoning trace for thinking models; undefined otherwise. */
+  thinking?:     string;
   promptTokens:  number;
   outputTokens:  number;
   elapsedMs:     number;
@@ -154,7 +180,8 @@ export interface JunctioningResult {
 export interface JunctioningOptions {
   /** Backend model id. Default: JUNCTIONING_MODEL env, else "gemma2:2b". */
   model?:         string;
-  /** Output token cap. Default 512 (small — these are mining tasks, not chats). */
+  /** Output token cap. Default 1024 — enough headroom for a reasoning model to
+   *  think AND answer (a 512-class cap truncates thinking models mid-thought). */
   maxTokens?:     number;
   /** FLOPs per token processed (≈ 2 × model param count). Default ~2.6B-param. */
   flopsPerToken?: number;
@@ -187,7 +214,7 @@ export async function runJunctioning(
   opts:    JunctioningOptions = {},
 ): Promise<JunctioningResult> {
   const model         = opts.model ?? process.env.JUNCTIONING_MODEL ?? "gemma2:2b";
-  const maxTokens     = opts.maxTokens ?? 512;
+  const maxTokens     = opts.maxTokens ?? 1024;
   const flopsPerToken = opts.flopsPerToken ?? DEFAULT_FLOPS_PER_TOKEN;
   const temperature   = opts.temperature ?? 0;
   const seed          = opts.seed ?? DEFAULT_SEED;
@@ -203,6 +230,7 @@ export async function runJunctioning(
   return {
     taskId:        task.taskId,
     text:          inf.text,
+    thinking:      inf.thinking,
     promptTokens:  inf.promptTokens,
     outputTokens:  inf.outputTokens,
     elapsedMs,
