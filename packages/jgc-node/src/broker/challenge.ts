@@ -28,10 +28,10 @@
  * ─────────────────────────────────────────────────────────────────
  *   • The replay verdict still rests on cross-machine determinism (the hard,
  *     deferred part inherited from verification.ts).
- *   • COLLUSION is unhandled: if the challenger is itself a node, a liar could be
- *     "challenged" by a colluding verifier who rubber-stamps. Production needs
- *     multiple independent challengers; challengerRewardBps here is the incentive
- *     hook for that, not the full scheme.
+ *   • COLLUSION with a SINGLE challenger is unsafe: a liar could be "challenged"
+ *     by a colluding verifier who rubber-stamps. The multi-challenger QUORUM in
+ *     quorum.ts addresses this (supermajority of independently-sorted
+ *     challengers); challengerRewardBps is the incentive to actually verify.
  *   • `p` must be tuned to the EMPIRICAL fraud rate — the open question all these
  *     systems hit. Too low misses rare-but-large fraud; too high and verification
  *     cost dominates.
@@ -80,6 +80,19 @@ export function minProbabilityToDeter(
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
+ * Uniform draw in [0,1) from sha256 of the given parts (order-sensitive). The
+ * shared basis for every verifiable, prover-unpredictable random decision in the
+ * economic layer: same parts ⇒ same draw, so any verdict derived from it is
+ * auditable. Bind in an external beacon to make the draw unpredictable ahead of
+ * time. See also quorum.ts (challenger sortition).
+ */
+export function verifiableDraw(...parts: string[]): number {
+  const h = createHash("sha256");
+  for (const part of parts) h.update(part);
+  return Number(h.digest().readBigUInt64BE(0)) / 2 ** 64;
+}
+
+/**
  * Deterministic, prover-unpredictable challenge decision. Draws a uniform value
  * in [0,1) from sha256(commitment ‖ beacon) and challenges if it falls under
  * `probability`. Same inputs ⇒ same verdict, so the network can audit it.
@@ -91,9 +104,7 @@ export function shouldChallenge(
 ): boolean {
   if (probability >= 1) return true;
   if (probability <= 0) return false;
-  const digest = createHash("sha256").update(commitment).update(beacon).digest();
-  const draw   = Number(digest.readBigUInt64BE(0)) / 2 ** 64; // uniform [0,1)
-  return draw < probability;
+  return verifiableDraw(commitment, beacon) < probability;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
