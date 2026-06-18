@@ -27,7 +27,8 @@
     "wallet-demo": "node dist/scripts/wallet-demo.js",
     "wallet": "node dist/scripts/wallet-cli.js",
     "emission-table": "node dist/scripts/print-emission.js",
-    "junctioning-smoke": "node dist/scripts/junctioning-smoke.js"
+    "junctioning-smoke": "node dist/scripts/junctioning-smoke.js",
+    "junctioning-verify-smoke": "node dist/scripts/junctioning-verify-smoke.js"
   },
   "dependencies": {
     "@noble/secp256k1": "^3.1.0",
