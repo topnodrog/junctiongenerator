@@ -168,6 +168,53 @@ export default function Home() {
           </div>
         </section>
 
+        {/* Run a Node CTA Section */}
+        <section id="run-node" style={{ marginBottom: "80px", scrollMarginTop: "100px" }}>
+          <div className="glass-container" style={{ padding: "48px", textAlign: "center", background: "linear-gradient(135deg, rgba(0, 242, 254, 0.06) 0%, rgba(155, 81, 224, 0.06) 100%)", border: "1px solid rgba(0, 242, 254, 0.15)" }}>
+            <h2 style={{ fontSize: "32px", fontWeight: 800, marginBottom: "12px", color: "var(--text-primary)" }}>
+              Be One of the First
+            </h2>
+            <p style={{ color: "var(--text-secondary)", fontSize: "16px", maxWidth: "640px", margin: "0 auto 32px", lineHeight: 1.6 }}>
+              Junction Generator is recruiting early developers to run testnet nodes. Validate compute, earn $JGC tokens, and help prove the protocol before mainnet.
+            </p>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "20px", marginBottom: "32px" }}>
+              {[
+                {
+                  label: "Run a Validator",
+                  desc: "Challenge suspect blocks, earn rewards for honest validation",
+                },
+                {
+                  label: "Mine Compute",
+                  desc: "Run inference on GPU hardware, earn $JGC per verified FLOP",
+                },
+                {
+                  label: "Shape the Protocol",
+                  desc: "Contribute code and research, claim OSCRP governance rewards",
+                },
+              ].map((item, i) => (
+                <div key={i} style={{ textAlign: "center" }}>
+                  <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--color-cyan)", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "6px" }}>
+                    {item.label}
+                  </div>
+                  <p style={{ fontSize: "13px", color: "var(--text-secondary)", lineHeight: 1.5 }}>
+                    {item.desc}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display: "flex", gap: "12px", justifyContent: "center", flexWrap: "wrap" }}>
+              <a href="https://github.com/topnodrog/junctiongenerator" target="_blank" rel="noopener noreferrer" className="btn-glow-cyan" style={{ textDecoration: "none", fontSize: "14px" }}>
+                View Node Setup Guide
+              </a>
+              <a href="/#support" className="btn-glow-purple" style={{ textDecoration: "none", fontSize: "14px" }}>
+                Join the Community
+              </a>
+            </div>
+          </div>
+        </section>
+
         {/* Newsletter signup */}
         <section id="newsletter" style={{ marginBottom: "60px", scrollMarginTop: "100px" }}>
           <NewsletterSignup />
