@@ -15,9 +15,9 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://junctiongenerator.net"),
-  title: "Junction Generator | Mined-Compute Web3 Factory & Self-Improving Multi-Agent Ecosystem",
-  description: "Junction Generator is the world's first AI-operated Web3 incubator. Compile smart contracts, secure the grid via Proof-of-Useful-Compute ($JGC), and join the Open-Source Contributor Reward Protocol (OSCRP).",
-  keywords: ["Junction Generator", "JGT", "JGC", "Proof of Useful Compute", "Vibe Coding", "AI Web3 Factory", "Agentic Startup", "EVM Compiling"],
+  title: "Junction Generator | Proof-of-Useful-Compute Layer-1 Blockchain",
+  description: "Junction Generator is a Layer-1 blockchain where miners earn $JGC by running verifiable AI inference. Proof-of-Useful-Compute (PoUC) replaces hash puzzles with real AI workloads — testnet live.",
+  keywords: ["Junction Generator", "JGC", "Proof of Useful Compute", "PoUC", "useful compute", "verifiable inference", "Layer-1 blockchain", "AI mining", "OSCRP", "decentralized compute"],
   alternates: {
     canonical: "/",
   },
