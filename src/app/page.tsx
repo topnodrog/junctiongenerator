@@ -7,6 +7,7 @@ import AgentConsole from "@/components/AgentConsole";
 import OSCRPCalculator from "@/components/OSCRPCalculator";
 import BackTheProject from "@/components/BackTheProject";
 import NewsletterSignup from "@/components/NewsletterSignup";
+import NodeStatusPanel from "@/components/NodeStatusPanel";
 
 const MILESTONES = [
   { done: true,  label: "PoUC concept & cryptoeconomic design" },
@@ -71,7 +72,7 @@ export default function Home() {
             Proof-of-Useful-Compute (PoUC) • Deterministic-replay verification • Collusion-hardened quorum
           </p>
 
-          <div style={{ display: "flex", gap: "16px", justifyContent: "center" }}>
+          <div style={{ display: "flex", gap: "16px", justifyContent: "center", marginBottom: "48px" }}>
             <a href="/whitepaper" className="btn-glow-purple" style={{ textDecoration: "none", display: "inline-block" }}>
               Read the Whitepaper
             </a>
@@ -79,6 +80,9 @@ export default function Home() {
               View on GitHub
             </a>
           </div>
+
+          {/* Live local-node status — real data when the operator runs a node */}
+          <NodeStatusPanel />
         </section>
 
         {/* Technology / Milestones Section */}
