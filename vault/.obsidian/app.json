@@ -1,0 +1,12 @@
+{
+  "baseFontSize": 16,
+  "useTab": true,
+  "tabSize": 2,
+  "useMarkdownLinks": true,
+  "autoConvertHttpToHttps": true,
+  "readableLineLength": true,
+  "showLineNumber": true,
+  "strictLineBreaks": false,
+  "dailyNotesFormat": "YYYY-MM-DD",
+  "weeklyNotesFormat": "[W]ww YYYY"
+}

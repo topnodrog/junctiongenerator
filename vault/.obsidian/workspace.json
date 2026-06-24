@@ -1,0 +1,117 @@
+{
+  "main": {
+    "id": "22cc3ff69fb44ea0",
+    "type": "split",
+    "children": [
+      {
+        "id": "621318889278aeb5",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "0a7cc0f9a9e38ecc",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "HOME.md",
+                "mode": "source",
+                "source": false
+              }
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "6e87a0a56c900b88",
+    "type": "sidebar",
+    "children": [
+      {
+        "id": "file-explorer-sidebar",
+        "type": "view",
+        "state": {
+          "type": "file-explorer",
+          "state": {
+            "sortOrder": "alphabetical"
+          }
+        }
+      },
+      {
+        "id": "search",
+        "type": "view",
+        "state": {
+          "type": "search",
+          "state": {
+            "query": "",
+            "matchingCase": false,
+            "explainSearch": false,
+            "collapseAll": false,
+            "extraContext": false,
+            "sortOrder": "alphabetical"
+          }
+        }
+      },
+      {
+        "id": "starred",
+        "type": "view",
+        "state": {
+          "type": "starred",
+          "state": {}
+        }
+      }
+    ],
+    "currentTab": 0
+  },
+  "right": {
+    "id": "4d9b39e57918498f",
+    "type": "sidebar",
+    "children": [
+      {
+        "id": "backlink",
+        "type": "view",
+        "state": {
+          "type": "backlink",
+          "state": {
+            "collapseAll": false,
+            "extraContext": false,
+            "sortOrder": "alphabetical",
+            "showSearch": false,
+            "searchQuery": "",
+            "backlinkCollapsed": false,
+            "unlinkedCollapsed": true
+          }
+        }
+      },
+      {
+        "id": "outgoing-link",
+        "type": "view",
+        "state": {
+          "type": "outgoing-link",
+          "state": {
+            "linksCollapsed": false
+          }
+        }
+      },
+      {
+        "id": "tag-view",
+        "type": "view",
+        "state": {
+          "type": "tag",
+          "state": {
+            "sortOrder": "frequency",
+            "useHierarchy": true
+          }
+        }
+      }
+    ],
+    "currentTab": 0
+  },
+  "active": "0a7cc0f9a9e38ecc",
+  "lastOpenFiles": [
+    "HOME.md",
+    "01-Who-Why/user-profile.md",
+    "02-Project-Structure/project-layout.md"
+  ]
+}
