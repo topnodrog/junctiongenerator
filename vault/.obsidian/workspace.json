@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "HOME.md",
+                "file": "02-Project-Structure/session-folder-confusion.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "HOME"
+              "title": "session-folder-confusion"
             }
           }
         ]
@@ -94,7 +94,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "HOME.md",
+                "file": "02-Project-Structure/session-folder-confusion.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -104,7 +104,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Backlinks for HOME"
+              "title": "Backlinks for session-folder-confusion"
             }
           },
           {
@@ -140,8 +140,38 @@
   },
   "active": "0a7cc0f9a9e38ecc",
   "lastOpenFiles": [
-    "HOME.md",
-    "01-Who-Why/user-profile.md",
-    "02-Project-Structure/project-layout.md"
+    "09-Fundraising/JGC_Funding_Pitch.pptx",
+    "09-Fundraising/PITCH_NARRATIVES_BY_INVESTOR.md",
+    "09-Fundraising/OUTREACH_EMAIL_TEMPLATES.md",
+    "09-Fundraising/JG_Logo_Guidelines.md",
+    "09-Fundraising/JGC_UseCases.md",
+    "09-Fundraising/JGC_TeamBios.md",
+    "09-Fundraising/JGC_OnePager.md",
+    "09-Fundraising/JGC_FinancialProjections.md",
+    "09-Fundraising/FUNDRAISING_ACTION_PLAN.md",
+    "12-Tools/README.md",
+    "10-Getting-Started/README.md",
+    "09-Fundraising/README.md",
+    "09-Fundraising/README.md.tmp.24052.2d955ea2bd32",
+    "12-Tools/verify_pptx_zip.py",
+    "12-Tools/validate_pptx.py",
+    "12-Tools",
+    "11-Project-Documentation/README.md",
+    "11-Project-Documentation/CLAUDE.md",
+    "11-Project-Documentation/AGENTS.md",
+    "11-Project-Documentation",
+    "10-Getting-Started/BACKEND_SETUP.md",
+    "10-Getting-Started/WEEK1_QUICK_REFERENCE.md",
+    "10-Getting-Started/VISIBLE_SETUP_GUIDE.md",
+    "10-Getting-Started",
+    "09-Fundraising",
+    "02-Project-Structure/project-layout.md",
+    "02-Project-Structure/project-architecture.md",
+    "03-JGC-Coin/project-vision.md",
+    "03-JGC-Coin/project-jgc.md",
+    "03-JGC-Coin/jgc-rust-build-env.md",
+    "03-JGC-Coin/jgc-reward-divisibility.md",
+    "04-Junctioning/junctioning-milestone.md",
+    "HOME.md"
   ]
 }
