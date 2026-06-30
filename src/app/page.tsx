@@ -8,6 +8,8 @@ import OSCRPCalculator from "@/components/OSCRPCalculator";
 import BackTheProject from "@/components/BackTheProject";
 import NewsletterSignup from "@/components/NewsletterSignup";
 import NodeStatusPanel from "@/components/NodeStatusPanel";
+import WelcomePopup from "@/components/WelcomePopup";
+import HireMePopup from "@/components/HireMePopup";
 
 const MILESTONES = [
   { done: true,  label: "PoUC concept & cryptoeconomic design" },
@@ -26,6 +28,9 @@ const MILESTONES = [
 export default function Home() {
   return (
     <>
+      <WelcomePopup />
+      <HireMePopup />
+
       {/* Navigation Header */}
       <header className="nav-header">
         <a href="#" className="nav-logo">
