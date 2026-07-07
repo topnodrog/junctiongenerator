@@ -27,7 +27,7 @@ async function main() {
   }
 
   console.log("\n=== Compiling JGTMarket ===");
-  const source = fs.readFileSync(path.join(__dirname, "contracts/JGTMarket.sol"), "utf8");
+  const source = fs.readFileSync(path.join(__dirname, "..", "..", "contracts", "JGTMarket.sol"), "utf8");
   const input = {
     language: "Solidity",
     sources: { "JGTMarket.sol": { content: source } },

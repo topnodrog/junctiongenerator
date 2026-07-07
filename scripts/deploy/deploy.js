@@ -24,7 +24,7 @@ async function main() {
 
   // Compile JGTToken
   console.log("=== Compiling JGTToken ===");
-  const tokenSource = fs.readFileSync(path.join(__dirname, "contracts/JGTToken.sol"), "utf8");
+  const tokenSource = fs.readFileSync(path.join(__dirname, "..", "..", "contracts", "JGTToken.sol"), "utf8");
 
   const input = {
     language: "Solidity",
