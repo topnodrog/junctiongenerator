@@ -35,7 +35,6 @@
     "typescript": "^5"
   },
   "description": "**Turn Your Vibe Into Verifiable Web3 Code**",
-  "main": "next.config.js",
   "directories": {
     "doc": "docs"
   },
