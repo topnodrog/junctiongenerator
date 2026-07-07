@@ -8,6 +8,13 @@ metadata:
 
 # Tonight's checklist — daily signup digest
 
+> **⚠️ SUPERSEDED 2026-07-07 — read `api/DEPLOY.md` instead.** Two "blockers" below are now
+> FALSE: (1) `.cf_token` being dead does **not** block deploy — `wrangler deploy` uses its own
+> valid OAuth login (verified: logged in as james_gordon@…). (2) Email Routing is already
+> enabled and `james_gordon@junctiongenerator.net` was **verified 2026-06-26**. All three worker
+> secrets are already set. The deploy is fully unblocked; the current live worker is the old,
+> pre-hardening version. Use the runbook in `api/DEPLOY.md`.
+
 Goal: junctiongenerator.net is ready for a real signup, and you get a daily email whenever a new newsletter/airdrop entry shows up.
 
 ## 1. Enable Cloudflare Email Routing
