@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "02-Project-Structure/session-folder-confusion.md",
+                "file": "06-Website-Backend/tonight-setup-steps.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "session-folder-confusion"
+              "title": "tonight-setup-steps"
             }
           }
         ]
@@ -78,7 +78,8 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300
+    "width": 200,
+    "collapsed": true
   },
   "right": {
     "id": "02c680e3470f37e5",
@@ -140,14 +141,21 @@
   },
   "active": "0a7cc0f9a9e38ecc",
   "lastOpenFiles": [
+    "09-Fundraising/JGC_FinancialProjections.md",
+    "05-Verification/JG_Logo_Guidelines.md",
+    "09-Fundraising/JGC_UseCases.md",
+    "09-Fundraising/Untitled",
+    "09-Fundraising/JGC_TeamBios.md",
+    "09-Fundraising/JGC_OnePager.md",
+    "05-Verification/project-jg-vision.md",
+    "03-JGC-Coin/project-jgc.md",
+    "06-Website-Backend/tonight-setup-steps.md",
+    "06-Website-Backend/project-website.md",
+    "06-Website-Backend/project-website.md.tmp.1952.364bbfcd31cc",
+    "02-Project-Structure/session-folder-confusion.md",
     "09-Fundraising/JGC_Funding_Pitch.pptx",
     "09-Fundraising/PITCH_NARRATIVES_BY_INVESTOR.md",
     "09-Fundraising/OUTREACH_EMAIL_TEMPLATES.md",
-    "09-Fundraising/JG_Logo_Guidelines.md",
-    "09-Fundraising/JGC_UseCases.md",
-    "09-Fundraising/JGC_TeamBios.md",
-    "09-Fundraising/JGC_OnePager.md",
-    "09-Fundraising/JGC_FinancialProjections.md",
     "09-Fundraising/FUNDRAISING_ACTION_PLAN.md",
     "12-Tools/README.md",
     "10-Getting-Started/README.md",
@@ -167,11 +175,6 @@
     "09-Fundraising",
     "02-Project-Structure/project-layout.md",
     "02-Project-Structure/project-architecture.md",
-    "03-JGC-Coin/project-vision.md",
-    "03-JGC-Coin/project-jgc.md",
-    "03-JGC-Coin/jgc-rust-build-env.md",
-    "03-JGC-Coin/jgc-reward-divisibility.md",
-    "04-Junctioning/junctioning-milestone.md",
-    "HOME.md"
+    "03-JGC-Coin/project-vision.md"
   ]
 }
