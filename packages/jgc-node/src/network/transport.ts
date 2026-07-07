@@ -29,6 +29,15 @@ import type { JGCNode, PeerConnection } from "./node.js";
 import { encodePeerMessage, decodePeerMessage } from "./wire.js";
 
 /**
+ * Upper bound on a single P2P frame. `ws` defaults to 100 MiB, which lets one
+ * hostile peer hold ~100 MiB of buffer per connection before decode even runs.
+ * 8 MiB comfortably fits any current JGC block (JSON-framed inference payloads
+ * included) while bounding worst-case memory per peer. Frames over the limit
+ * kill the connection (1009: message too big), which is the desired posture.
+ */
+const MAX_FRAME_BYTES = 8 * 1024 * 1024;
+
+/**
  * Bind an open WebSocket to a node as a peer.
  * Registers the peer (which triggers the VERSION handshake) and wires
  * frame decode → serialized processMessage dispatch.
@@ -108,7 +117,7 @@ export function startP2PServer(
   host: string = "127.0.0.1",
 ): Promise<P2PServer> {
   return new Promise((resolve, reject) => {
-    const wss = new WebSocketServer({ port, host });
+    const wss = new WebSocketServer({ port, host, maxPayload: MAX_FRAME_BYTES });
 
     wss.on("connection", (ws, req) => {
       const address = `${req.socket.remoteAddress}:${req.socket.remotePort}`;
@@ -134,7 +143,7 @@ export function startP2PServer(
  */
 export function dialPeer(node: JGCNode, url: string): Promise<PeerConnection> {
   return new Promise((resolve, reject) => {
-    const ws = new WebSocket(url);
+    const ws = new WebSocket(url, { maxPayload: MAX_FRAME_BYTES });
     ws.on("open",  () => resolve(attachSocket(node, ws, url, false)));
     ws.on("error", reject);
   });
@@ -168,7 +177,7 @@ export function connectToPeers(
 
   const dial = (url: string): void => {
     if (stopped) return;
-    const ws = new WebSocket(url);
+    const ws = new WebSocket(url, { maxPayload: MAX_FRAME_BYTES });
     sockets.add(ws);
     ws.on("open",  () => { if (stopped) ws.terminate(); else attachSocket(node, ws, url, false); });
     ws.on("error", () => { /* a "close" follows; reconnect is handled there */ });
@@ -219,7 +228,7 @@ export function maintainPeers(
   const dial = (url: string, isSeed: boolean): void => {
     if (stopped || dialing.has(url)) return;
     dialing.add(url);
-    const ws = new WebSocket(url);
+    const ws = new WebSocket(url, { maxPayload: MAX_FRAME_BYTES });
     sockets.add(ws);
     ws.on("open",  () => { if (stopped) ws.terminate(); else attachSocket(node, ws, url, false); });
     ws.on("error", () => { /* "close" follows */ });
