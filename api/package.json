@@ -1,0 +1,7 @@
+{
+  "name": "jgt-mining-api",
+  "private": true,
+  "dependencies": {
+    "mimetext": "^3.0.24"
+  }
+}

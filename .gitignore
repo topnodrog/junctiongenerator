@@ -4,6 +4,7 @@
 /node_modules
 packages/*/node_modules
 tools/*/node_modules
+api/node_modules
 /.pnp
 .pnp.*
 .yarn/*
