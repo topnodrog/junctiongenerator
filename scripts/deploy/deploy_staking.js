@@ -24,7 +24,7 @@ async function main() {
 
   // Compile staking contract
   console.log("=== Compiling JGTStaking ===");
-  const source = fs.readFileSync(path.join(__dirname, "contracts/JGTStaking.sol"), "utf8");
+  const source = fs.readFileSync(path.join(__dirname, "..", "..", "contracts", "JGTStaking.sol"), "utf8");
 
   const input = {
     language: "Solidity",
