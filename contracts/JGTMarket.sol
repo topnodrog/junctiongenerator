@@ -4,6 +4,17 @@ pragma solidity ^0.8.20;
 /// @title JGTMarket
 /// @notice Simple JGT token marketplace
 /// @dev Users buy JGT with ETH. ETH goes to treasury, JGT comes from owner's balance.
+///
+/// ⚠️ DO NOT DEPLOY. Kept for reference only.
+/// 1. Project stance: JGC is grant/donation funded; JGT must not be sold
+///    (securities risk — see vault/06-Website-Backend/project-website.md).
+/// 2. Funds-loss bug: receive() silently KEEPS the sender's ETH when the
+///    market has insufficient JGT stock (no revert, buyer gets nothing),
+///    and likewise for sends below MIN_PURCHASE.
+/// 3. setPrice() is a no-op that emits a misleading PriceUpdated event —
+///    JGT_PER_ETH is a constant.
+/// 4. buy()/receive() violate checks-effects-interactions (state updated
+///    after external calls).
 contract JGTMarket {
     address public immutable jgtToken;
     address public owner;

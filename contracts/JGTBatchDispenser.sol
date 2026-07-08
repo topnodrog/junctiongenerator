@@ -24,6 +24,7 @@ contract JGTBatchDispenser {
     
     event BatchProcessed(uint256 indexed batchId, uint256 recipientCount, uint256 totalAmount, bytes32 batchHash);
     event BatchFailed(uint256 indexed batchId, uint256 failedAtIndex, string reason);
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
     
     error BatchTooLarge();
     error BatchAlreadyProcessed();
@@ -76,6 +77,16 @@ contract JGTBatchDispenser {
     
     function isBatchProcessed(bytes32 batchHash) external view returns (bool) {
         return processedBatches[batchHash];
+    }
+
+    /// @notice Transfer dispenser control. Without this, rotating the owner
+    ///         key (e.g. after a compromise) would permanently brick the
+    ///         dispenser, since `owner` has no other setter.
+    function transferOwnership(address newOwner) external onlyOwner {
+        if (newOwner == address(0)) revert InvalidInput();
+        address oldOwner = owner;
+        owner = newOwner;
+        emit OwnershipTransferred(oldOwner, newOwner);
     }
 }
 

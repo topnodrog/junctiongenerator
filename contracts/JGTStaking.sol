@@ -4,6 +4,16 @@ pragma solidity ^0.8.20;
 /// @title JGTStaking
 /// @notice Staking contract for JGT token
 /// @dev Users stake JGT to earn a share of platform revenue
+///
+/// ⚠️ DO NOT DEPLOY without fixing the issues below. Kept for reference.
+/// 1. Fund-lock bug: unstake() couples principal withdrawal to reward
+///    minting — if this contract is not an authorized minter on JGTToken
+///    (it is not, and per project stance should not be), mint() reverts
+///    and stakers can NEVER withdraw their principal.
+/// 2. claimReward() resets stakedAt, which silently re-extends the 7-day
+///    unstake lock every time a user claims.
+/// 3. rewardPool/fundRewardPool and authorizedRewardSources are dead code:
+///    rewards are minted, never paid from the funded pool.
 contract JGTStaking {
     address public immutable jgtToken;
     address public owner;

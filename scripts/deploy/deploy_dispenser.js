@@ -24,7 +24,7 @@ async function main() {
 
   // Compile dispenser
   console.log("=== Compiling JGTBatchDispenser ===");
-  const source = fs.readFileSync(path.join(__dirname, "contracts/JGTBatchDispenser.sol"), "utf8");
+  const source = fs.readFileSync(path.join(__dirname, "..", "..", "contracts", "JGTBatchDispenser.sol"), "utf8");
 
   const input = {
     language: "Solidity",

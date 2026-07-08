@@ -1,16 +1,41 @@
 account_id = "14e1784eca55fb28383172384ac8990c"
 name = "jgt-mining-api"
 main = "worker.js"
-compatibility_date = "2024-01-01"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
 
 [vars]
 # Turso database URL
 TURSO_URL = "https://jgt-mining-topnodrog.aws-us-east-2.turso.io"
+# Recipient for the daily new-signups digest email
+DIGEST_RECIPIENT = "james_gordon@junctiongenerator.net"
+# Server-authoritative JGT reward credited per ad view (clients cannot set it)
+AD_REWARD_JGT = "1"
 # Secrets (set via wrangler secret put):
 # TURSO_AUTH_TOKEN - Turso auth token
-# API_SECRET - API authentication secret
-# CRON_SECRET - Cron trigger authentication secret
+# API_SECRET - Bearer token gating the owner endpoints (ad-view,
+#              referral/claim, campaigns POST, pending-rewards)
+# CRON_SECRET - Bearer token gating automation endpoints (dispense, digest/run)
+
+# Structured logs in the Cloudflare dashboard (Workers Logs)
+[observability]
+enabled = true
+
+# Per-IP rate limiting for the public write endpoints (subscribe, hire-lead,
+# airdrop register). The worker allows requests if this binding is absent,
+# so removing this block degrades gracefully rather than breaking deploys.
+[[ratelimits]]
+name = "RATE_LIMITER"
+namespace_id = "1001"
+simple = { limit = 20, period = 60 }
 
 # Cron trigger — runs daily at midnight UTC
 [triggers]
 crons = ["0 0 * * *"]
+
+# Lets the worker send the digest email. Requires Email Routing enabled on
+# junctiongenerator.net and james_gordon@junctiongenerator.net verified as a
+# destination address (Cloudflare dashboard > Email > Email Routing).
+[[send_email]]
+name = "EMAIL_SENDER"
+destination_address = "james_gordon@junctiongenerator.net"
