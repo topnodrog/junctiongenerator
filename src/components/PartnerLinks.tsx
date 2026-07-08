@@ -1,17 +1,19 @@
 "use client";
 import React from "react";
 
-// Affiliate/referral IDs. Each program requires signing up first — replace the
-// PLACEHOLDER values with the real codes from each partner dashboard:
-//   Coinbase:  https://www.coinbase.com/affiliates  (or Refer & Earn code)
+// Full referral URLs. Paste the complete link from each partner dashboard —
+// whatever the dashboard gives you goes here verbatim, no assembly required.
+//   Coinbase:  https://www.coinbase.com/affiliates  (or Refer & Earn link)
 //   Kraken:    https://www.kraken.com/features/affiliate-program
 //   Ledger:    https://www.ledger.com/affiliates
 //   Koinly:    https://koinly.io/affiliates/
-const AFFILIATE_IDS = {
-  coinbase: "PLACEHOLDER_COINBASE_CODE",
-  kraken: "PLACEHOLDER_KRAKEN_CODE",
-  ledger: "PLACEHOLDER_LEDGER_ID",
-  koinly: "PLACEHOLDER_KOINLY_ID",
+// NOTE: coinbase/kraken are plain signup pages until you sign up — they work
+// but earn no commission. Replace them with your referral links when ready.
+const AFFILIATE_URLS = {
+  coinbase: "https://www.coinbase.com/signup", // TODO: replace with your Coinbase referral link
+  kraken: "https://www.kraken.com/sign-up",    // TODO: replace with your Kraken referral link
+  ledger: "https://shop.ledger.com/?r=3b782b7b6543",
+  koinly: "https://koinly.io/?via=9AA968EC&utm_source=affiliate",
 };
 
 const PARTNERS = [
@@ -21,7 +23,7 @@ const PARTNERS = [
     tagline: "Buy your first crypto",
     body: "The most beginner-friendly regulated US exchange. Publicly traded, insured custody, and the easiest on-ramp from a bank account.",
     cta: "Sign up on Coinbase",
-    url: `https://www.coinbase.com/join/${AFFILIATE_IDS.coinbase}`,
+    url: AFFILIATE_URLS.coinbase,
   },
   {
     name: "Kraken",
@@ -29,7 +31,7 @@ const PARTNERS = [
     tagline: "Trade with pro tools",
     body: "A security-first exchange running since 2011 with proof-of-reserves audits, low fees, and serious trading infrastructure.",
     cta: "Sign up on Kraken",
-    url: `https://invite.kraken.com/${AFFILIATE_IDS.kraken}`,
+    url: AFFILIATE_URLS.kraken,
   },
   {
     name: "Ledger",
@@ -37,7 +39,7 @@ const PARTNERS = [
     tagline: "Self-custody your keys",
     body: "Hardware wallets that keep your private keys offline. If you hold coins you don't actively trade, they belong in cold storage.",
     cta: "Get a Ledger wallet",
-    url: `https://shop.ledger.com/?r=${AFFILIATE_IDS.ledger}`,
+    url: AFFILIATE_URLS.ledger,
   },
   {
     name: "Koinly",
@@ -45,7 +47,7 @@ const PARTNERS = [
     tagline: "Sort your crypto taxes",
     body: "Imports trades from every major exchange and wallet and generates ready-to-file tax reports in minutes.",
     cta: "Try Koinly",
-    url: `https://koinly.io/?via=${AFFILIATE_IDS.koinly}`,
+    url: AFFILIATE_URLS.koinly,
   },
 ];
 
