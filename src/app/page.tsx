@@ -10,6 +10,7 @@ import NewsletterSignup from "@/components/NewsletterSignup";
 import NodeStatusPanel from "@/components/NodeStatusPanel";
 import WelcomePopup from "@/components/WelcomePopup";
 import HireMePopup from "@/components/HireMePopup";
+import PartnerLinks from "@/components/PartnerLinks";
 
 const MILESTONES = [
   { done: true,  label: "PoUC concept & cryptoeconomic design" },
@@ -45,6 +46,7 @@ export default function Home() {
             <li className="nav-link-item"><a href="/whitepaper">Whitepaper</a></li>
             <li className="nav-link-item"><a href="/blog">Blog</a></li>
             <li className="nav-link-item"><a href="#newsletter">Newsletter</a></li>
+            <li className="nav-link-item"><a href="#partners">Get Crypto</a></li>
             <li className="nav-link-item"><a href="#support">Support</a></li>
           </ul>
         </nav>
@@ -249,6 +251,11 @@ export default function Home() {
           {/* Section 4: C-Suite Agent Console */}
           <div id="agents" style={{ gridColumn: "span 2", scrollMarginTop: "100px" }}>
             <AgentConsole />
+          </div>
+
+          {/* Partner / affiliate links */}
+          <div id="partners" style={{ gridColumn: "span 2", scrollMarginTop: "100px" }}>
+            <PartnerLinks />
           </div>
 
           {/* Support / donations */}
