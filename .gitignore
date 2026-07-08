@@ -5,6 +5,12 @@
 packages/*/node_modules
 tools/*/node_modules
 api/node_modules
+
+# python (kb-crawler tool)
+tools/*/.venv/
+__pycache__/
+*.pyc
+
 /.pnp
 .pnp.*
 .yarn/*
