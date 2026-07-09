@@ -21,6 +21,12 @@ sources:
   - url: https://en.wikipedia.org/wiki/Cryptocurrency
     category: fundamentals
 
+  # --- Protocols / platforms ---
+  - url: https://en.wikipedia.org/wiki/Uniswap
+    category: protocols
+  - url: https://en.wikipedia.org/wiki/Solana_(blockchain_platform)
+    category: protocols
+
   # --- Add your own below (examples, commented until you vet ToS) ---
   # - url: https://www.ledger.com/academy/...      # ties to Ledger affiliate
   #   category: security
