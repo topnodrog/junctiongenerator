@@ -1,0 +1,34 @@
+# Seed sources for the crypto knowledge base.
+# Each entry becomes one note under vault/13-Crypto-Knowledge-Base/<category>/.
+#
+# Guidance:
+#   - Prefer informational/educational pages. Respect each site's ToS + robots.txt.
+#   - Wikipedia (CC BY-SA) is used for the initial proof-of-concept — stable and
+#     clearly licensed for reuse with attribution (the source link is preserved).
+#   - Add mission-aligned sources over time: scam-awareness guides, security
+#     best-practices, protocol docs. Keep categories consistent.
+
+sources:
+  # --- Scam awareness / crime (anti-scam mission core) ---
+  - url: https://en.wikipedia.org/wiki/Cryptocurrency_and_crime
+    category: scams
+  - url: https://en.wikipedia.org/wiki/Pig_butchering_scam
+    category: scams
+
+  # --- Foundational concepts ---
+  - url: https://en.wikipedia.org/wiki/Cryptocurrency_wallet
+    category: security
+  - url: https://en.wikipedia.org/wiki/Cryptocurrency
+    category: fundamentals
+
+  # --- Protocols / platforms ---
+  - url: https://en.wikipedia.org/wiki/Uniswap
+    category: protocols
+  - url: https://en.wikipedia.org/wiki/Solana_(blockchain_platform)
+    category: protocols
+
+  # --- Add your own below (examples, commented until you vet ToS) ---
+  # - url: https://www.ledger.com/academy/...      # ties to Ledger affiliate
+  #   category: security
+  # - url: https://www.kraken.com/learn/...
+  #   category: fundamentals

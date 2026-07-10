@@ -5,6 +5,13 @@
 packages/*/node_modules
 tools/*/node_modules
 api/node_modules
+
+# python (kb-crawler / kb-index tools)
+tools/*/.venv/
+tools/*/qdrant_data/
+__pycache__/
+*.pyc
+
 /.pnp
 .pnp.*
 .yarn/*
