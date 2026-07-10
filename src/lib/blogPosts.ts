@@ -12,6 +12,88 @@ export interface BlogPost {
 
 export const BLOG_POSTS: BlogPost[] = [
   {
+    slug: "how-crypto-gets-stolen",
+    title: "How Crypto Actually Gets Stolen (and How to Not Be Next)",
+    dateISO: "2026-07-10",
+    date: "July 10, 2026",
+    readTime: "9 min read",
+    excerpt: "Most stolen crypto isn't 'hacked' — the owner authorizes it. A protocol engineer breaks down how wallet drainers, romance scams, and approval phishing really work, how to defend structurally, and what I learned clawing a compromised wallet back on-chain.",
+    content: `## I build anti-scam infrastructure. I've also had a wallet drained.
+
+I'm a protocol engineer — I design cryptoeconomic systems that are hard to cheat, and I spend my days building Junction Generator, a blockchain whose entire premise is verifiable, honest computation. So it is humbling to admit that I have stood exactly where some of you may be standing right now: watching a wallet I could no longer control get emptied by a bot, in real time.
+
+I got it back. I will tell you how at the end — but the recovery is the least useful part of this article. The useful part is everything that has to happen before you ever need one.
+
+Here is the uncomfortable thesis of this whole piece: **most stolen crypto is not "hacked." It is authorized by the owner.** Nobody broke the cryptography. Somebody clicked approve.
+
+## How the money actually disappears
+
+Forget the hooded-genius-cracking-encryption image. Real crypto theft is overwhelmingly social engineering plus self-signed transactions. A handful of patterns account for the overwhelming majority of losses.
+
+**Romance and "pig butchering" investment scams**
+
+This is the single largest category by dollars lost. A stranger builds a warm relationship over days or weeks — on a dating app, in a "wrong number" text, in a friendly DM. Eventually they introduce a can't-miss trading platform. It shows your balance growing, and early small "withdrawals" even work, to build trust. Then you deposit real money and the withdrawals stop — there is always one more tax, fee, or verification deposit. The US Federal Trade Commission has attributed hundreds of millions of dollars a year to romance-linked crypto fraud. The tell is simple: the opportunity was introduced by a person, not chosen by you.
+
+**Wallet drainers and malicious approvals**
+
+Every ERC-20 token lets you grant a contract an allowance to move your tokens. A drainer site — often a fake airdrop, mint, or "claim" page — asks you to approve, and you sign, frequently granting an unlimited allowance. Then the contract simply calls transferFrom and takes everything. Your wallet was never breached. You signed a transaction that said, in effect: you may take my tokens.
+
+**Seed-phrase phishing and fake support**
+
+Fake wallet apps, lookalike websites, "validate your wallet" popups, and support agents who slide into your DMs the moment you post a problem publicly. They all converge on one goal: get your 12 or 24 recovery words. Burn this into memory — no legitimate wallet or exchange will ever ask for your seed phrase. Ever. Anyone who does is stealing from you.
+
+**Address poisoning and clipboard malware**
+
+The attacker sends tiny transactions from an address that looks almost identical to one you use, seeding it into your history. Later you copy "your" address from that history and paste the attacker's. Clipboard malware does the same thing at the OS level, silently swapping the address the instant you copy it.
+
+**Fake exchanges and withdrawal-fee traps**
+
+A slick platform shows a healthy balance you can never actually withdraw — first you owe a fee, then a tax, then a "liquidity deposit." The balance was always fiction.
+
+## The one thing they all share
+
+Look at that list again. In almost every case, the victim performed the losing action themselves — signed the approval, entered the seed, pasted the address, sent the deposit. That is not a coincidence. Modern crypto theft is designed around the fact that a valid signature from you is indistinguishable from a legitimate one.
+
+Which means you cannot simply be-careful your way to safety. Everyone is careful right up until the one tired evening, the one convincing page, the one message that lands in exactly the right emotional moment. Defense has to be **structural** — arranged so that a single bad click cannot cost you everything.
+
+## The defensive playbook
+
+| Attack | Your structural defense |
+| --- | --- |
+| Wallet drainer / bad approval | Hardware wallet; approve nothing with your main funds |
+| Seed-phrase phishing | Seed lives offline, never typed into any site |
+| Romance / pig butchering | No platform introduced by a stranger, ever |
+| Address poisoning | Verify the full address; paste from a saved allowlist |
+| Fake exchange | On and off-ramp only through regulated exchanges |
+
+Concretely, in priority order:
+
+1. Put anything you are not actively trading in cold storage. A hardware wallet keeps your private keys on a device that never touches the internet, so a malicious website literally cannot extract them. This one habit neutralizes the entire drainer category. If you hold crypto you would be upset to lose, this is not optional.
+2. Use a regulated exchange to buy and cash out. Established, audited venues are not glamorous, but they are accountable, insured, and far harder to impersonate than the high-yield platform a stranger sent you.
+3. Separate hot and cold. Keep a small daily-driver wallet for minting, testing, and new dapps, and keep the bulk of your holdings in a separate wallet that never signs anything experimental.
+4. Revoke approvals regularly. Periodically review your token allowances and set them back to zero. An allowance you granted a year ago to a site that has since been compromised is a door you left standing open.
+5. Verify every address and contract, and never approve "unlimited" unless you truly mean it. Check the first and last characters at minimum; better, paste from a saved allowlist rather than from history.
+6. Treat your seed phrase as though it is the money itself — because it is. Offline, never photographed, never typed into a website, never shared with "support."
+
+## If it already happened
+
+First, triage: move any still-safe assets from any related wallet to a brand-new one whose seed has never touched a compromised machine. Assume anything reachable by the leaked key is already gone. Revoke approvals if you still can. And do not send more funds chasing a recovery — that instinct is exactly what withdrawal-fee scammers farm.
+
+Now, my story. When a wallet's key leaks today, attackers frequently do more than drain it once. In my case the attacker had installed an EIP-7702 delegation on the account — an on-chain rule that hands the account's behavior to a "sweeper" contract. Any ETH that arrived to pay for gas was instantly swept back out. So the intuitive rescue — send a little gas, then move the tokens to safety — was impossible. The bot ate the gas before I could spend it.
+
+But the account could still sign for itself. So the rescue was this: a clean, unrelated wallet paid the gas, and a single atomic transaction re-delegated the compromised account to a small rescue contract I wrote — which, in that same transaction, moved the tokens and the ownership of a contract I had deployed to a safe wallet. The compromised account never had to hold a single wei; it only signed the authorization. It was a genuine race, because the attacker held the same key and could broadcast too, so it took a precise gas limit and a couple of attempts. It worked. Everything came home.
+
+I am not telling that story to make on-chain rescue sound routine. I am telling it to show you the asymmetry. The rescue took custom contract code, specialized knowledge of a year-old Ethereum feature, and luck in a race against an adversary. The hardware wallet that would have prevented the entire incident costs about the price of a nice dinner.
+
+## Why this is personal
+
+I am building Junction Generator because I believe crypto's future depends on systems you do not have to trust blindly — systems that prove they did the right thing instead of asking you to hope they did. The scams above are the same problem wearing a different mask: they all exploit the gap between what looks trustworthy and what is actually verifiable.
+
+You cannot close that gap with willpower. You close it with structure — cold storage, separation, revocation, and a healthy refusal to trust any opportunity that found you first. Do those few things and you have already defended against the attacks that take down the most people.
+
+If this saved you a single bad click, it did its job. The specific tools I actually recommend — a hardware wallet, and regulated exchanges — are in the partners section below, and if you want more field notes like this one, the newsletter is right there too. Stay skeptical. Verify everything.`,
+  },
+  {
     slug: "proof-of-useful-compute",
     title: "Proof-of-Useful-Compute: Why Hash Puzzles Are the Wrong Abstraction",
     dateISO: "2026-06-19",
