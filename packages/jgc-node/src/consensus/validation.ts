@@ -21,7 +21,7 @@
  *      - prevHash chain linkage
  *
  * 2. Proof-of-Useful-Compute verification (most expensive step):
- *      - Groth16 pairing check for each ComputeProof (via zkp.ts)
+ *      - Post-quantum hash-based proof check for each ComputeProof (via pq.ts)
  *      - Merkle root reconstruction from verified proofs
  *      - Total TFLOPS ≥ difficulty target
  *
@@ -41,7 +41,7 @@
  *
  * SECURITY NOTE:
  *   Steps 1 and 3 are cheap and run first to reject obviously invalid blocks
- *   before paying the Groth16 verification cost (Step 2 ~5ms per proof).
+ *   before paying the post-quantum proof verification cost (Step 2).
  *   This matches Bitcoin's design where CheckBlock's header check rejects
  *   malformed blocks before the expensive script validation in CheckTxInputs.
  */
@@ -53,8 +53,12 @@ import type {
 import { computeTransactionMerkleRoot } from "./block.js";
 import { computeContributionsMerkleRoot, computeEpochRoot, computeEpochSettlement, applyBlockToEpoch } from "./epoch.js";
 import { decodeDifficultyBits, BLOCKS_PER_EPOCH, HARD_CAP_SATOSHIS } from "./emission.js";
-import { batchVerifyComputeProofs, getVerifierMode } from "../crypto/zkp.js";
-import { verifyContributionSignature, scriptPubKeyFromAddress } from "../crypto/signatures.js";
+import {
+  getQuantumVerifierMode,
+  quantumVerifyContributionSignature,
+  quantumVerifyProofForConsensus,
+  quantumScriptPubKeyFromAddress,
+} from "../crypto/pq.js";
 import { UTXOSet, validateSpend } from "./utxo.js";
 import { verifyMerkleProof, getMerkleProof, buildMerkleTree, hashComputeProof } from "../crypto/merkle.js";
 
@@ -100,7 +104,7 @@ export interface ValidationResult {
   valid: boolean;
   errors: ValidationError[];
   warnings: string[];
-  /** Milliseconds spent on Groth16 verification (profiling). */
+  /** Milliseconds spent on post-quantum proof verification (profiling). */
   zkVerifyMs?: number;
 }
 
@@ -242,7 +246,7 @@ export function validateBlockHeader(
 export async function validateComputeProofs(
   contributions:  MinerComputeContribution[],
   header:         BlockHeader,
-  epochBlockIndex: number,
+  _epochBlockIndex: number,  // unused: PQ verification is height-gated, not epoch-indexed
   currentHeight:   BlockHeight,
 ): Promise<ValidationResult> {
   const difficultyTarget = decodeDifficultyBits(header.difficultyBits);
@@ -280,32 +284,27 @@ export async function validateComputeProofs(
   // Each contribution must be signed by the key controlling its payout address,
   // over a sighash binding the proven work and this height. Cheap — runs before
   // the expensive pairing checks. Skipped in "simnet" mode (placeholder sigs).
-  if (getVerifierMode() === "strict") {
+  if (getQuantumVerifierMode() === "strict") {
     for (let i = 0; i < contributions.length; i++) {
-      const sig = verifyContributionSignature(contributions[i]!, currentHeight);
-      if (!sig.ok) {
+      const sigOk = quantumVerifyContributionSignature(contributions[i]!, currentHeight);
+      if (!sigOk) {
         return {
           valid: false,
           errors: [ValidationError.INVALID_SIGNATURE],
-          warnings: [`Contribution ${i} (miner ${contributions[i]!.minerAddress}): ${sig.error}`],
+          warnings: [`Contribution ${i} (miner ${contributions[i]!.minerAddress}): ML-DSA signature invalid`],
         };
       }
     }
   }
 
-  // ── Batch Groth16 verification ───────────────────────────────────────────
+  // ── Post-quantum proof verification (replaces Groth16 pairing checks) ────
   const zkStart = Date.now();
 
-  // Per-proof minimum: each individual proof must meet the minimum circuit threshold,
-  // but not necessarily the full block difficulty target (which is the SUM threshold).
-  // Use 10% of block target as per-proof floor (prevents submitting thousands of tiny proofs).
+  // Per-proof minimum: 10% of block target (prevents thousands of tiny proofs).
   const perProofMin = difficultyTarget * 0.1;
 
-  const verificationResults = batchVerifyComputeProofs(
-    contributions.map(c => ({ proof: c.proof })),
-    epochBlockIndex,
-    perProofMin,
-    currentHeight,
+  const verificationResults = contributions.map(c =>
+    quantumVerifyProofForConsensus(c.proof, currentHeight, perProofMin)
   );
 
   const zkMs = Date.now() - zkStart;
@@ -457,7 +456,7 @@ export function validateCoinbaseTx(
   for (let i = 0; i < settlement.payouts.length; i++) {
     const payout = settlement.payouts[i]!;
     const output = coinbaseTx.outputs[i]!;
-    const expectedScript = scriptPubKeyFromAddress(payout.minerAddress);
+    const expectedScript = quantumScriptPubKeyFromAddress(payout.minerAddress);
 
     if (output.scriptPubKey !== expectedScript) {
       return fail(

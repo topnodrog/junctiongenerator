@@ -50,12 +50,15 @@ function makeConfig(): NodeConfig {
 // contributions; the node verifies the signature in strict mode.
 const keyByAddr = new Map<string, string>();
 
-/** Make a miner with a fresh secp256k1 keypair and a key-derived address. */
+/** Make a miner with a fresh keypair and a key-derived address.
+ *  TODO(quantum): this demo builds REAL Conv1D Groth16 proofs via the legacy
+ *  pairing verifier — it is superseded by the PQ proof path and needs a rewrite
+ *  against pq-zkp.ts. Kept compiling for now. */
 function makeMiner(tflops: number): SimMinerSpec {
   const kp = generateKeyPair();
   const address = addressFromPublicKey(kp.publicKey);
   keyByAddr.set(address, kp.privateKey);
-  return { address, pubKey: kp.publicKey, tflops };
+  return { address, pubKey: kp.publicKey, secretKey: kp.privateKey, tflops };
 }
 
 /** Deterministic small seed per (miner, height) for distinct conv I/O. */

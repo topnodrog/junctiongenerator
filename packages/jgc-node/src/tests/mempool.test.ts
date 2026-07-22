@@ -7,15 +7,14 @@ import type { NodeConfig, Transaction } from "../types/index.js";
 import { MessageType as MT } from "../types/index.js";
 import { JGCNode } from "../network/node.js";
 import { txSigHash, txid } from "../consensus/utxo.js";
-import { generateKeyPair, p2pkhScript, signHash, p2pkhScriptSig } from "../crypto/signatures.js";
+import { pqGenerateKeyPair, pqScriptPubKey, pqSignHash, pqScriptSig } from "../crypto/pq-signatures.js";
 import { BASE_UNITS_PER_JGC, getBlockReward } from "../consensus/emission.js";
-import { loadVerifierWasm } from "../crypto/zkp.js";
 import {
   makeGenesisBlock, makePeer, makeMessage, makeContribution, BlockProducer, DEFAULT_MINERS,
 } from "../sim/harness.js";
 
-const alice = generateKeyPair();
-const bob = generateKeyPair();
+const alice = pqGenerateKeyPair("aa".repeat(32));
+const bob = pqGenerateKeyPair("bb".repeat(32));
 const J = (n: bigint): bigint => n * BASE_UNITS_PER_JGC;
 const FUNDING = "00".repeat(31) + "ee";
 
@@ -25,7 +24,7 @@ function cfg(): NodeConfig {
 
 function fundedNode(): JGCNode {
   const node = new JGCNode(cfg(), makeGenesisBlock());
-  node.getUTXOSet().add(FUNDING, 0, { value: J(10n), scriptPubKey: p2pkhScript(alice.publicKey), height: 0, isCoinbase: false });
+  node.getUTXOSet().add(FUNDING, 0, { value: J(10n), scriptPubKey: pqScriptPubKey(alice.publicKey), height: 0, isCoinbase: false });
   return node;
 }
 
@@ -34,21 +33,21 @@ function spend(outs: Transaction["outputs"], signer = alice): Transaction {
     version: 1, inputs: [{ prevOut: { txid: FUNDING, vout: 0 }, scriptSig: "", sequence: 0xFFFFFFFF }],
     outputs: outs, locktime: 0,
   };
-  tx.inputs[0]!.scriptSig = p2pkhScriptSig(signHash(signer.privateKey, txSigHash(tx)), signer.publicKey);
+  tx.inputs[0]!.scriptSig = pqScriptSig(pqSignHash(signer.privateKey, txSigHash(tx)), signer.publicKey);
   return tx;
 }
 
 describe("mempool acceptance", () => {
   test("valid signed spend is accepted", () => {
     const node = fundedNode();
-    const r = node.submitTransaction(spend([{ value: J(6n), scriptPubKey: p2pkhScript(bob.publicKey) }]));
+    const r = node.submitTransaction(spend([{ value: J(6n), scriptPubKey: pqScriptPubKey(bob.publicKey) }]));
     expect(r.ok).toBe(true);
     expect(node.getMempool()).toHaveLength(1);
   });
 
   test("duplicate submission is rejected", () => {
     const node = fundedNode();
-    const tx = spend([{ value: J(6n), scriptPubKey: p2pkhScript(bob.publicKey) }]);
+    const tx = spend([{ value: J(6n), scriptPubKey: pqScriptPubKey(bob.publicKey) }]);
     expect(node.submitTransaction(tx).ok).toBe(true);
     expect(node.submitTransaction(tx).ok).toBe(false);
     expect(node.getMempool()).toHaveLength(1);
@@ -56,9 +55,9 @@ describe("mempool acceptance", () => {
 
   test("mempool double-spend (same input, different tx) is rejected", () => {
     const node = fundedNode();
-    expect(node.submitTransaction(spend([{ value: J(6n), scriptPubKey: p2pkhScript(bob.publicKey) }])).ok).toBe(true);
+    expect(node.submitTransaction(spend([{ value: J(6n), scriptPubKey: pqScriptPubKey(bob.publicKey) }])).ok).toBe(true);
     // A different tx spending the same funded output.
-    const r = node.submitTransaction(spend([{ value: J(5n), scriptPubKey: p2pkhScript(bob.publicKey) }]));
+    const r = node.submitTransaction(spend([{ value: J(5n), scriptPubKey: pqScriptPubKey(bob.publicKey) }]));
     expect(r.ok).toBe(false);
     expect(node.getMempool()).toHaveLength(1);
   });
@@ -67,20 +66,20 @@ describe("mempool acceptance", () => {
     const node = fundedNode();
     const tx: Transaction = {
       version: 1, inputs: [{ prevOut: { txid: "ff".repeat(32), vout: 0 }, scriptSig: "", sequence: 0xFFFFFFFF }],
-      outputs: [{ value: J(1n), scriptPubKey: p2pkhScript(bob.publicKey) }], locktime: 0,
+      outputs: [{ value: J(1n), scriptPubKey: pqScriptPubKey(bob.publicKey) }], locktime: 0,
     };
-    tx.inputs[0]!.scriptSig = p2pkhScriptSig(signHash(alice.privateKey, txSigHash(tx)), alice.publicKey);
+    tx.inputs[0]!.scriptSig = pqScriptSig(pqSignHash(alice.privateKey, txSigHash(tx)), alice.publicKey);
     expect(node.submitTransaction(tx).ok).toBe(false);
   });
 
   test("overspend is rejected", () => {
     const node = fundedNode();
-    expect(node.submitTransaction(spend([{ value: J(11n), scriptPubKey: p2pkhScript(bob.publicKey) }])).ok).toBe(false);
+    expect(node.submitTransaction(spend([{ value: J(11n), scriptPubKey: pqScriptPubKey(bob.publicKey) }])).ok).toBe(false);
   });
 
   test("spend signed by the wrong key is rejected", () => {
     const node = fundedNode();
-    expect(node.submitTransaction(spend([{ value: J(6n), scriptPubKey: p2pkhScript(bob.publicKey) }], bob)).ok).toBe(false);
+    expect(node.submitTransaction(spend([{ value: J(6n), scriptPubKey: pqScriptPubKey(bob.publicKey) }], bob)).ok).toBe(false);
   });
 });
 
@@ -93,7 +92,7 @@ describe("mempool DoS bounds (fee floor + capacity eviction)", () => {
   }
   function fundN(node: JGCNode, n: number, value: bigint): void {
     for (let i = 0; i < n; i++) {
-      node.getUTXOSet().add(fundTxid(i), 0, { value, scriptPubKey: p2pkhScript(alice.publicKey), height: 0, isCoinbase: false });
+      node.getUTXOSet().add(fundTxid(i), 0, { value, scriptPubKey: pqScriptPubKey(alice.publicKey), height: 0, isCoinbase: false });
     }
   }
   // Spend funded output `i` (worth `inValue`) leaving `fee` to miners. Same shape
@@ -102,10 +101,10 @@ describe("mempool DoS bounds (fee floor + capacity eviction)", () => {
     const tx: Transaction = {
       version: 1,
       inputs: [{ prevOut: { txid: fundTxid(i), vout: 0 }, scriptSig: "", sequence: 0xFFFFFFFF }],
-      outputs: [{ value: inValue - fee, scriptPubKey: p2pkhScript(bob.publicKey) }],
+      outputs: [{ value: inValue - fee, scriptPubKey: pqScriptPubKey(bob.publicKey) }],
       locktime: 0,
     };
-    tx.inputs[0]!.scriptSig = p2pkhScriptSig(signHash(alice.privateKey, txSigHash(tx)), alice.publicKey);
+    tx.inputs[0]!.scriptSig = pqScriptSig(pqSignHash(alice.privateKey, txSigHash(tx)), alice.publicKey);
     return tx;
   }
 
@@ -170,31 +169,30 @@ describe("in-block chained-tx fee accounting", () => {
   // set, missed the in-block parent, and `return`ed — burning the child's fee AND
   // every subsequent tx's fee.
   test("a child spending a parent in the same block has its fee counted", async () => {
-    await loadVerifierWasm({ mode: "simnet" });
     const node = new JGCNode(cfg(), makeGenesisBlock());
     node.connectPeer(makePeer("local-miner", "inproc").conn);
     const producer = new BlockProducer(makeGenesisBlock());
 
     // Fund alice with 10 JGC.
-    node.getUTXOSet().add(FUNDING, 0, { value: J(10n), scriptPubKey: p2pkhScript(alice.publicKey), height: 0, isCoinbase: false });
+    node.getUTXOSet().add(FUNDING, 0, { value: J(10n), scriptPubKey: pqScriptPubKey(alice.publicKey), height: 0, isCoinbase: false });
 
     // parent: funding(10) → alice(9).  fee = 1 JGC
     const parent: Transaction = {
       version: 1,
       inputs: [{ prevOut: { txid: FUNDING, vout: 0 }, scriptSig: "", sequence: 0xFFFFFFFF }],
-      outputs: [{ value: J(9n), scriptPubKey: p2pkhScript(alice.publicKey) }],
+      outputs: [{ value: J(9n), scriptPubKey: pqScriptPubKey(alice.publicKey) }],
       locktime: 0,
     };
-    parent.inputs[0]!.scriptSig = p2pkhScriptSig(signHash(alice.privateKey, txSigHash(parent)), alice.publicKey);
+    parent.inputs[0]!.scriptSig = pqScriptSig(pqSignHash(alice.privateKey, txSigHash(parent)), alice.publicKey);
 
     // child: parent:0 (9) → bob(8).  fee = 1 JGC  (spends an output created this block)
     const child: Transaction = {
       version: 1,
       inputs: [{ prevOut: { txid: txid(parent), vout: 0 }, scriptSig: "", sequence: 0xFFFFFFFF }],
-      outputs: [{ value: J(8n), scriptPubKey: p2pkhScript(bob.publicKey) }],
+      outputs: [{ value: J(8n), scriptPubKey: pqScriptPubKey(bob.publicKey) }],
       locktime: 0,
     };
-    child.inputs[0]!.scriptSig = p2pkhScriptSig(signHash(alice.privateKey, txSigHash(child)), alice.publicKey);
+    child.inputs[0]!.scriptSig = pqScriptSig(pqSignHash(alice.privateKey, txSigHash(child)), alice.publicKey);
 
     const height = node.getChainInfo().tipHeight + 1;
     for (const m of DEFAULT_MINERS) await node.processMessage("local-miner", makeMessage(MT.COMPUTE_PROOF, makeContribution(m, height)));
