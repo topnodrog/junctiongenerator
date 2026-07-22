@@ -1,60 +1,72 @@
-/**
- * @file src/tests/pq-stealth.test.ts
- * @description Tests for quantum-safe stealth (one-time, unlinkable) addresses.
- */
 import { describe, it, expect } from "@jest/globals";
 import {
   pqStealthGenerateIdentity,
   pqStealthCreatePayment,
   pqStealthScanAndRecover,
   pqStealthMetaAddress,
+  pqStealthParseMetaAddress,
 } from "../crypto/pq-stealth.js";
+import { pqKeyPairMatches } from "../crypto/pq-signatures.js";
 
-describe("pq-stealth (one-time, unlinkable, PQ)", () => {
-  it("recipient can scan + recover a payment addressed to them", () => {
-    const recip = pqStealthGenerateIdentity();
-    const { payment } = pqStealthCreatePayment(recip.viewPublicKey);
-    const rec = pqStealthScanAndRecover(recip.viewSecretKey, recip.viewPublicKey, payment);
-    expect(rec).not.toBeNull();
-    expect(rec!.oneTimeAddress).toBe(payment.oneTimeAddress);
+describe("PQ private payment scanning", () => {
+  it("requires the recipient view secret to recognise a payment", () => {
+    const recipient = pqStealthGenerateIdentity("11".repeat(32));
+    const { payment } = pqStealthCreatePayment(recipient);
+    const recovered = pqStealthScanAndRecover(recipient, payment);
+    expect(recovered).not.toBeNull();
+    expect(recovered!.oneTimeAddress).toBe(payment.oneTimeAddress);
+    expect(pqKeyPairMatches(recovered!.spendSecretKey, recovered!.spendPublicKey)).toBe(true);
   });
 
-  it("two payments to the same recipient are unlinkable (different addresses)", () => {
-    const recip = pqStealthGenerateIdentity();
-    const a = pqStealthCreatePayment(recip.viewPublicKey).payment.oneTimeAddress;
-    const b = pqStealthCreatePayment(recip.viewPublicKey).payment.oneTimeAddress;
+  it("rejects an observer using the recipient's public data with the wrong view secret", () => {
+    const recipient = pqStealthGenerateIdentity("22".repeat(32));
+    const observer = pqStealthGenerateIdentity("33".repeat(32));
+    const { payment } = pqStealthCreatePayment(recipient);
+    const forgedIdentity = { ...recipient, viewSecretKey: observer.viewSecretKey };
+    expect(pqStealthScanAndRecover(forgedIdentity, payment)).toBeNull();
+  });
+
+  it("does not give the sender a spendable seed or secret key", () => {
+    const recipient = pqStealthGenerateIdentity("44".repeat(32));
+    const created = pqStealthCreatePayment(recipient) as any;
+    expect(created.oneTimeSeed).toBeUndefined();
+    expect(created.spendSecretKey).toBeUndefined();
+    expect(JSON.stringify(created.payment)).not.toContain(recipient.spendSecretKey);
+  });
+
+  it("uses a different 256-bit destination for every payment", () => {
+    const recipient = pqStealthGenerateIdentity("55".repeat(32));
+    const a = pqStealthCreatePayment(recipient).payment.oneTimeAddress;
+    const b = pqStealthCreatePayment(recipient).payment.oneTimeAddress;
     expect(a).not.toBe(b);
-    expect(a).toMatch(/^1QGC[0-9a-f]{40}$/);
-    expect(b).toMatch(/^1QGC[0-9a-f]{40}$/);
+    expect(a).toMatch(/^1QST[0-9a-f]{64}$/);
+    expect(b).toMatch(/^1QST[0-9a-f]{64}$/);
   });
 
-  it("one-time address is NOT derivable from the meta-address alone", () => {
-    const recip = pqStealthGenerateIdentity();
-    const { payment } = pqStealthCreatePayment(recip.viewPublicKey);
-    expect(payment.oneTimeAddress).not.toBe(recip.metaAddress);
-    expect(payment.oneTimeAddress).not.toContain(pqStealthMetaAddress(recip.viewPublicKey).slice(6));
+  it("rejects a wrong spend secret even with the correct view secret", () => {
+    const recipient = pqStealthGenerateIdentity("66".repeat(32));
+    const other = pqStealthGenerateIdentity("77".repeat(32));
+    const { payment } = pqStealthCreatePayment(recipient);
+    expect(pqStealthScanAndRecover({ ...recipient, spendSecretKey: other.spendSecretKey }, payment)).toBeNull();
   });
 
-  it("a third party cannot recover someone else's payment", () => {
-    const recip = pqStealthGenerateIdentity();
-    const eavesdropper = pqStealthGenerateIdentity();
-    const { payment } = pqStealthCreatePayment(recip.viewPublicKey);
-    const rec = pqStealthScanAndRecover(eavesdropper.viewSecretKey, eavesdropper.viewPublicKey, payment);
-    expect(rec).toBeNull();
+  it("rejects malformed or tampered ciphertext without throwing", () => {
+    const recipient = pqStealthGenerateIdentity("88".repeat(32));
+    const { payment } = pqStealthCreatePayment(recipient);
+    expect(pqStealthScanAndRecover(recipient, { ...payment, kemCiphertext: "00" })).toBeNull();
+    const flipped = (payment.kemCiphertext.startsWith("00") ? "01" : "00") + payment.kemCiphertext.slice(2);
+    expect(pqStealthScanAndRecover(recipient, { ...payment, kemCiphertext: flipped })).toBeNull();
   });
 
-  it("recovered one-time key controls the one-time address", () => {
-    const recip = pqStealthGenerateIdentity();
-    const { payment } = pqStealthCreatePayment(recip.viewPublicKey);
-    const rec = pqStealthScanAndRecover(recip.viewSecretKey, recip.viewPublicKey, payment)!;
-    // the recovered public key must derive the very address funds were sent to
-    expect(rec.oneTimeAddress).toBe(payment.oneTimeAddress);
-    expect(rec.oneTimeSecretKey.length).toBeGreaterThan(0);
-  });
-
-  it("meta-address format is stable + well-formed", () => {
-    const id = pqStealthGenerateIdentity();
-    expect(id.metaAddress).toMatch(/^st1qgc[0-9a-f]{40}$/);
-    expect(pqStealthMetaAddress(id.viewPublicKey)).toBe(id.metaAddress);
+  it("round-trips the versioned public meta-address", () => {
+    const recipient = pqStealthGenerateIdentity("99".repeat(32));
+    expect(pqStealthMetaAddress(recipient.viewPublicKey, recipient.spendPublicKey)).toBe(recipient.metaAddress);
+    expect(pqStealthParseMetaAddress(recipient.metaAddress)).toEqual({
+      scheme: recipient.scheme,
+      viewPublicKey: recipient.viewPublicKey,
+      spendPublicKey: recipient.spendPublicKey,
+      metaAddress: recipient.metaAddress,
+    });
+    expect(pqStealthParseMetaAddress("st1qg2:bad:bad")).toBeNull();
   });
 });

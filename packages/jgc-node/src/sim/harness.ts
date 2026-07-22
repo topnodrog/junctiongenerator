@@ -27,7 +27,7 @@ import {
 import { initEpochState, applyBlockToEpoch, computeEpochSettlement } from "../consensus/epoch.js";
 import { BLOCKS_PER_EPOCH } from "../consensus/emission.js";
 import {
-  pqGenerateKeyPair, pqAddressFromPublicKey, pqSignContribution,
+  pqGenerateKeyPair, pqAddressFromPublicKey, pqSignContribution, pqScriptPubKeyFromAddress,
 } from "../crypto/pq-signatures.js";
 import { pqProveCompute, pqToComputeProof, pqNewNonce } from "../crypto/pq-zkp.js";
 import type { JGCNode, PeerConnection } from "../network/node.js";
@@ -71,7 +71,7 @@ export function makeContribution(miner: SimMinerSpec, height: number): MinerComp
     taskCommitment: outputCommitment,
     tflopsWeight: miner.tflops,
     nonce: pqNewNonce(),
-  });
+  }, height);
   const proof: ComputeProof = {
     ...(pqToComputeProof(pqProof) as any),
     taskCommitment: outputCommitment,
@@ -219,8 +219,8 @@ export class BlockProducer {
         inputs:   [],   // coinbase convention: no inputs
         outputs:  settlement.payouts.map(p => ({
           value:        p.satoshis,
-          // QUANTUM-READY: settlement pays to the PQ script for the miner's 1QGC address.
-          scriptPubKey: "5114" + p.minerAddress.slice(4) + "63ac",
+          // Suite 2 settlement pays to the PQ script for the miner's 1QG2 address.
+          scriptPubKey: pqScriptPubKeyFromAddress(p.minerAddress),
         })),
         locktime: 0,
       }];

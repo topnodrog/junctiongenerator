@@ -24,8 +24,12 @@ import { UTXOSet, txid, txSigHash, COINBASE_MATURITY } from "../consensus/utxo.j
 import { BASE_UNITS_PER_JGC, DECIMALS } from "../consensus/emission.js";
 import {
   pqGenerateKeyPair, pqAddressFromPublicKey, pqScriptPubKey, pqScriptSig,
-  pqSignHash, pqScriptPubKeyFromAddress, pqIsValidPublicKey,
+  pqSignHash, pqScriptPubKeyFromAddress, pqIsValidPublicKey, pqIsValidPrivateKey,
+  pqKeyPairMatches,
 } from "../crypto/pq-signatures.js";
+import {
+  PQ_CRYPTO_SUITE, PQ_LIMITS, isCanonicalHex, jsonDepthWithinLimit, utf8ByteLength,
+} from "../crypto/pq-suite.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Money formatting (16-decimal JGC ⇄ base units), string-exact (no float)
@@ -56,18 +60,27 @@ export function parseJGC(text: string): JGCSatoshis {
 // Keystore
 // ─────────────────────────────────────────────────────────────────────────────
 
-interface KeyRecord { privateKey: string; publicKey: string; }
+interface KeyRecord {
+  algorithm: typeof PQ_CRYPTO_SUITE.signature;
+  privateKey: string;
+  publicKey: string;
+}
 
 /** On-disk encrypted keystore envelope (JSON). The plaintext is the JSON map of
  *  label → {privateKey, publicKey}; only it is secret, the params are public. */
 export interface KeystoreFile {
-  version: 1;
+  version: 2;
+  cryptoSuite: typeof PQ_CRYPTO_SUITE.id;
   kdf: "scrypt";
   scrypt: { N: number; r: number; p: number; keyLen: number };
   salt: string;     // hex
   iv: string;       // hex (12 bytes, GCM nonce)
   authTag: string;  // hex (16 bytes, GCM tag)
   ciphertext: string; // hex
+}
+
+interface LegacyKeystoreFile extends Omit<KeystoreFile, "version" | "cryptoSuite"> {
+  version: 1;
 }
 
 const SCRYPT = { N: 1 << 15, r: 8, p: 1, keyLen: 32 } as const;
@@ -91,8 +104,20 @@ export class Wallet {
 
   /** Decrypt a keystore envelope with the passphrase. Throws on a wrong
    *  passphrase (GCM auth failure) or a tampered file. */
-  static fromKeystore(file: KeystoreFile, passphrase: string): Wallet {
-    if (file.version !== 1 || file.kdf !== "scrypt") throw new Error("unsupported keystore format");
+  static fromKeystore(file: KeystoreFile | LegacyKeystoreFile, passphrase: string): Wallet {
+    if ((file.version !== 1 && file.version !== 2) || file.kdf !== "scrypt") throw new Error("unsupported keystore format");
+    if (file.version === 2 && file.cryptoSuite !== PQ_CRYPTO_SUITE.id) throw new Error("unsupported keystore crypto suite");
+    if (!file.scrypt || file.scrypt.N !== SCRYPT.N || file.scrypt.r !== SCRYPT.r ||
+        file.scrypt.p !== SCRYPT.p || file.scrypt.keyLen !== SCRYPT.keyLen) {
+      throw new Error("unsupported or weakened keystore KDF parameters");
+    }
+    if (!isCanonicalHex(file.salt, 16) || !isCanonicalHex(file.iv, 12) ||
+        !isCanonicalHex(file.authTag, 16) || !isCanonicalHex(file.ciphertext)) {
+      throw new Error("malformed keystore envelope");
+    }
+    if (file.ciphertext.length / 2 > PQ_LIMITS.maxKeystoreCiphertextBytes) {
+      throw new Error("keystore ciphertext exceeds the size limit");
+    }
     const key = deriveKey(passphrase, Buffer.from(file.salt, "hex"));
     const decipher = createDecipheriv("aes-256-gcm", key, Buffer.from(file.iv, "hex"));
     decipher.setAuthTag(Buffer.from(file.authTag, "hex"));
@@ -102,9 +127,39 @@ export class Wallet {
     } catch {
       throw new Error("keystore decryption failed (wrong passphrase or corrupt file)");
     }
-    const obj = JSON.parse(plain) as Record<string, KeyRecord>;
+    if (utf8ByteLength(plain) > PQ_LIMITS.maxKeystoreCiphertextBytes || !jsonDepthWithinLimit(plain)) {
+      throw new Error("keystore plaintext exceeds size/depth limits");
+    }
+    let obj: unknown;
+    try {
+      obj = JSON.parse(plain);
+    } catch {
+      throw new Error("keystore plaintext is not valid JSON");
+    }
+    if (!obj || typeof obj !== "object" || Array.isArray(obj)) throw new Error("keystore key map is malformed");
+    const entries = Object.entries(obj as Record<string, unknown>);
+    if (entries.length > PQ_LIMITS.maxWalletKeys) throw new Error("keystore contains too many keys");
     const w = new Wallet();
-    for (const [label, rec] of Object.entries(obj)) w.keys.set(label, rec);
+    for (const [label, raw] of entries) {
+      if (utf8ByteLength(label) === 0 || utf8ByteLength(label) > PQ_LIMITS.maxWalletLabelBytes || /[\u0000-\u001f\u007f]/.test(label)) {
+        throw new Error("keystore contains an invalid key label");
+      }
+      if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new Error(`key "${label}" is malformed`);
+      const rec = raw as Partial<KeyRecord>;
+      if (rec.algorithm !== undefined && rec.algorithm !== PQ_CRYPTO_SUITE.signature) {
+        throw new Error(`key "${label}" uses an unsupported algorithm`);
+      }
+      if (typeof rec.privateKey !== "string" || typeof rec.publicKey !== "string" ||
+          !pqIsValidPrivateKey(rec.privateKey) || !pqIsValidPublicKey(rec.publicKey) ||
+          !pqKeyPairMatches(rec.privateKey, rec.publicKey)) {
+        throw new Error(`key "${label}" is not a matching ML-DSA-65 keypair`);
+      }
+      w.keys.set(label, {
+        algorithm: PQ_CRYPTO_SUITE.signature,
+        privateKey: rec.privateKey,
+        publicKey: rec.publicKey,
+      });
+    }
     return w;
   }
 
@@ -117,7 +172,8 @@ export class Wallet {
     const plain = JSON.stringify(Object.fromEntries(this.keys));
     const ct = Buffer.concat([cipher.update(plain, "utf8"), cipher.final()]);
     return {
-      version: 1, kdf: "scrypt", scrypt: { ...SCRYPT },
+      version: 2, cryptoSuite: PQ_CRYPTO_SUITE.id,
+      kdf: "scrypt", scrypt: { ...SCRYPT },
       salt: salt.toString("hex"), iv: iv.toString("hex"),
       authTag: cipher.getAuthTag().toString("hex"), ciphertext: ct.toString("hex"),
     };
@@ -129,8 +185,11 @@ export class Wallet {
    *  rerun can never silently overwrite — and orphan — funded keys). */
   generate(label: string): string {
     if (this.keys.has(label)) throw new Error(`key "${label}" already exists`);
+    if (utf8ByteLength(label) === 0 || utf8ByteLength(label) > PQ_LIMITS.maxWalletLabelBytes || /[\u0000-\u001f\u007f]/.test(label)) {
+      throw new Error("key label is empty, too large, or contains control characters");
+    }
     const kp = pqGenerateKeyPair();
-    this.keys.set(label, kp);
+    this.keys.set(label, { algorithm: PQ_CRYPTO_SUITE.signature, ...kp });
     return pqAddressFromPublicKey(kp.publicKey);
   }
 
@@ -139,8 +198,13 @@ export class Wallet {
    *  required (as produced by generate()/pqGenerateKeyPair). */
   importKey(label: string, privateKeyHex: string, publicKeyHex: string): string {
     if (this.keys.has(label)) throw new Error(`key "${label}" already exists`);
+    if (utf8ByteLength(label) === 0 || utf8ByteLength(label) > PQ_LIMITS.maxWalletLabelBytes || /[\u0000-\u001f\u007f]/.test(label)) {
+      throw new Error("key label is empty, too large, or contains control characters");
+    }
     if (!pqIsValidPublicKey(publicKeyHex)) throw new Error("public key must be a valid ML-DSA-65 public key (hex)");
-    this.keys.set(label, { privateKey: privateKeyHex.toLowerCase(), publicKey: publicKeyHex.toLowerCase() });
+    if (!pqIsValidPrivateKey(privateKeyHex)) throw new Error("private key must be a valid ML-DSA-65 secret key (hex)");
+    if (!pqKeyPairMatches(privateKeyHex, publicKeyHex)) throw new Error("private key does not match the supplied public key");
+    this.keys.set(label, { algorithm: PQ_CRYPTO_SUITE.signature, privateKey: privateKeyHex, publicKey: publicKeyHex });
     return pqAddressFromPublicKey(publicKeyHex);
   }
 

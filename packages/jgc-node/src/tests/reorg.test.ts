@@ -11,11 +11,15 @@ import { JGCNode } from "../network/node.js";
 import { txid, txSigHash } from "../consensus/utxo.js";
 import { hashBlockHeader } from "../consensus/block.js";
 import { pqScriptPubKey, pqSignHash, pqScriptSig, pqGenerateKeyPair } from "../crypto/pq-signatures.js";
+import { setPQVerifierMode } from "../crypto/pq-zkp.js";
 import { BASE_UNITS_PER_JGC } from "../consensus/emission.js";
 import {
   makeGenesisBlock, makePeer, makeMessage, makeContribution, BlockProducer, DEFAULT_MINERS,
 } from "../sim/harness.js";
 import type { NodeConfig } from "../types/index.js";
+
+beforeEach(() => setPQVerifierMode("simnet"));
+afterEach(() => setPQVerifierMode("strict"));
 
 const J = (n: bigint): bigint => n * BASE_UNITS_PER_JGC;
 const alice = pqGenerateKeyPair("aa".repeat(32));

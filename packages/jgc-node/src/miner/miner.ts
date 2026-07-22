@@ -108,7 +108,7 @@ export function generateContribution(
     taskCommitment,
     tflopsWeight,
     nonce: pqNewNonce(),
-  });
+  }, blockHeight);
   const proof: ComputeProof = {
     ...(pqToComputeProof(pqProof) as any),
     taskCommitment,

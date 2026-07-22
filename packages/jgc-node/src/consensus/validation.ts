@@ -59,6 +59,8 @@ import {
   quantumVerifyProofForConsensus,
   quantumScriptPubKeyFromAddress,
 } from "../crypto/pq.js";
+import { pqIsValidAddress, pqIsValidPublicKey } from "../crypto/pq-signatures.js";
+import { PQ_LIMITS, isCanonicalHex } from "../crypto/pq-suite.js";
 import { UTXOSet, validateSpend } from "./utxo.js";
 import { verifyMerkleProof, getMerkleProof, buildMerkleTree, hashComputeProof } from "../crypto/merkle.js";
 
@@ -260,6 +262,12 @@ export async function validateComputeProofs(
       "Block must contain at least one ComputeProof (PoUC requirement)"
     );
   }
+  if (contributions.length > PQ_LIMITS.maxContributionsPerBlock) {
+    return fail(
+      ValidationError.PROOF_VERIFICATION_FAILED,
+      `Block has ${contributions.length} contributions; maximum is ${PQ_LIMITS.maxContributionsPerBlock}`
+    );
+  }
 
   // ── Reject duplicate contributions ────────────────────────────────────────
   // A miner gets ONE contribution per block, and each task is proven once;
@@ -268,6 +276,12 @@ export async function validateComputeProofs(
   const seenMiners = new Set<string>();
   const seenTasks  = new Set<string>();
   for (const c of contributions) {
+    if (!pqIsValidAddress(c.minerAddress) || !pqIsValidPublicKey(c.publicKey)) {
+      return fail(ValidationError.INVALID_SIGNATURE, "Contribution has a malformed PQ payout address or public key");
+    }
+    if (!isCanonicalHex(c.proof.taskCommitment, 32)) {
+      return fail(ValidationError.PROOF_VERIFICATION_FAILED, "Contribution task commitment must be 32-byte lowercase hex");
+    }
     if (seenMiners.has(c.minerAddress)) {
       return fail(ValidationError.DUPLICATE_CONTRIBUTION,
         `Duplicate contribution from miner ${c.minerAddress} in one block`);

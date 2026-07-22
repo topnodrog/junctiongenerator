@@ -10,7 +10,7 @@
     "build:all": "npm run build:rust && npm run build",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-vm-modules --max-old-space-size=1536 ../../node_modules/jest/bin/jest.js --runInBand",
+    "test": "node --experimental-vm-modules --max-old-space-size=1536 ./node_modules/jest/bin/jest.js --runInBand",
     "sync-demo": "node dist/scripts/sync-demo.js",
     "epoch-verify": "node dist/scripts/epoch-verify.js",
     "prove-verify-demo": "node dist/scripts/prove-verify-demo.js",

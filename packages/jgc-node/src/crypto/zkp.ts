@@ -46,6 +46,8 @@
  */
 
 import type { ComputeProof } from "../types/index.js";
+import { setPQVerifierMode } from "./pq-zkp.js";
+import { assertPQProductionReady } from "./pq-suite.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Circuit Registry
@@ -317,9 +319,12 @@ export async function loadVerifierWasm(
     );
   }
 
+  if (process.env["NODE_ENV"] === "production") assertPQProductionReady();
+
   // Record the mode even if the module is already loaded (mode is independent
   // of which WASM binary is resident — the same binary serves both paths).
   _verifierMode = mode;
+  setPQVerifierMode(mode);
 
   // In production, dynamically import the compiled WASM package.
   // During development/testing, a mock verifier is injected via setMockVerifier().

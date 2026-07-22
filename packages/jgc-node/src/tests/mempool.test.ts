@@ -8,10 +8,14 @@ import { MessageType as MT } from "../types/index.js";
 import { JGCNode } from "../network/node.js";
 import { txSigHash, txid } from "../consensus/utxo.js";
 import { pqGenerateKeyPair, pqScriptPubKey, pqSignHash, pqScriptSig } from "../crypto/pq-signatures.js";
+import { setPQVerifierMode } from "../crypto/pq-zkp.js";
 import { BASE_UNITS_PER_JGC, getBlockReward } from "../consensus/emission.js";
 import {
   makeGenesisBlock, makePeer, makeMessage, makeContribution, BlockProducer, DEFAULT_MINERS,
 } from "../sim/harness.js";
+
+beforeEach(() => setPQVerifierMode("simnet"));
+afterEach(() => setPQVerifierMode("strict"));
 
 const alice = pqGenerateKeyPair("aa".repeat(32));
 const bob = pqGenerateKeyPair("bb".repeat(32));

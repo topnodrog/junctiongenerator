@@ -30,8 +30,10 @@ import {
   pqVerifySpend,
   pqSignHash,
   pqVerifyHashSignature,
+  pqIsValidAddress,
   JGC_PQ_NETWORK_ID,
 } from "./pq-signatures.js";
+import { PQ_CRYPTO_SUITE } from "./pq-suite.js";
 import {
   pqVerifyComputeProofFromConsensus,
   pqFromComputeProof,
@@ -46,7 +48,7 @@ import {
 } from "./pq-zkp.js";
 
 export const QUANTUM_MODE = true as const;
-export { JGC_PQ_NETWORK_ID, PQ_CIRCUIT_REGISTRY };
+export { JGC_PQ_NETWORK_ID, PQ_CIRCUIT_REGISTRY, PQ_CRYPTO_SUITE };
 export type { PQComputeProof };
 
 // ── Keys & addresses ─────────────────────────────────────────────────────────
@@ -54,9 +56,9 @@ export const quantumGenerateKeyPair = pqGenerateKeyPair;
 export const quantumAddressFromPublicKey = pqAddressFromPublicKey;
 export const quantumScriptPubKey = pqScriptPubKey;
 
-/** True iff an address belongs to the quantum-ready (1QGC) family. */
+/** True iff an address belongs to the versioned suite-2 (1QG2) family. */
 export function isQuantumAddress(addr: string): boolean {
-  return /^1QGC[0-9a-f]{40}$/.test(addr);
+  return pqIsValidAddress(addr);
 }
 
 // ── Miner contribution signatures ────────────────────────────────────────────

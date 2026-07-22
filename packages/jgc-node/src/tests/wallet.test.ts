@@ -7,6 +7,7 @@
 import { Wallet, formatJGC, parseJGC } from "../wallet/wallet.js";
 import { UTXOSet, validateSpend, COINBASE_MATURITY } from "../consensus/utxo.js";
 import { pqScriptPubKey, pqScriptPubKeyFromAddress } from "../crypto/pq-signatures.js";
+import { pqGenerateKeyPair } from "../crypto/pq-signatures.js";
 import { BASE_UNITS_PER_JGC } from "../consensus/emission.js";
 
 const MATURITY = COINBASE_MATURITY;
@@ -55,6 +56,19 @@ describe("keystore", () => {
   test("duplicate label is rejected", () => {
     const w = Wallet.create(); w.generate("a");
     expect(() => w.generate("a")).toThrow();
+  });
+  test("rejects weakened KDF settings before decryption", () => {
+    const w = Wallet.create(); w.generate("a");
+    const file = w.toKeystore("pw");
+    expect(() => Wallet.fromKeystore({ ...file, scrypt: { ...file.scrypt, N: 2 } }, "pw")).toThrow(/KDF/i);
+  });
+  test("import rejects malformed or mismatched keypairs", () => {
+    const a = pqGenerateKeyPair("aa".repeat(32));
+    const b = pqGenerateKeyPair("bb".repeat(32));
+    const w = Wallet.create();
+    expect(() => w.importKey("bad-size", "aa", a.publicKey)).toThrow(/private key/i);
+    expect(() => w.importKey("mismatch", a.privateKey, b.publicKey)).toThrow(/does not match/i);
+    expect(w.labels()).toEqual([]);
   });
 });
 

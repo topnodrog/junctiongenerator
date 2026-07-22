@@ -1,13 +1,15 @@
-import { describe, it, expect } from "@jest/globals";
+import { afterEach, describe, it, expect } from "@jest/globals";
 import {
   quantumGenerateKeyPair, quantumAddressFromPublicKey, isQuantumAddress,
   quantumSignContribution, quantumVerifyContributionSignature,
   quantumVerifyComputeProof, quantumBatchVerifyComputeProofs, isQuantumProof,
   pqProveCompute, pqToComputeProof, QUANTUM_MODE,
+  setQuantumVerifierMode,
 } from "../crypto/pq.js";
 import { pqNewNonce } from "../crypto/pq-zkp.js";
 
 describe("pq facade (quantum mode integration)", () => {
+  afterEach(() => setQuantumVerifierMode("strict"));
   it("runs in quantum mode", () => { expect(QUANTUM_MODE).toBe(true); });
 
   it("full miner flow: keygen → address → sign → verify", () => {
@@ -23,9 +25,10 @@ describe("pq facade (quantum mode integration)", () => {
 
   it("full proof flow: prove → wrap → consensus-verify + batch", () => {
     const p = pqProveCompute("PQ_CIRCUIT_AI_INFERENCE_V1", "dd".repeat(32),
-      { taskCommitment: "ee".repeat(32), tflopsWeight: 250, nonce: pqNewNonce() });
+      { taskCommitment: "ee".repeat(32), tflopsWeight: 250, nonce: pqNewNonce() }, 100);
     const cp = pqToComputeProof(p);
     expect(isQuantumProof(cp)).toBe(true);
+    setQuantumVerifierMode("simnet");
     expect(quantumVerifyComputeProof(cp, 100)).toBe(true);
     expect(quantumBatchVerifyComputeProofs([cp], 100)).toBe(true);
   });

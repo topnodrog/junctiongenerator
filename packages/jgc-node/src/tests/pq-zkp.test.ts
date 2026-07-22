@@ -1,8 +1,4 @@
-/**
- * @file src/tests/pq-zkp.test.ts
- * @description Tests for the post-quantum hash-based compute proof layer.
- */
-import { describe, it, expect } from "@jest/globals";
+import { afterEach, describe, it, expect } from "@jest/globals";
 import {
   pqProveCompute,
   pqVerifyComputeProof,
@@ -10,100 +6,139 @@ import {
   pqNewNonce,
   pqToComputeProof,
   pqFromComputeProof,
+  pqValidateConsensusBinding,
   pqVerifyComputeProofFromConsensus,
+  pqVerifyProofForConsensus,
+  setPQVerifierMode,
   PQ_CIRCUIT_REGISTRY,
   type PQWitness,
 } from "../crypto/pq-zkp.js";
+import { PQ_LIMITS } from "../crypto/pq-suite.js";
 
 const CID = "PQ_CIRCUIT_AI_INFERENCE_V1";
-const outCommit = "dd".repeat(32);
+const OUTPUT = "dd".repeat(32);
+const HEIGHT = 100;
 
 function witness(overrides: Partial<PQWitness> = {}): PQWitness {
   return { taskCommitment: "ee".repeat(32), tflopsWeight: 500, nonce: pqNewNonce(), ...overrides };
 }
 
-describe("pq-zkp (hash-based, transparent, PQ)", () => {
-  it("proves + verifies a valid computation", () => {
-    const p = pqProveCompute(CID, outCommit, witness());
-    const r = pqVerifyComputeProof(p, 100);
-    expect(r.valid).toBe(true);
-    expect(r.tflopsWeight).toBe(500);
+function proof() {
+  return pqProveCompute(CID, OUTPUT, witness(), HEIGHT);
+}
+
+afterEach(() => setPQVerifierMode("strict"));
+
+describe("PQ hash commitment prototype", () => {
+  it("structurally verifies a commitment in the simulation layer", () => {
+    const result = pqVerifyComputeProof(proof(), HEIGHT);
+    expect(result.valid).toBe(true);
+    expect(result.tflopsWeight).toBe(500);
   });
 
-  it("keeps the witness private (no taskCommitment/nonce in the proof)", () => {
+  it("is bound to one exact block height", () => {
+    const p = proof();
+    expect(pqVerifyComputeProof(p, HEIGHT + 1).valid).toBe(false);
+  });
+
+  it("keeps task commitment and nonce out of the serialised commitment", () => {
     const w = witness();
-    const p = pqProveCompute(CID, outCommit, w);
-    const s = JSON.stringify(p);
-    expect(s).not.toContain(w.taskCommitment);
-    expect(s).not.toContain(w.nonce);
+    const p = pqProveCompute(CID, OUTPUT, w, HEIGHT);
+    const serialised = JSON.stringify(p);
+    expect(serialised).not.toContain(w.taskCommitment);
+    expect(serialised).not.toContain(w.nonce);
   });
 
-  it("rejects an unknown circuit", () => {
-    const p = pqProveCompute(CID, outCommit, witness());
+  it("rejects malformed public statements and unknown circuits", () => {
+    const p = proof();
     (p as any).circuitId = "PQ_NOPE";
-    expect(pqVerifyComputeProof(p, 100).valid).toBe(false);
+    expect(pqVerifyComputeProof(p, HEIGHT).valid).toBe(false);
+    expect(() => pqProveCompute(CID, "not-hex", witness(), HEIGHT)).toThrow();
+    expect(() => pqProveCompute(CID, OUTPUT, witness({ nonce: "00" }), HEIGHT)).toThrow();
   });
 
-  it("rejects tflops inflation beyond circuit max", () => {
-    const p = pqProveCompute(CID, outCommit, witness());
+  it("rejects non-integer or inflated TFLOPS claims", () => {
+    const p = proof();
     p.tflopsWeight = PQ_CIRCUIT_REGISTRY.get(CID)!.maxTFLOPSPerProof + 1;
-    expect(pqVerifyComputeProof(p, 100).valid).toBe(false);
+    expect(pqVerifyComputeProof(p, HEIGHT).valid).toBe(false);
+    expect(() => pqProveCompute(CID, OUTPUT, witness({ tflopsWeight: 1.5 }), HEIGHT)).toThrow();
+    expect(() => pqProveCompute(CID, OUTPUT, witness({ tflopsWeight: 0 }), HEIGHT)).toThrow();
   });
 
-  it("prover refuses to build a proof outside circuit bounds", () => {
-    expect(() => pqProveCompute(CID, outCommit, witness({ tflopsWeight: 0 }))).toThrow();
-    expect(() => pqProveCompute(CID, outCommit, witness({ tflopsWeight: 10 ** 9 }))).toThrow();
+  it("rejects root, path, query-count, and duplicate-query tampering", () => {
+    const badRoot = proof();
+    badRoot.witnessRoot = "00".repeat(32);
+    expect(pqVerifyComputeProof(badRoot, HEIGHT).valid).toBe(false);
+
+    const badPath = proof();
+    badPath.queries[0]!.path[0] = "ff".repeat(32);
+    expect(pqVerifyComputeProof(badPath, HEIGHT).valid).toBe(false);
+
+    const dropped = proof();
+    dropped.queries = dropped.queries.slice(1);
+    expect(pqVerifyComputeProof(dropped, HEIGHT).valid).toBe(false);
+
+    const duplicate = proof();
+    duplicate.queries[1] = duplicate.queries[0]!;
+    expect(pqVerifyComputeProof(duplicate, HEIGHT).valid).toBe(false);
   });
 
-  it("rejects a tampered witnessRoot (breaks Fiat–Shamir challenge)", () => {
-    const p = pqProveCompute(CID, outCommit, witness());
-    p.witnessRoot = "00".repeat(32);
-    expect(pqVerifyComputeProof(p, 100).valid).toBe(false);
+  it("batch structural verification rejects any invalid commitment", () => {
+    const good = [proof(), proof()];
+    expect(pqBatchVerifyComputeProofs(good, HEIGHT)).toBe(true);
+    good[1]!.tflopsWeight = -5;
+    expect(pqBatchVerifyComputeProofs(good, HEIGHT)).toBe(false);
   });
 
-  it("rejects a corrupted Merkle path", () => {
-    const p = pqProveCompute(CID, outCommit, witness());
-    p.queries[0]!.path[0] = "ff".repeat(32);
-    expect(pqVerifyComputeProof(p, 100).valid).toBe(false);
+  it("binds every consensus duplicate to the inner statement", () => {
+    const cp = pqToComputeProof(proof());
+    expect(pqValidateConsensusBinding(cp, HEIGHT).valid).toBe(true);
+    for (const tampered of [
+      { ...cp, taskCommitment: "aa".repeat(32) },
+      { ...cp, circuitId: "PQ_CIRCUIT_AI_TRAINING_V1" },
+      { ...cp, tflopsWeight: cp.tflopsWeight + 1 },
+      { ...cp, publicInputs: [...cp.publicInputs.slice(0, 2), String(HEIGHT + 1)] },
+    ]) {
+      expect(pqValidateConsensusBinding(tampered, HEIGHT).valid).toBe(false);
+    }
   });
 
-  it("rejects when a Fiat–Shamir query is dropped", () => {
-    const p = pqProveCompute(CID, outCommit, witness());
-    p.queries = p.queries.slice(1); // now 15 < required 16
-    expect(pqVerifyComputeProof(p, 100).valid).toBe(false);
+  it("fails closed in strict consensus because this is not a computation proof", () => {
+    const cp = pqToComputeProof(proof());
+    setPQVerifierMode("strict");
+    expect(pqVerifyComputeProofFromConsensus(cp, HEIGHT)).toBe(false);
+    const result = pqVerifyProofForConsensus(cp, HEIGHT, 1);
+    expect(result.valid).toBe(false);
+    expect(result.verifiedTFLOPS).toBe(0);
+    expect(result.error).toMatch(/do not prove useful computation/i);
   });
 
-  it("rejects a duplicated query (soundness)", () => {
-    const p = pqProveCompute(CID, outCommit, witness());
-    p.queries[1] = p.queries[0]!; // duplicate index 0
-    expect(pqVerifyComputeProof(p, 100).valid).toBe(false);
+  it("allows structural commitments only when simnet is explicitly enabled", () => {
+    const cp = pqToComputeProof(proof());
+    setPQVerifierMode("simnet");
+    expect(pqVerifyComputeProofFromConsensus(cp, HEIGHT)).toBe(true);
+    expect(pqVerifyProofForConsensus(cp, HEIGHT, 1)).toEqual({ valid: true, verifiedTFLOPS: 500 });
   });
 
-  it("batch verify: all-valid true, any-invalid false", () => {
-    const good = [pqProveCompute(CID, outCommit, witness()), pqProveCompute(CID, outCommit, witness())];
-    expect(pqBatchVerifyComputeProofs(good, 100)).toBe(true);
-    const bad = [...good];
-    bad[1]!.tflopsWeight = -5;
-    expect(pqBatchVerifyComputeProofs(bad, 100)).toBe(false);
+  it("forbids simnet mode in production", () => {
+    const old = process.env.NODE_ENV;
+    process.env.NODE_ENV = "production";
+    try {
+      expect(() => setPQVerifierMode("simnet")).toThrow(/forbidden/i);
+    } finally {
+      process.env.NODE_ENV = old;
+    }
   });
 
-  it("round-trips through the consensus ComputeProof adapter", () => {
-    const p = pqProveCompute(CID, outCommit, witness());
-    const cp = pqToComputeProof(p);
-    const back = pqFromComputeProof(cp);
-    expect(back).not.toBeNull();
-    expect(back!.witnessRoot).toBe(p.witnessRoot);
-    expect(pqVerifyComputeProofFromConsensus(cp, 100)).toBe(true);
+  it("rejects oversized and legacy proof encodings", () => {
+    const cp = pqToComputeProof(proof());
+    expect(pqFromComputeProof({ ...cp, proofBytes: "x".repeat(PQ_LIMITS.maxProofBytes + 1) })).toBeNull();
+    expect(pqFromComputeProof({ ...cp, proofBytes: JSON.stringify({ scheme: "PQ-HASH-IOP-v1" }) })).toBeNull();
+    expect(pqFromComputeProof({ ...cp, proofBytes: "[".repeat(33) + "0" + "]".repeat(33) })).toBeNull();
   });
 
-  it("consensus adapter rejects non-PQ (legacy) proofs", () => {
-    const legacy: any = { circuitId: "CIRCUIT_AI_INFERENCE_V1", proofData: "not-json", taskCommitment: "x", tflopsWeight: 1 };
-    expect(pqFromComputeProof(legacy)).toBeNull();
-    expect(pqVerifyComputeProofFromConsensus(legacy, 100)).toBe(false);
-  });
-
-  it("malformed proof never throws, just invalid", () => {
-    expect(pqVerifyComputeProof(null as any, 1).valid).toBe(false);
-    expect(pqVerifyComputeProof({ scheme: "x" } as any, 1).valid).toBe(false);
+  it("malformed proof objects never throw", () => {
+    expect(pqVerifyComputeProof(null as any, HEIGHT).valid).toBe(false);
+    expect(pqVerifyComputeProof({ scheme: "x" } as any, HEIGHT).valid).toBe(false);
   });
 });

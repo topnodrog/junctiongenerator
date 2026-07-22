@@ -4,6 +4,23 @@
 **Status:** Draft branch blocker list — this code must not be deployed or merged
 into a production consensus path yet.
 
+## Remediation status (same-day hardening pass)
+
+- **Compute-proof forgery:** contained. All current hash commitments are marked
+  prototype-only and rejected by strict consensus with zero credited TFLOPS.
+  A real transparent proof backend remains required.
+- **Public stealth recovery:** removed. Private scanning now requires ML-KEM-768
+  decapsulation with the recipient's view secret. This is not claimed to be a
+  complete shielded-payment construction.
+- **Inner/outer mismatches:** fixed. Exact statement binding is checked before
+  any work is credited.
+- **160-bit addresses, delimiter encoding, key import, size limits, agility:**
+  addressed by suite-2 breaking encodings and adversarial checks.
+- **Unaudited/side-channel-unsafe provider:** contained by prototype flags and a
+  production startup guard; replacement and audit remain release blockers.
+
+Full implementation notes are in `QUANTUM-HARDENING-CHANGELOG.md`.
+
 ## What is promising
 
 - ML-DSA-65 is a standardized post-quantum signature algorithm (FIPS 204).
