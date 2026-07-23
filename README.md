@@ -25,6 +25,30 @@ AI-operated, mined-compute Web3 factory. Speak English to compile smart contract
 
 ---
 
+## JGC Sovereign Node
+
+The primary protocol product lives in `packages/jgc-node`; it is separate from
+the legacy JGT token on Base.
+
+Current node milestone (2026-07-23):
+
+- consensus v2 uses a 192-byte header with `auditRoot`;
+- historical compute is selected in 10-block windows using a delayed block-hash
+  beacon and verified by ML-DSA-signed validator committees;
+- complete audit evidence is committed to blocks and independently checked
+  during mining, peer sync, restart, and reorg;
+- post-quantum identity/signature paths and SHA3-256 wire checksums are active;
+- the suite passes 24 test suites / 244 tests and a 31-block two-node sync demo.
+
+The node is local/private testnet software. No JGC public blockchain or mainnet
+has been deployed. Rewards and slashing from audit verdicts remain disabled
+until bonded validator state is consensus-owned.
+
+See [`packages/jgc-node/README.md`](packages/jgc-node/README.md) and
+[`packages/jgc-node/docs/AUDIT-PROTOCOL.md`](packages/jgc-node/docs/AUDIT-PROTOCOL.md).
+
+---
+
 ## What's Deployed On-Chain (Base Network)
 
 | Contract | Address | Status |
@@ -138,11 +162,15 @@ AI-operated, mined-compute Web3 factory. Speak English to compile smart contract
 
 ```bash
 # Local dev
-cd /home/Kali/Junction_Generator
+cd C:/dev/JunctionGenerator
 npm run dev
 
-# Push to GitHub (auto-triggers Vercel deploy)
-python3 push_page.py
+# Verify the JGC node
+cd packages/jgc-node
+npm run typecheck
+npm test
+npm run build
+npm run sync-demo
 
 # Deploy contract (when ETH available)
 # Update .env with private key, then:
@@ -162,7 +190,7 @@ python3 push_page.py
 ## Important Notes
 
 - **ONE repo:** `topnodrog/junctiongenerator` (lowercase). The old `Junction_Generator` (capitals) was deleted.
-- **Local clone:** `/home/Kali/Junction_Generator` (directory has underscore, remote does not)
-- **Stale dir:** `/home/Kali/junctiongenerator` -- old copy from June 2, ignore it
-- **Push token:** stored in `.gh_token`, read at runtime by `push_page.py`
+- **Canonical local clone:** `C:\dev\JunctionGenerator`
+- **Do not store access tokens or private keys in the repository.** Use the
+  authenticated Git credential manager and environment/secret stores.
 - **Vercel env:** needs `NEXT_PUBLIC_API_URL` set to Worker URL

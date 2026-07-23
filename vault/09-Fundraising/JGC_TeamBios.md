@@ -1,5 +1,10 @@
 # JGC Team — Credentials & Background
 
+> **Project-status note (2026-07-23):** The achievements below refer to a
+> local/private implementation. The audit-evidence path is consensus-committed;
+> public-network operation and consensus-owned bonded economics are not yet
+> deployed.
+
 ## James Gordon — Founder & Protocol Engineer
 
 **Background**
@@ -12,11 +17,13 @@ James Gordon is a senior cryptoeconomic engineer with deep expertise in blockcha
 - **Useful Computation:** Proof-of-Useful-Computation (PoUC) frameworks, AI inference verification, economic incentives for honest work
 
 **Key Achievements**
-- Designed JGC's multi-challenger quorum mechanism for collusion-resistant verification
+- Designed JGC's multi-challenger quorum mechanism to reduce single-verifier risk
 - Built deterministic replay verification model for AI inference reproducibility
 - Implemented 16-decimal precision token economics with dust mitigation strategies
-- Shipped Junctioning Layer-1 with live Gemma-4 inference via Ollama (June 2026)
-- Engineered sampling + slashing economic layer for honest validator participation
+- Shipped Junctioning Layer-1 with working local Gemma-4 inference via Ollama
+  (June 2026)
+- Engineered delayed sampling and a tested local slashing prototype; the
+  consensus-owned bond/penalty transition remains future work
 
 **Contact**  
 james_gordon@junctiongenerator.net

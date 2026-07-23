@@ -22,3 +22,13 @@ Research done 2026-06-18 on the L5 trusted-compute problem ("how does a network 
 **The honest open question (every project hits it):** *who bears verification cost, and how often does fraud actually occur?* It's EMPIRICAL, not cryptographic. If fraud is rare (<1% of tasks) amortized cost is survivable; if systemic (>30%) the network collapses under replay load. Production data (Filecoin/Phala/Optimism) suggests rational actors rarely cheat when slash > reward → low sampling rate `p` can work IF slash stake is high enough. This is exactly what the sampling+slashing layer must tune.
 
 **Still-open for us specifically:** cross-machine determinism (FP reduction order across hardware) still underlies any replay verdict — the genuinely hard part, deferred. Collusion: if challengers are themselves nodes, need multiple independent challengers + challenger rewards.
+
+**Implementation update — 2026-07-23:** JGC now implements the historical
+sampling/evidence half of this design in consensus v2. Ten-block windows use a
+two-block-delayed chain hash as the beacon; three validators sign replay
+observations with ML-DSA; full verdict evidence is committed through
+`auditRoot` and reverified during sync/restart/reorg. This resolves the earlier
+"beacon source" implementation gap. It does **not** resolve cross-hardware
+determinism, and it does **not** activate slashing: the bonded validator roster
+and stake snapshot are not yet consensus-owned, so verdicts remain evidence
+only.

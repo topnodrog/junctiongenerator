@@ -1,5 +1,9 @@
 # Week 1 Fundraising — Quick Reference Card
 
+> **Technical status (2026-07-23):** Use “local/private testnet validated.”
+> Do not claim a public testnet, mainnet, or active slashing. Consensus-v2
+> signed audit evidence is shipped; bonded economics remain next.
+
 ## Your Goal
 **$1M seed round. 40-50 cold emails sent. 1-2 serious conversations by Friday.**
 
@@ -25,7 +29,7 @@
 **Example:**
 ```
 Lao Tao, Paradigm (backed Eigen Layer)
-→ Why: You care about validator security, JGC is verification + slashing
+→ Why: You care about validator security; JGC commits signed audit evidence and is building bonded enforcement
 ```
 
 **By Tuesday EOD:** Spreadsheet with 40-50 investors ready to email
@@ -101,7 +105,7 @@ thoughts if you get time.
 ## Email Quick Formula
 
 **Subject:** [Problem or Proof]  
-**Example:** "$14.4B fraud — we shipped the verification layer"
+**Example:** "Crypto verification failures remain costly — we shipped a local audit layer"
 
 **Body Structure:**
 1. Hook: One sentence problem
@@ -120,8 +124,8 @@ thoughts if you get time.
 | Type | Lead With | Best Subject |
 |------|-----------|--------------|
 | **Crypto VC** | Technical + Economic security | "Collusion-resistant verification" |
-| **Traditional VC** | Market size + Use cases | "$14.4B fraud — we shipped it" |
-| **Angel/Founder** | Shipped proof + elegance | "Testnet live, junctioning shipped" |
+| **Traditional VC** | Market size + Use cases | "Costly verification gap — local audit layer shipped" |
+| **Angel/Founder** | Shipped proof + elegance | "Local testnet validated; audit consensus shipped" |
 
 ---
 
@@ -167,8 +171,8 @@ If you hit these → Week 2 is calls. If not → continue outreach + iterate.
 **You're not selling. You're informing.**
 
 You've built something real:
-- Testnet live ✓
-- Junctioning Layer-1 live ✓
+- Local/private testnet validated ✓
+- Junctioning Layer-1 working locally ✓
 - Verification model working ✓
 
 You're just telling investors who might care:
@@ -181,7 +185,7 @@ That's it. No apologies. No hype.
 ## If You Get Cold Feet
 
 **Remember:**
-- $14.4B problem is real
+- Use only a current, cited market-loss figure in external materials
 - Your solution is shipped and working
 - You're not asking permission — you're informing them of an opportunity
 - Worst case: They say no. That's fine. Move to next investor.
@@ -246,8 +250,8 @@ Which works best?
 **If you're not getting opens by Wednesday:**
 
 Try different subject lines:
-- "Deterministic replay + collusion-resistant quorum (live testnet)"
-- "We shipped AI verification — live since June 2026"
+- "Deterministic replay + post-quantum signed quorum (local testnet)"
+- "We shipped the local AI-audit path and can demonstrate it"
 - "New angle on the oracle problem"
 
 Try different email hooks:

@@ -1,12 +1,17 @@
 # JGC Financial Model & Projections
 
+> **Planning model, not current operations (updated 2026-07-23):** JGC has no
+> deployed public chain, market price, active bonded validator set, or
+> slashing-based supply reduction. All dollar values and adoption figures below
+> are scenarios that require explicit assumptions and external validation.
+
 ## Token Economics
 
 ### JGC Coin Supply
 - **Total Supply:** Fixed (non-inflationary after genesis)
 - **Precision:** 16 decimals
 - **Divisibility:** Single-absorber dust mitigation (no sub-satoshi issues)
-- **Distribution Model:** Genesis allocation → validator rewards → slashing deflationary pressure
+- **Proposed Distribution Model:** Genesis allocation → validator rewards → potential slashing/burn policy (not active)
 
 ### Revenue Streams (Year 1-3 Projections)
 
@@ -61,7 +66,7 @@
 
 | Use of Funds | Amount | Timeline |
 |--------------|--------|----------|
-| **Product Development** | $1M | Months 1-12: Mainnet optimization, inference scaling |
+| **Product Development** | $1M | Months 1-12: bonded-validator consensus, public-testnet hardening, inference scaling |
 | **Validator Incentives** | $800K | 12+ months: Initial rewards to bootstrap network |
 | **Go-to-Market** | $600K | Months 6-24: Exchange partnerships, enterprise pilots |
 | **Operations & Team** | $400K | Months 1-24: Hiring, infrastructure |
@@ -70,10 +75,11 @@
 ### Market Size & Growth
 
 **Total Addressable Market (TAM)**
-- Crypto fraud prevention: $14.4B/year
-- AI verification infrastructure: $50B+ (growing)
-- Oracle alternatives market: $5-20B
-- Enterprise verification services: $10-100B (emerging)
+- Crypto fraud prevention: size with a current, scoped source before external use
+- AI verification infrastructure: source a current comparable-market estimate
+- Oracle alternatives: define the included products and source the estimate
+- Enterprise verification services: treat as an emerging scenario, not a
+  measured JGC market
 
 **Serviceable Addressable Market (SAM) — Year 3**
 - Conservative: $100M-500M
@@ -88,7 +94,7 @@
 
 **Assumptions**
 - 500+ validators operational by end of Year 2
-- Mainnet launches Q3 2026; stable by Q4 2026
+- Mainnet date is not committed; it follows public soak testing and external security review
 - First major enterprise pilot by Q2 2027
 - Exchange listing by Q1 2027
 - No major regulatory headwinds

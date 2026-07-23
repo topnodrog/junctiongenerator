@@ -1,13 +1,16 @@
 # JGC Quantum-Ready Architecture
 
-**Status:** LIVE — consensus, wallet, miner, and test harness all run on the post-quantum stack · **Scope:** `packages/jgc-node`
+**Status:** ACTIVE IN THE LOCAL NODE — consensus, wallet, miner, and test
+harness run on the post-quantum stack; no public JGC chain or mainnet is
+deployed · **Scope:** `packages/jgc-node`
 **Audience:** protocol engineering, investors, security reviewers
 
 ---
 
 ## 0. TL;DR
 
-JGC's node is being rebuilt to be **post-quantum secure end-to-end** and
+JGC's local node has moved its live cryptographic paths to a
+**post-quantum-ready end-to-end design** that is
 **privacy-preserving without specialized hardware**. Every cryptographic
 primitive that a cryptographically relevant quantum computer (CRQC) could break
 has a quantum-safe replacement:
@@ -39,7 +42,7 @@ becomes forgeable.
 ### 1.2 Groth16 / BN254 → broken by Shor
 `src/crypto/zkp.ts` + `rust/src/zkp_verify.rs` verify PoUC with Groth16 over the
 BN254 pairing curve. Pairings are discrete-log assumptions — also broken by
-Shor. Worse, a forged compute proof lets an attacker **mint JGT for work never
+Shor. Worse, a forged compute proof lets an attacker **mint JGC for work never
 performed**, attacking the chain's core value, not just wallets. Groth16 also
 needs a per-circuit trusted setup (toxic-waste ceremony), and BN254 is only
 ~100-bit classical security.
@@ -147,6 +150,7 @@ with running, tested code rather than a roadmap bullet:
 | `src/tests/pq-stealth.test.ts` | 6 tests |
 | `src/tests/pq.test.ts` | 3 integration tests |
 
-**Test status:** full suite **215/215 green** across 20 suites (incl. PQ spend,
-wallet, UTXO, mempool, reorg, persistence, security on the quantum path);
-`tsc --noEmit` clean; `npm run build` clean.
+**Test status (2026-07-23):** full suite **244/244 green** across 24 suites
+(including PQ spend, wallet, UTXO, mempool, reorg, persistence, historical
+audit consensus, and security on the quantum path); `tsc --noEmit` and
+`npm run build` clean; 31-block two-node sync demo passed.

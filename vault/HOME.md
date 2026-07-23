@@ -18,13 +18,15 @@ The three-part architecture and where everything lives.
 ### ⛓️ JGC Coin (PRIMARY FOCUS)
 The Proof-of-Useful-Computation cryptocurrency.
 - [[project-vision]] — JGC, JGT, junctioning explained
-- [[project-jgc]] — Testnet milestone (2026-06-15), wallet live, verification built
+- [[project-jgc]] — Local-testnet wallet milestone (2026-06-15) and current
+  consensus-v2 audit status
 - [[jgc-reward-divisibility]] — 16 decimals, single-absorber dust policy (LOCKED)
 - [[jgc-rust-build-env]] — Rust/WASM build constraints (Smart App Control blocker)
 
 ### 🔀 Junctioning (Layer 1)
 Local inference + compression layer.
-- [[junctioning-milestone]] — Gemma 4 via Ollama, honest FLOP measurement, live verification
+- [[junctioning-milestone]] — Gemma 4 via Ollama, honest FLOP measurement, and
+  local replay/audit verification
 
 ### ✅ Verification (L5)
 The trusted-compute verification model.
@@ -53,11 +55,19 @@ Use **Ctrl+Shift+F** (Obsidian global search) to find keywords across all notes.
 
 ## Recent Updates
 
+- **2026-07-23:** JGC consensus v2: post-quantum ML-DSA identities/signatures,
+  SHA3-256 wire checksums, delayed-beacon historical audits, and complete
+  verdict evidence committed through `auditRoot`; 24 suites / 244 tests and a
+  passing 31-block two-node sync demo. Slashing remains disabled pending a
+  consensus-owned bonded validator registry.
 - **2026-06-19:** NodeStatusPanel (real node status) live on junctiongenerator.net; grant polish (hero, milestones, recruitment)
-- **2026-06-18:** Junctioning Layer-1 LIVE with replay verification, sampling+slashing, multi-challenger quorum (183/183 tests green)
+- **2026-06-18:** Historical local prototype milestone: junctioning replay
+  verification, sampling, experimental slashing logic, and multi-challenger
+  quorum (183/183 tests green at that point)
 - **2026-06-17:** JGT rescue complete via EIP-7702; 100M JGT + token ownership moved to safe wallet
 - **2026-06-16:** Canonical home locked to `C:\dev\JunctionGenerator`; memory consolidated
-- **2026-06-15:** JGC testnet milestone — wallet live, 7,200 JGC settlement verified
+- **2026-06-15:** Historical local-testnet milestone — wallet flow and a 7,200
+  JGC simulated settlement were verified; no public chain was deployed
 
 ---
 

@@ -1,11 +1,16 @@
 # Cold Outreach Email Templates for JGC
 
+> **Accuracy guardrail (2026-07-23):** JGC is a validated local/private
+> testnet. Signed audit evidence is consensus-committed; bonded rewards and
+> slashing are planned but not active. Update every template with current
+> measured facts before sending.
+
 ## Template 1: Crypto-Native VCs (Paradigm, a16z, Polychain)
 
 **Subject Line Options:**
 - "Layer-1 junctioning + collusion-resistant verification"
-- "$14.4B fraud problem — we shipped the verification layer"
-- "Deterministic replay + multi-challenger quorum (live testnet)"
+- "Crypto verification failures remain costly — we shipped a local audit layer"
+- "Deterministic replay + signed quorum evidence (local testnet)"
 
 ---
 
@@ -14,17 +19,16 @@
 ```
 Hi [Name],
 
-$14.4B in annual crypto losses to fraud. There's no way to verify that code 
-executes correctly, oracles can be manipulated, and there's no collusion-resistant 
-consensus mechanism outside of proof-of-work.
+Crypto scams, exploits, and oracle failures remain costly. Many systems still
+depend on opaque execution or a small number of trusted verifiers.
 
 We're solving this with Proof of Useful Computation — a Layer-1 where verification 
 work (AI inference) becomes consensus. Deterministic execution + multi-challenger 
-quorum makes it cryptoeconomically secure and collusion-resistant.
+quorum produces post-quantum signed, consensus-committed evidence.
 
-We shipped testnet in June and junctioning (our Layer-1 compression) is live with 
-Gemma-4 inference. Full verification model (replay + sampling + quorum) is working 
-and economically secured via slashing.
+We shipped a local testnet in June and junctioning (our local inference layer)
+works with Gemma. Consensus v2 now commits delayed-sample, ML-DSA-signed quorum
+evidence. Bonded validator economics are the next milestone.
 
 Your portfolio (Eigen Layer, Lido) suggests you care about consensus security and 
 economic incentives. This is that problem from a different angle.
@@ -54,7 +58,7 @@ making validators honest through collusion-resistant quorum. Worth a look.
 **For Polychain:**
 ```
 Your focus on "novel consensus + economic security" is exactly what JGC is building. 
-Live testnet, junctioning shipped, ready to show you.
+Local testnet validated, junctioning shipped, ready to show you.
 ```
 
 ---
@@ -62,7 +66,7 @@ Live testnet, junctioning shipped, ready to show you.
 ## Template 2: Traditional VCs (Sequoia, Khosla, etc.)
 
 **Subject Line Options:**
-- "Solving $14.4B crypto fraud problem with deterministic verification"
+- "Addressing crypto's verification gap with replayable evidence"
 - "AI inference as a consensus mechanism"
 - "We built a Layer-1 verification network (live demo)"
 
@@ -76,20 +80,21 @@ Hi [Name],
 We're building JunctionGenerator — a verification infrastructure for crypto that 
 solves two problems:
 
-1. **Fraud Prevention** — $14.4B annual losses because code execution isn't verifiable
-2. **Enterprise Adoption** — Smart contracts need proof of fairness for institutional 
-   settlement
+1. **Fraud Risk Reduction** — costly losses where execution or oracle evidence is weak
+2. **Enterprise Adoption** — Smart contracts need independently auditable
+   execution evidence for institutional settlement
 
 Our approach: Make useful work (AI inference) the basis for consensus. Validators 
-run code in parallel, verify it deterministically, reach quorum. If they lie, they 
-get slashed.
+replay sampled work and commit signed quorum evidence. The current local
+implementation detects and records disagreement; bonded penalties are the next
+consensus milestone.
 
 We're pre-revenue but shipped product:
-- Testnet live (June 2026)
-- Junctioning Layer-1 live with local inference
-- Full verification model (replay + sampling + collusion-resistant quorum)
+- Local/private testnet validated (June 2026)
+- Junctioning Layer-1 working with local inference
+- Consensus-v2 evidence path (replay + delayed sampling + signed quorum)
 
-We're raising $1M seed to accelerate mainnet and enterprise pilot partnerships.
+We're raising seed funding for public-testnet hardening, external review, and enterprise research pilots.
 
 Think this is worth 15-20 minutes to discuss?
 
@@ -100,7 +105,7 @@ junctiongenerator.net
 ```
 
 **Why this works for traditional VCs:**
-- Leads with problem ($14.4B is concrete)
+- Leads with a concrete problem; use a current cited figure only after verifying it
 - No crypto jargon (or explains it)
 - Shipped proof (credibility)
 - Clear use case (enterprise settlement)
@@ -111,9 +116,9 @@ junctiongenerator.net
 ## Template 3: Crypto Angels / Protocol Engineers
 
 **Subject Line Options:**
-- "Deterministic verification + slashing economics"
+- "Deterministic verification + consensus-committed audit evidence"
 - "Built junctioning Layer-1 + quorum consensus (want to see it?)"
-- "Solving collusion in verification (live testnet)"
+- "Signed quorum verification (local testnet)"
 
 ---
 
@@ -125,15 +130,15 @@ Hi [Name],
 Quick one — building JunctionGenerator, a verification infrastructure that makes 
 useful work the basis for consensus.
 
-The core insight: Validators run AI inference deterministically, reach quorum, get 
-rewarded. If they cheat, they lose their stake. No proof-of-work waste, no centralized 
-oracle risk.
+The core insight: Validators replay sampled AI work, sign observations, and
+commit quorum evidence. Bonded rewards and penalties are the next consensus
+milestone. No proof-of-work waste and no single-validator oracle.
 
 You've built [relevant protocol]. You probably see this problem — verification is 
 the hard part.
 
-We shipped it. Testnet live, junctioning Layer-1 works, full verification model 
-(replay + sampling + multi-challenger quorum) proven economically.
+We shipped the local evidence path: junctioning, delayed sampling, signed
+quorum, block commitment, sync, and adversarial rejection.
 
 Raising $1M seed. Would love your thoughts on the approach — 15 min if you're game?
 
@@ -153,7 +158,7 @@ without proof-of-work. Worth a look.
 **For a Founder:**
 ```
 You raised for [project]. You know the validator security problem intimately. 
-JGC is solving it via useful-compute + slashing. Early testnet results look good.
+JGC is approaching it through useful compute and consensus-committed audit evidence. Local validation is promising.
 ```
 
 **For a Crypto Researcher:**
@@ -167,7 +172,7 @@ with economic incentives. Would love your technical feedback.
 ## Subject Line Strategies
 
 **What Gets Opened:**
-- Specific problem + proof ("$14.4B fraud — we shipped verification")
+- Specific problem + proof ("Costly verification gap — local audit layer shipped")
 - Relevant portfolio reference ("You backed Eigen, here's the verification flip-side")
 - Technical intrigue ("Deterministic replay + collusion-resistant quorum")
 
@@ -178,8 +183,8 @@ with economic incentives. Would love your technical feedback.
 - "We should talk" (why would they?)
 
 **Best performers (for crypto):**
-- Lead with metric ("$14.4B fraud losses")
-- Lead with shipped proof ("Testnet live, junctioning shipped")
+- Lead with a metric only when it is current, scoped, and cited
+- Lead with shipped proof ("Local testnet validated; audit consensus shipped")
 - Lead with relevant problem ("Validator collusion prevention")
 
 ---
@@ -218,15 +223,15 @@ Hi [Name],
 
 Great — appreciate the interest. Three quick points:
 
-1. **Problem:** $14.4B annual crypto fraud losses. Code execution isn't verifiable, 
-   oracles are centralized, validators can collude.
+1. **Problem:** Crypto scams and exploits remain costly. Execution evidence can
+   be opaque, oracles can be centralized, and validators can collude.
 
 2. **What we built:** Proof of Useful Computation — AI inference runs on Layer-1, 
-   validators reach quorum, slashing ensures honesty. Testnet live, junctioning 
-   (Layer-1 compression) shipped.
+   validators reach quorum and commit signed evidence. A local/private testnet,
+   junctioning, and the consensus-v2 audit-evidence path are working.
 
-3. **Why it matters:** Solves verification for DeFi (fairness proof), enterprise 
-   smart contracts (auditability), and AI models (tamper-proofing).
+3. **Why it matters:** Targets better execution evidence for DeFi, enterprise
+   smart-contract auditability, and AI-model tamper detection.
 
 Would love to walk you through it live — 15-20 min call Friday?
 
@@ -236,7 +241,7 @@ Would love to walk you through it live — 15-20 min call Friday?
 ### If They Ask "What's the ask?"
 ```
 $1M seed round to accelerate:
-- Mainnet launch (Q3 2026)
+- Bonded validator consensus + public-testnet hardening (date not committed)
 - Enterprise pilot partnerships
 - Exchange integration
 
@@ -252,9 +257,9 @@ Interested in exploring?
 ```
 JGC coin:
 - Fixed supply (non-inflationary after genesis)
-- 16 decimals
-- Validators earn rewards for honest work + honest slashing
-- Deflationary through validator penalties
+- 16-decimal accounting
+- Bonded validator rewards and penalties (planned; not active)
+- A possible burn/penalty policy is still under design
 
 Not launching with token on Day 1 — focusing on network security first.
 
@@ -322,7 +327,7 @@ Before sending each email, verify:
 
 This works because:
 1. You're not asking for money upfront
-2. You're showing they shipped (credibility)
+2. You're showing what has shipped (credibility)
 3. You're aligning with their thesis (relevance)
 4. You're not wasting their time (clear ask)
 

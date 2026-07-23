@@ -1,5 +1,10 @@
 # Pitch Narratives — Tailored by Investor Type
 
+> **Accuracy guardrail (2026-07-23):** Say “local/private testnet validated,”
+> not “public testnet” or “mainnet.” Signed audit evidence is now
+> consensus-committed and post-quantum; rewards/slashing remain inactive until
+> the bonded validator registry and stake snapshot are in consensus.
+
 ## For Crypto-Native VCs (Paradigm, a16z, Polychain, Eigen Foundation)
 
 **What They Care About:** Consensus mechanisms, economic security, validator networks, infrastructure moats
@@ -8,11 +13,21 @@
 
 "Consensus is only as good as its verification mechanism. Bitcoin wastes energy, Ethereum has centralized proposers, most protocols have oracle risk or single-signer validation.
 
-We're solving this with a different model: useful work as consensus. Validators run AI inference in parallel, reach deterministic agreement, and consensus is cryptoeconomically backed by slashing. It's collusion-resistant because we require multi-challenger quorum — you can't bribe all validators simultaneously.
+We're testing a different model: useful work as consensus. Validators replay
+sampled AI work and commit post-quantum signed quorum evidence. The current
+implementation reduces reliance on a single verifier, but it is not yet
+cryptoeconomically secured: consensus-owned bonds, penalties, and Sybil
+resistance are still required.
 
-The breakthrough: We don't need proof-of-work waste. We don't need centralized oracles. We don't need trusted hardware. We just need economic incentives + reproducible computation.
+The design goal is to avoid proof-of-work waste, centralized oracles, and
+trusted hardware by combining reproducible computation with economic
+incentives. The local evidence path is implemented; cross-hardware
+reproducibility and the economic layer remain open.
 
-We shipped testnet in June. Junctioning (our Layer-1 compression layer) is live. We've proven the full verification model works: deterministic replay + sampling + quorum + slashing. It's economically secure right now.
+We shipped a local testnet in June and consensus-v2 audit commitments in July.
+Junctioning (our local inference/compression layer) works, and the node commits
+ML-DSA-signed replay evidence selected by a delayed beacon. Economic
+enforcement is the next milestone; it is not live security today.
 
 This is the missing piece in the infrastructure stack. Everyone's building on top of insecure verification. We're fixing the foundation."
 
@@ -20,7 +35,7 @@ This is the missing piece in the infrastructure stack. Everyone's building on to
 - "Collusion-resistant" (every VC cares about this after FTX/Celsius)
 - "Economic security" (Eigen Layer language)
 - "Multi-challenger quorum" (novel + defensible)
-- "Live testnet + shipped junctioning" (derisk)
+- "Local testnet + shipped audit consensus" (derisk)
 
 ---
 
@@ -30,27 +45,35 @@ This is the missing piece in the infrastructure stack. Everyone's building on to
 
 **Narrative:**
 
-"Crypto has a fraud problem. $14.4B annual losses to scams, rug pulls, oracle manipulation, and code bugs. That's bigger than your typical Series A market.
+"Crypto has a verification problem. Scams, exploits, oracle manipulation, and
+code bugs remain costly. Use a current, scoped market-loss citation when this
+narrative is adapted for external use.
 
 The root cause: You can't verify that code does what it says. Smart contracts are black boxes. Oracles can be bribed. There's no mechanism to prove fairness.
 
-We're solving this by making verification cryptographically provable. You write a smart contract. Our system verifies it deterministically. You get a proof that it ran correctly. Attackers can't forge that proof.
+We're building independently auditable execution evidence. A workload is bound
+to model and input commitments, sampled validators replay it, and their signed
+observations are committed to the chain. This detects tampering covered by the
+protocol; it is not a general mathematical proof that arbitrary code or business
+logic is correct.
 
 Why now? Two reasons:
-1. AI inference is deterministic (unlike traditional computation)
+1. A constrained inference runtime can support reproducible replay
 2. Cryptoeconomics has matured — we can incentivize validators directly
 
 Use cases:
 - DeFi protocols get fairness proof (attracts users + TVL)
 - Enterprise smart contracts get auditability (banks, insurance will use it)
-- AI model deployment gets tamper-proofing (healthcare, legal)
+- AI model deployment gets stronger tamper evidence (healthcare, legal)
 
-We're pre-revenue but we've shipped the core product. Testnet live. Verification model proven. Ready to sell to users.
+We're pre-revenue with a working local/private testnet and independently
+verifiable audit evidence. Public-testnet hardening, cross-hardware
+determinism, and bonded validator economics remain before production use.
 
 This is boring infrastructure that will be used by everything built on crypto in the next 5 years."
 
 **Key Callouts:**
-- "$14.4B problem" (big market)
+- "Costly verification problem" (large market; substantiate it)
 - "Deterministically provable" (not vague)
 - "Use cases: DeFi, enterprise, AI" (expanding TAM)
 - "Pre-revenue but shipped" (de-risk)
@@ -65,26 +88,34 @@ This is boring infrastructure that will be used by everything built on crypto in
 
 "You've probably thought about this: How do you prove a piece of code executed correctly without trusting anyone?
 
-Traditional answer: Proof-of-work (wastes energy) or trusted hardware (single point of failure). Neither is great.
+Traditional answers include proof-of-work and trusted hardware, each with
+different cost and trust tradeoffs.
 
-We found a third way: Make reproducible computation the basis for consensus. You run code, I run the same code, we compare outputs. If we disagree, others run it to break the tie. The majority can't all be wrong.
+We are testing another path: make reproducible computation the basis for
+consensus evidence. Multiple validators replay sampled work and compare signed
+observations. A quorum makes disagreement and tampering visible, though
+correctness still depends on reproducibility and an honest, Sybil-resistant
+committee.
 
-Add slashing on top — validators put up collateral — and suddenly lying costs them money. You've got economic security without wasteful energy.
+The planned next step adds consensus-owned validator bonds and deterministic
+penalties so dishonest participation has a measurable cost.
 
 Why this works:
-1. AI inference is deterministic (unlike traditional computation)
-2. Multi-challenger quorum prevents cartels
-3. Slashing economically incentivizes honesty
+1. A constrained inference runtime can support replay
+2. Multi-challenger quorum reduces single-verifier risk
+3. Bonded penalties could add economic enforcement once integrated
 
-We proved it works. Testnet live. Junctioning Layer-1 shipping. Full verification model deployed.
+We proved the local consensus-evidence path works: delayed sampling, signed
+quorum, block commitment, sync, restart, and adversarial rejection. The
+public network and economic penalty path are not deployed.
 
 This is the thing you've always wanted to build but didn't know it was possible. We figured out how."
 
 **Key Callouts:**
 - "You've thought about this" (speaks to their expertise)
 - "Reproducible computation as consensus" (elegant framing)
-- "Deterministic + multi-challenger + slashing" (technical depth)
-- "Already shipped testnet" (risk mitigated)
+- "Replay + multi-challenger + planned bonds" (technical depth)
+- "Local testnet and audit consensus shipped" (measured progress)
 
 ---
 
@@ -94,25 +125,28 @@ This is the thing you've always wanted to build but didn't know it was possible.
 
 **Narrative:**
 
-"JGC is a Layer-1 coin with built-in utility: validators earn rewards for running verifications. That means constant demand from validators.
+"JGC is designed as a Layer-1 coin whose future utility includes validator
+bonds, verification rewards, and protocol penalties. Those economics are not
+active in the current local testnet.
 
 Token economics:
 - Fixed supply (no inflation risk)
-- Validators earn rewards (natural buyer pressure)
-- Slashing creates supply scarcity
-- Bridges to other chains create volume
+- Validator rewards are planned
+- A burn or penalty policy remains under design
+- Any bridge and exchange integration would require separate security work
 
-Why list JGC:
-1. Validator adoption guarantees volume (unlike speculative coins)
-2. Economic model means holding incentive (people stake it)
-3. Bridges to Base/Arbitrum create cross-chain trading
+Potential future listing case:
+1. Demonstrated public validator adoption
+2. Audited, consensus-owned bond and reward mechanics
+3. Secure bridge integrations and sufficient liquidity
 
-Adoption timeline:
-- Q4 2026: First major DeFi protocol integration
-- Q1 2027: Exchange listing ready
-- Q2 2027+: Enterprise validator adoption
+Gated adoption sequence:
+- Public multi-machine testnet and soak testing
+- External security review and bonded-economics validation
+- Only then: pilot integrations, liquidity planning, and listing discussions
 
-You're looking at a coin that actually has utility from day one. Most coins are speculation. JGC is infrastructure."
+The investment case depends on proving that this planned utility works under
+public-network conditions; it should not be presented as achieved today."
 
 **Key Callouts:**
 - "Fixed supply + validator demand" (scarcity + utility)
@@ -132,21 +166,27 @@ You're looking at a coin that actually has utility from day one. Most coins are 
 2. Proof no one manipulated the execution
 3. Audit trail for regulators
 
-JGC provides all three. When you deploy a contract on JGC, you get a cryptographic proof that it executed as written. Regulators can see the full verification process. Insurance companies can underwrite it.
+JGC aims to provide a signed, replayable audit trail for selected computation.
+The current local prototype commits quorum evidence and rechecks it during sync.
+A production enterprise deployment would still need privacy controls, formal
+assurance, legal review, and an externally reviewed validator network.
 
 Use cases:
-- Supply chain settlement ($50B+ market)
+- Supply-chain settlement (size with a current, scoped source)
 - Insurance payouts (automatable without dispute)
 - Trade settlement (final, auditable)
 
-You could move $1B in transactions with JGC proof. No intermediaries. Full compliance.
+A future deployment could support high-value settlement evidence, but no
+transaction-volume capacity, insurance acceptance, or compliance status has
+been established.
 
-This is the infrastructure blockchain promised but never delivered. We actually built it."
+We built the local consensus-evidence foundation and are now testing whether it
+can meet those production requirements."
 
 **Key Callouts:**
 - "Proof + audit trail + compliance" (enterprise language)
 - "Real use cases with real money" (not crypto native)
-- "Full compliance" (regulatory comfort)
+- "Production controls and compliance gates stated clearly" (credibility)
 
 ---
 
@@ -156,23 +196,29 @@ This is the infrastructure blockchain promised but never delivered. We actually 
 
 **Narrative:**
 
-"Crypto fraud costs consumers $14.4B annually. Regulators can't do much because execution is opaque.
+"Crypto scams and exploits remain costly, while execution evidence is often
+opaque or concentrated in a few trusted parties.
 
-JGC makes execution transparent. Every transaction is verified by multiple parties. Verification is cryptographically auditable. Fraud becomes impossible (not just prosecutable after the fact).
+JGC is designed to make execution evidence transparent and independently
+auditable. The local prototype shows how multiple signed observations can be
+committed and checked; it does not make fraud impossible or remove systemic
+risk.
 
-Benefits for regulators:
-- Real-time transparency (see every execution)
-- Consumer protection (fraud is technically impossible)
-- No systemic risk (verification is distributed, economically incentivized)
+Potential benefits for regulators:
+- A tamper-evident record of covered execution evidence
+- Better post-event auditability and earlier detection of some deviations
+- Reduced reliance on a single verifier once the validator set is
+  Sybil-resistant and economically secured
 
-This helps you move from "punish fraud after it happens" to "prevent fraud technically."
+This could help move from purely post-event enforcement toward earlier
+detection and prevention of some protocol-covered deviations.
 
 It's the infrastructure you want crypto to have."
 
 **Key Callouts:**
 - "Transparent + auditable" (regulatory comfort)
 - "Fraud prevention, not prosecution" (proactive vs. reactive)
-- "No systemic risk" (safety)
+- "Risks and remaining controls stated explicitly" (credibility)
 
 ---
 
@@ -184,12 +230,12 @@ Are they crypto-native VC?
 → Use language: Validator, slashing, quorum, deterministic, multi-challenger
 
 Are they traditional VC?
-→ Lead with: Market size ($14.4B) + clear use cases (DeFi, enterprise, AI)
+→ Lead with: Current sourced market size + clear use cases (DeFi, enterprise, AI)
 → Use language: Revenue opportunity, founders, TAM, enterprise adoption
 
 Are they crypto angel / founder / engineer?
 → Lead with: Technical novelty + execution proof + elegant design
-→ Use language: Deterministic, reproducible, quorum, shipped testnet
+→ Use language: Replayable, quorum, local testnet, measured evidence
 
 Are they exchange / trader?
 → Lead with: Token utility + validator demand + trading volume
@@ -201,7 +247,7 @@ Are they enterprise?
 
 Are they regulator?
 → Lead with: Fraud prevention + transparency + consumer protection
-→ Use language: Technical prevention, auditable, real-time, no systemic risk
+→ Use language: Auditable, tamper-evident, risk reduction, explicit limits
 ```
 
 ---
@@ -209,10 +255,10 @@ Are they regulator?
 ## Universal Truths (Use in All Pitches)
 
 1. **Lead with proof of execution** — "We shipped X" beats "We're building Y"
-2. **Ground in market reality** — "$14.4B problem" > "Disruptive"
+2. **Ground in market reality** — a current sourced loss figure > "Disruptive"
 3. **Clear technical differentiation** — "Deterministic replay + multi-challenger quorum" > "AI-powered verification"
 4. **Real use cases** — "DeFi protocols need fairness proof" > "Enterprise will eventually need this"
-5. **Honest timeline** — "Testnet live, mainnet Q3" > "Moonshot vision"
+5. **Honest timeline** — "Local testnet validated; bonded economics and public soak next" > an unsupported mainnet date
 
 ---
 
