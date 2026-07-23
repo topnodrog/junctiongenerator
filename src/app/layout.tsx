@@ -16,8 +16,8 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL("https://junctiongenerator.net"),
   title: "Junction Generator | Proof-of-Useful-Compute Layer-1 Blockchain",
-  description: "Junction Generator is a Layer-1 blockchain where miners earn $JGC by running verifiable AI inference. Proof-of-Useful-Compute (PoUC) replaces hash puzzles with real AI workloads — testnet live.",
-  keywords: ["Junction Generator", "JGC", "Proof of Useful Compute", "PoUC", "useful compute", "verifiable inference", "Layer-1 blockchain", "AI mining", "OSCRP", "decentralized compute"],
+  description: "Junction Generator is an almost quantum-ready Layer-1 blockchain where miners earn $JGC by running verifiable AI inference. Proof-of-Useful-Compute replaces hash puzzles with real AI workloads.",
+  keywords: ["Junction Generator", "JGC", "Proof of Useful Compute", "PoUC", "post-quantum blockchain", "quantum ready", "ML-DSA", "useful compute", "verifiable inference", "Layer-1 blockchain", "AI mining", "OSCRP", "decentralized compute"],
   alternates: {
     canonical: "/",
     types: { "application/rss+xml": "/feed.xml" },

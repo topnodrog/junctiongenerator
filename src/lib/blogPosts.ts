@@ -12,6 +12,69 @@ export interface BlogPost {
 
 export const BLOG_POSTS: BlogPost[] = [
   {
+    slug: "becoming-quantum-ready",
+    title: "Becoming Quantum Ready: Rebuilding JGC's Cryptographic Foundations",
+    dateISO: "2026-07-22",
+    date: "July 22, 2026",
+    readTime: "8 min read",
+    excerpt: "JGC's active node paths now use post-quantum signatures, modern hashing, transparent compute proofs, and one-time addresses. Here is what changed, what remains, and why we call it almost quantum ready.",
+    content: `## Quantum ready is a migration, not a badge
+
+A sufficiently capable quantum computer would not make every part of cryptography obsolete. It would, however, break the public-key assumptions behind most deployed blockchains. Shor's algorithm threatens elliptic-curve signatures and pairing-based proof systems; Grover's algorithm reduces the effective strength of symmetric hashes.
+
+That distinction matters. A serious quantum-readiness plan has to identify every vulnerable dependency, replace it, integrate the replacements into live transaction paths, and then test and review the complete system. It is not enough to add one post-quantum library and declare victory.
+
+## What JGC has changed
+
+The active consensus, wallet, miner, and test-harness paths in the JGC node have moved to four post-quantum-oriented building blocks:
+
+1. **ML-DSA-65 signatures.** Transaction spends and miner contributions use the NIST-standardized lattice signature scheme defined in FIPS 204 instead of ECDSA over secp256k1.
+2. **SHA3-256 hashing.** Addresses, commitments, and signing domains use SHA3-256. Grover's algorithm would reduce its ideal preimage strength from 256 to roughly 128 bits, which remains a meaningful security margin.
+3. **Transparent hash-based compute proofs.** The current proof path removes elliptic-curve pairings and the trusted setup required by the older Groth16 design. Its security shape is based on hash commitments and verifier-selected openings.
+4. **One-time payment addresses.** The privacy path derives a fresh address for each payment so repeated payments are not trivially linked to one persistent recipient address.
+
+These are running code paths, not merely roadmap items. The legacy ECDSA and Groth16 modules remain for reference and for demos that have not yet been migrated, but they are no longer intended to protect the active wallet, consensus, or mining flow.
+
+## Why "almost" quantum ready
+
+Accuracy matters more than marketing. JGC is almost quantum ready because the architecture and active integrations are in place, while three important steps remain.
+
+**Production-scale proofs.** The current transparent Merkle-IOP has the intended post-quantum security shape and is tested, but proving very large AI computations needs a production-grade polynomial commitment and a hardened Rust/WASM implementation.
+
+**Independent cryptographic review.** Passing an internal test suite is necessary, not sufficient. The construction and its integration need review by specialists who did not write them.
+
+**Complete migration.** Older scripts and demonstrations still reference the legacy stack. Those paths must either migrate or be clearly isolated before a production network can make a clean compatibility promise.
+
+Until those steps are complete, "post-quantum architecture with integrated node paths" is the precise claim. "Quantum proof" would overstate what any young protocol can responsibly promise.
+
+## The cost of the upgrade
+
+Post-quantum cryptography is not free. ML-DSA public keys and signatures are much larger than their elliptic-curve equivalents. That affects transaction size, bandwidth, storage, and block-capacity choices. Transparent proofs also trade the compactness of pairing-based SNARKs for different trust and security assumptions.
+
+JGC accepts those costs because the vulnerable pieces protect the chain's highest-value assets: ownership and the proof that rewarded compute actually happened. A forged transaction steals funds; a forged compute proof mints rewards for work never performed.
+
+## What this enables
+
+The migration is more than defensive maintenance. A node that combines quantum-resistant authorization, private one-time addresses, and verifiable local AI inference becomes a credible foundation for long-lived compute markets.
+
+That is also the direction of the website's contract demo. Today it is a constrained browser-side template generator. The node already supports sending useful-compute jobs to a local model through Ollama. A future release can connect the two: a user describes a small contract, an opted-in node asks a compact local Gemma model for a draft, and the network records a commitment to the work.
+
+The model output must remain a draft, never an automatic deployment. Generated contracts need deterministic guardrails, compilation, static analysis, tests, and human review. Useful compute can produce code; it does not remove the responsibility to verify that code.
+
+## The standard we are aiming for
+
+Quantum readiness should mean that a reviewer can trace every security-critical operation from specification to implementation and test. For JGC, that means:
+
+- no elliptic-curve signature on an active transaction path,
+- no pairing-based proof protecting active compute rewards,
+- explicit domain separation and replay protection,
+- conservative parameter choices,
+- migration tests for wallets and UTXOs,
+- independent review before production claims.
+
+The hard architectural turn has been made. The next phase is scaling, auditing, and proving that the implementation deserves the name.`,
+  },
+  {
     slug: "how-crypto-gets-stolen",
     title: "How Crypto Actually Gets Stolen (and How to Not Be Next)",
     dateISO: "2026-07-10",

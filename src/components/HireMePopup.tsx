@@ -1,7 +1,8 @@
 "use client";
 import React, { useEffect, useState } from "react";
 
-const STORAGE_KEY = "jg_hire_popup_seen";
+const STORAGE_KEY = "jg_hire_popup_dismissed_at_v2";
+const DISMISSAL_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL || "https://jgt-mining-api.james-gordon.workers.dev";
@@ -17,14 +18,15 @@ export default function HireMePopup() {
   const [state, setState] = useState<State>({ kind: "idle" });
 
   useEffect(() => {
-    if (!localStorage.getItem(STORAGE_KEY)) {
+    const dismissedAt = Number(localStorage.getItem(STORAGE_KEY) || 0);
+    if (!dismissedAt || Date.now() - dismissedAt > DISMISSAL_COOLDOWN_MS) {
       const t = setTimeout(() => setVisible(true), 4000);
       return () => clearTimeout(t);
     }
   }, []);
 
   function close() {
-    localStorage.setItem(STORAGE_KEY, "1");
+    localStorage.setItem(STORAGE_KEY, String(Date.now()));
     setVisible(false);
   }
 
@@ -61,7 +63,7 @@ export default function HireMePopup() {
       const data: { message?: string; error?: string } = await res.json().catch(() => ({}));
       if (res.ok) {
         setState({ kind: "ok", msg: data.message || "Thanks — I'll be in touch soon!" });
-        localStorage.setItem(STORAGE_KEY, "1");
+        localStorage.setItem(STORAGE_KEY, String(Date.now()));
       } else {
         setState({ kind: "error", msg: data.error || "Something went wrong. Please try again." });
       }
