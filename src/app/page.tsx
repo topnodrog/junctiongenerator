@@ -8,7 +8,6 @@ import OSCRPCalculator from "@/components/OSCRPCalculator";
 import BackTheProject from "@/components/BackTheProject";
 import NewsletterSignup from "@/components/NewsletterSignup";
 import NodeStatusPanel from "@/components/NodeStatusPanel";
-import WelcomePopup from "@/components/WelcomePopup";
 import HireMePopup from "@/components/HireMePopup";
 import PartnerLinks from "@/components/PartnerLinks";
 
@@ -29,7 +28,6 @@ const MILESTONES = [
 export default function Home() {
   return (
     <>
-      <WelcomePopup />
       <HireMePopup />
 
       {/* Navigation Header */}
@@ -41,6 +39,7 @@ export default function Home() {
         <nav>
           <ul className="nav-links">
             <li className="nav-link-item"><a href="#technology">Technology</a></li>
+            <li className="nav-link-item"><a href="#quantum-ready">Quantum Ready</a></li>
             <li className="nav-link-item"><a href="#telemetry">Compute Grid</a></li>
             <li className="nav-link-item"><a href="#rewards">OSCRP</a></li>
             <li className="nav-link-item"><a href="/whitepaper">Whitepaper</a></li>
@@ -48,6 +47,7 @@ export default function Home() {
             <li className="nav-link-item"><a href="#newsletter">Newsletter</a></li>
             <li className="nav-link-item"><a href="#partners">Get Crypto</a></li>
             <li className="nav-link-item"><a href="#support">Support</a></li>
+            <li className="nav-link-item"><a href="#hire">Hire Me</a></li>
           </ul>
         </nav>
         <div style={{ position: "relative" }}>
@@ -179,6 +179,45 @@ export default function Home() {
           </div>
         </section>
 
+        {/* Quantum readiness */}
+        <section id="quantum-ready" style={{ marginBottom: "80px", scrollMarginTop: "100px" }}>
+          <div className="glass-container quantum-ready-panel">
+            <div>
+              <div className="section-eyebrow">Post-quantum migration in progress</div>
+              <h2 style={{ fontSize: "34px", fontWeight: 900, margin: "10px 0 14px" }}>
+                <span className="text-gradient-cyber">Almost quantum ready.</span>
+              </h2>
+              <p style={{ color: "var(--text-secondary)", fontSize: "15px", lineHeight: 1.7, marginBottom: "22px" }}>
+                The node&apos;s active consensus, wallet, and mining paths now use NIST-standardized
+                ML-DSA signatures, SHA3-256 hashing, transparent hash-based compute proofs, and
+                one-time addresses. The remaining work is production-scale proof engineering,
+                independent review, and migration of legacy demos.
+              </p>
+              <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
+                <a href="/blog/becoming-quantum-ready" className="btn-glow-purple" style={{ textDecoration: "none", fontSize: "14px" }}>
+                  Read the quantum-ready brief
+                </a>
+                <a href="https://github.com/topnodrog/junctiongenerator/tree/main/packages/jgc-node" target="_blank" rel="noopener noreferrer" className="btn-glow-cyan" style={{ textDecoration: "none", fontSize: "14px" }}>
+                  Inspect the implementation
+                </a>
+              </div>
+            </div>
+            <div className="quantum-checklist">
+              {[
+                ["ML-DSA-65", "Quantum-resistant transaction and miner signatures"],
+                ["SHA3-256", "Modern hashing with a post-quantum security margin"],
+                ["Transparent proofs", "No elliptic-curve pairing or trusted setup"],
+                ["Private payments", "Unlinkable, one-time recipient addresses"],
+              ].map(([title, body]) => (
+                <div key={title} className="quantum-check">
+                  <span aria-hidden="true">✓</span>
+                  <div><strong>{title}</strong><small>{body}</small></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
         {/* Run a Node CTA Section */}
         <section id="run-node" style={{ marginBottom: "80px", scrollMarginTop: "100px" }}>
           <div className="glass-container" style={{ padding: "48px", textAlign: "center", background: "linear-gradient(135deg, rgba(0, 242, 254, 0.06) 0%, rgba(155, 81, 224, 0.06) 100%)", border: "1px solid rgba(0, 242, 254, 0.15)" }}>
@@ -235,6 +274,21 @@ export default function Home() {
         <div className="section-grid">
           {/* Section 1: NLP Vibe Playground */}
           <div id="playground" style={{ gridColumn: "span 2", scrollMarginTop: "100px" }}>
+            <div className="node-ai-bridge">
+              <div>
+                <span className="section-eyebrow">Node-powered AI preview</span>
+                <strong>Your node already has the path to local Gemma inference.</strong>
+                <p>
+                  Today, the playground below generates constrained contract templates in the browser.
+                  The node software can already send useful-compute jobs to a local model through Ollama.
+                  The next release will connect those pieces so an opted-in node can draft a small contract,
+                  return a compute commitment, and keep the model off the website download.
+                </p>
+              </div>
+              <div className="bridge-flow" aria-label="Planned contract generation flow">
+                <span>Prompt</span><b>→</b><span>JGC node</span><b>→</b><span>Local Gemma</span><b>→</b><span>Reviewed draft</span>
+              </div>
+            </div>
             <VibePlayground />
           </div>
 
@@ -261,6 +315,16 @@ export default function Home() {
           {/* Support / donations */}
           <div id="support" style={{ gridColumn: "span 2", scrollMarginTop: "100px" }}>
             <BackTheProject />
+          </div>
+          <div id="hire" className="glass-container hire-strip" style={{ gridColumn: "span 2", scrollMarginTop: "100px" }}>
+            <div>
+              <span className="section-eyebrow">Fund the build by hiring the builder</span>
+              <h2>Need a website or an AI assistant?</h2>
+              <p>James Gordon is available for focused web development and business AI-agent work.</p>
+            </div>
+            <a href="mailto:james@junctiongenerator.net?subject=Project%20inquiry" className="btn-glow-purple" style={{ textDecoration: "none" }}>
+              Hire James
+            </a>
           </div>
         </div>
       </main>

@@ -411,6 +411,62 @@ h1, h2, h3, h4 {
   color: #fff !important;
 }
 
+.section-eyebrow {
+  color: var(--color-cyan);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.quantum-ready-panel {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 40px;
+  padding: 44px;
+  background: linear-gradient(135deg, rgba(155, 81, 224, 0.08), rgba(0, 242, 254, 0.05));
+}
+
+.quantum-checklist { display: grid; gap: 10px; }
+.quantum-check {
+  display: flex;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.18);
+}
+.quantum-check > span { color: var(--color-neon-green); font-weight: 900; }
+.quantum-check strong { display: block; font-size: 14px; }
+.quantum-check small { display: block; color: var(--text-muted); margin-top: 3px; line-height: 1.4; }
+
+.node-ai-bridge {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 28px;
+  align-items: center;
+  padding: 28px;
+  margin-bottom: 20px;
+  border: 1px solid rgba(0, 242, 254, 0.18);
+  border-radius: 14px;
+  background: rgba(0, 242, 254, 0.035);
+}
+.node-ai-bridge strong { display: block; font-size: 20px; margin: 7px 0; }
+.node-ai-bridge p { color: var(--text-secondary); font-size: 13px; line-height: 1.6; }
+.bridge-flow { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 7px; font-size: 11px; }
+.bridge-flow span { padding: 8px 10px; border: 1px solid var(--glass-border); border-radius: 7px; background: rgba(0,0,0,.25); }
+.bridge-flow b { color: var(--color-cyan); }
+
+.hire-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 30px;
+}
+.hire-strip h2 { font-size: 24px; margin: 7px 0; }
+.hire-strip p { color: var(--text-secondary); font-size: 14px; }
+
 /* Responsive grid layout */
 .section-grid {
   display: grid;
@@ -421,6 +477,12 @@ h1, h2, h3, h4 {
 }
 
 @media (max-width: 768px) {
+  .quantum-ready-panel,
+  .node-ai-bridge {
+    grid-template-columns: 1fr;
+    padding: 26px;
+  }
+  .hire-strip { align-items: flex-start; flex-direction: column; }
   .section-grid {
     grid-template-columns: 1fr;
     gap: 24px;
