@@ -152,8 +152,9 @@ export function startStatusServer(
     server.once("error", reject);
     server.listen(port, host, () => {
       server.removeListener("error", reject);
+      const address = server.address();
       resolve({
-        port,
+        port: typeof address === "string" || address === null ? port : address.port,
         host,
         close: () =>
           new Promise<void>((res, rej) =>

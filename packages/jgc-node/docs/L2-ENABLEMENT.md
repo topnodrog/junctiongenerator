@@ -66,9 +66,9 @@ security-critical component of a ZK-rollup host already exists and is already
 consensus-critical code.
 
 **Header extension points.**
-The 160-byte header (`src/consensus/block.ts`, `serializeBlockHeader()`)
-already carries two non-Bitcoin Merkle roots (`computeRoot`, `epochRoot`)
-plus a 4-byte `reserved` field. Adding a third commitment root for L2 data
+The 192-byte header (`src/consensus/block.ts`, `serializeBlockHeader()`)
+already carries three non-Bitcoin Merkle roots (`computeRoot`, `epochRoot`,
+and `auditRoot`) plus a 4-byte `reserved` field. Adding a fourth commitment root for L2 data
 follows an established pattern rather than inventing one.
 
 **Enshrined special-transaction precedent.**

@@ -6,7 +6,7 @@
 
 import { Wallet, formatJGC, parseJGC } from "../wallet/wallet.js";
 import { UTXOSet, validateSpend, COINBASE_MATURITY } from "../consensus/utxo.js";
-import { p2pkhScript, scriptPubKeyFromAddress } from "../crypto/signatures.js";
+import { pqScriptPubKey, pqScriptPubKeyFromAddress } from "../crypto/pq-signatures.js";
 import { BASE_UNITS_PER_JGC } from "../consensus/emission.js";
 
 const MATURITY = COINBASE_MATURITY;
@@ -64,7 +64,7 @@ describe("balance + coin selection", () => {
     wallet.generate("alice");
     wallet.generate("bob");
     const utxo = new UTXOSet();
-    const spk = p2pkhScript(wallet.publicKey("alice"));
+    const spk = pqScriptPubKey(wallet.publicKey("alice"));
     utxo.add("aa".repeat(32), 0, { value: J(5n), scriptPubKey: spk, height: 0, isCoinbase: false });
     utxo.add("bb".repeat(32), 0, { value: J(3n), scriptPubKey: spk, height: 0, isCoinbase: false });
     return { wallet, utxo };
@@ -78,7 +78,7 @@ describe("balance + coin selection", () => {
 
   test("immature coinbase is excluded from balance", () => {
     const { wallet, utxo } = funded();
-    utxo.add("cc".repeat(32), 0, { value: J(50n), scriptPubKey: p2pkhScript(wallet.publicKey("alice")), height: 10, isCoinbase: true });
+    utxo.add("cc".repeat(32), 0, { value: J(50n), scriptPubKey: pqScriptPubKey(wallet.publicKey("alice")), height: 10, isCoinbase: true });
     expect(wallet.balance("alice", utxo, 10 + MATURITY - 1)).toBe(J(8n));      // still locked
     expect(wallet.balance("alice", utxo, 10 + MATURITY)).toBe(J(58n));         // matured
   });
@@ -93,7 +93,7 @@ describe("balance + coin selection", () => {
     expect(tx.inputs.length).toBe(2);
     expect(change).toBe(J(2n) - fee);
     // first output pays bob exactly; the spend validates against the ledger.
-    expect(tx.outputs[0]!.scriptPubKey).toBe(scriptPubKeyFromAddress(wallet.address("bob")));
+    expect(tx.outputs[0]!.scriptPubKey).toBe(pqScriptPubKeyFromAddress(wallet.address("bob")));
     expect(tx.outputs[0]!.value).toBe(J(6n));
     const res = validateSpend(tx, utxo, 100);
     expect(res.ok).toBe(true);

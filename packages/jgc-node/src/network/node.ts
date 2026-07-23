@@ -31,14 +31,27 @@ import type {
   MinerComputeContribution, ComputeBid, NodeConfig,
 } from "../types/index.js";
 import { MessageType as MT } from "../types/index.js";
-import { validateBlock } from "../consensus/validation.js";
-import { hashBlockHeader, computeTransactionMerkleRoot, serializeTransaction } from "../consensus/block.js";
+import { validateAuditVerdicts, validateBlock } from "../consensus/validation.js";
+import {
+  hashBlockHeader,
+  computeAuditVerdictsMerkleRoot,
+  computeTransactionMerkleRoot,
+  serializeTransaction,
+} from "../consensus/block.js";
 import { applyBlockToEpoch, initEpochState, computeContributionsMerkleRoot, computeEpochRoot } from "../consensus/epoch.js";
 import { UTXOSet, validateSpend, txid } from "../consensus/utxo.js";
 import { BlockStore, SnapshotStore, type ChainSnapshot } from "../storage/persistence.js";
 import { calculateNextDifficultyTarget, BLOCKS_PER_EPOCH, RETARGET_WINDOW_BLOCKS, encodeDifficultyBits, decodeDifficultyBits } from "../consensus/emission.js";
 import { globalBroker } from "../broker/compute-broker.js";
 import type { Hash256, EpochState } from "../types/index.js";
+import {
+  AuditLifecycle,
+  type AuditRequest,
+  type AuditVote,
+  type AuditVerdictRecord,
+} from "../broker/audit-protocol.js";
+import { computeAuditClaimId } from "../broker/audit-schedule.js";
+import { AuditStore } from "../storage/audit-store.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Peer Connection Types
@@ -172,6 +185,9 @@ export class JGCNode extends EventEmitter {
   private readonly genesis: Block;
   /** Discovery address book: dialable peer URL → last time we heard of it. */
   private readonly addrBook = new Map<string, number>();
+  /** Historical audit requests, signed votes, and non-punitive verdict evidence. */
+  private readonly audits = new AuditLifecycle();
+  private auditStore?: AuditStore;
 
   constructor(config: NodeConfig, genesisBlock: Block) {
     super();
@@ -223,6 +239,51 @@ export class JGCNode extends EventEmitter {
       this.store = new BlockStore(this.config.dataDir);
       this.snapshot = new SnapshotStore(this.config.dataDir);
       this.replayFromStore();
+      this.auditStore = new AuditStore(this.config.dataDir);
+      this.restoreAuditState();
+    }
+  }
+
+  private restoreAuditState(): void {
+    if (!this.auditStore) return;
+    try {
+      const state = this.auditStore.load();
+      if (state) {
+        const result = this.audits.restoreState(
+          state,
+          this.chain.tipHeight,
+          (request) => this.auditRequestMatchesActiveChain(request),
+        );
+        if (result.dropped > 0) {
+          console.warn(`[Node] Dropped ${result.dropped} invalid or stale audit record(s) during restart`);
+        }
+      }
+      this.indexActiveChainAuditVerdicts();
+      this.persistAuditState();
+    } catch (error) {
+      const quarantined = this.auditStore.quarantine();
+      console.warn(
+        `[Node] Audit evidence store was malformed and has been quarantined` +
+        `${quarantined ? ` at ${quarantined}` : ""}: ${error instanceof Error ? error.message : String(error)}`
+      );
+      this.indexActiveChainAuditVerdicts();
+      this.persistAuditState();
+    }
+  }
+
+  private persistAuditState(): void {
+    this.auditStore?.write(this.audits.snapshotState());
+  }
+
+  private indexActiveChainAuditVerdicts(): void {
+    for (let height = 1; height <= this.chain.tipHeight; height++) {
+      const block = this.activeBlockAt(this.chain, height);
+      for (const verdict of block?.auditVerdicts ?? []) {
+        const result = this.audits.indexCommittedVerdict(verdict);
+        if (!result.accepted) {
+          throw new Error(`Invalid committed audit ${verdict.auditId}: ${result.error}`);
+        }
+      }
     }
   }
 
@@ -270,6 +331,9 @@ export class JGCNode extends EventEmitter {
       this.chain.blocks.set(blockHash, block);
       this.chain.chainWork.set(blockHash, (this.chain.chainWork.get(block.header.prevHash) ?? 0n) + this.blockWork(block.header));
       this.chain.heightIndex.set(h, blockHash);
+      if (!this.committedBodyIntegrityCheck(this.chain, block)) {
+        fail("committed transaction, compute, or audit body mismatch");
+      }
       if (h < applyFromHeight) continue;  // covered by the snapshot
 
       if (block.header.prevHash !== this.chain.tipHash) fail("does not extend current tip");
@@ -386,6 +450,18 @@ export class JGCNode extends EventEmitter {
 
       case MT.BROKER_BID:
         await this.handleBrokerBid(peer, msg.payload as ComputeBid);
+        break;
+
+      case MT.AUDIT_REQUEST:
+        await this.handleAuditRequest(peer, msg.payload as AuditRequest);
+        break;
+
+      case MT.AUDIT_VOTE:
+        await this.handleAuditVote(peer, msg.payload as AuditVote);
+        break;
+
+      case MT.AUDIT_VERDICT:
+        this.handleAuditVerdict(msg.payload as AuditVerdictRecord);
         break;
 
       case MT.GETBLOCKS:
@@ -720,6 +796,65 @@ export class JGCNode extends EventEmitter {
     }
   }
 
+  /** Accept an assignment only when both its compute claim and delayed beacon
+   *  resolve to this node's current active chain. */
+  private auditRequestMatchesActiveChain(request: AuditRequest): boolean {
+    try {
+      const assignment = request.assignment;
+      const beaconHash = this.chain.heightIndex.get(assignment.beaconHeight);
+      if (!beaconHash || beaconHash !== assignment.beaconHash.toLowerCase()) return false;
+
+      const claimBlockHash = this.chain.heightIndex.get(assignment.claimHeight);
+      if (!claimBlockHash) return false;
+      const claimBlock = this.chain.blocks.get(claimBlockHash);
+      if (!claimBlock) return false;
+
+      const contributionIndex = claimBlock.computeProofs.findIndex((contribution) =>
+        contribution.minerAddress === assignment.claimantId &&
+        contribution.proof.taskCommitment === assignment.commitment
+      );
+      return contributionIndex >= 0 &&
+        computeAuditClaimId(claimBlockHash, contributionIndex) === assignment.claimId;
+    } catch {
+      return false;
+    }
+  }
+
+  private async handleAuditRequest(peer: PeerConnection, request: AuditRequest): Promise<void> {
+    if (!this.auditRequestMatchesActiveChain(request)) return;
+    const result = this.audits.registerRequest(request, this.chain.tipHeight);
+    if (!result.accepted) return;
+    this.persistAuditState();
+    this.emit("auditRequest", request);
+    this.relayAuditMessage(MT.AUDIT_REQUEST, request, peer.info.peerId);
+  }
+
+  private async handleAuditVote(peer: PeerConnection, vote: AuditVote): Promise<void> {
+    const result = this.audits.submitVote(vote, this.chain.tipHeight);
+    if (!result.accepted) return;
+    this.persistAuditState();
+    this.emit("auditVote", vote);
+    this.relayAuditMessage(MT.AUDIT_VOTE, vote, peer.info.peerId);
+  }
+
+  /** Remote verdicts are advisory until locally reproduced from signed votes. */
+  private handleAuditVerdict(remote: AuditVerdictRecord): void {
+    const local = this.audits.finalize(remote.auditId, this.chain.tipHeight);
+    if (!local) return;
+    if (local.verdict !== remote.verdict ||
+        local.topCommitment !== remote.topCommitment ||
+        local.topCount !== remote.topCount ||
+        local.requiredVotes !== remote.requiredVotes) return;
+    this.persistAuditState();
+    this.emit("auditVerdict", local);
+  }
+
+  private relayAuditMessage(type: MT, payload: unknown, excludePeerId?: string): void {
+    for (const [peerId, peer] of this.peers) {
+      if (peerId !== excludePeerId) void peer.send(this.buildMessage(type, payload));
+    }
+  }
+
   private async handleGetBlocks(
     peer:    PeerConnection,
     payload: { fromHash: Hash256 },
@@ -867,6 +1002,12 @@ export class JGCNode extends EventEmitter {
    */
   private applyLiveBlock(block: Block, blockHash: Hash256): void {
     const settledEpoch = this.applyBlockState(this.chain, block, blockHash);
+    for (const verdict of block.auditVerdicts) {
+      const indexed = this.audits.indexCommittedVerdict(verdict);
+      if (!indexed.accepted) {
+        throw new Error(`Accepted block contains an invalid audit verdict: ${indexed.error}`);
+      }
+    }
 
     // Persist to the durable log (which mirrors the linear active chain).
     if (this.store && !this.replaying) this.store.append(block);
@@ -879,6 +1020,15 @@ export class JGCNode extends EventEmitter {
     this.pruneMempool();
     // Clear proofs used in this block.
     this.pendingProofs = [];
+
+    // Signed audit evidence becomes final after all assigned validators answer
+    // or the height deadline expires. Verdicts remain non-punitive here.
+    const auditVerdicts = this.audits.finalizeDue(block.header.height);
+    for (const verdict of auditVerdicts) {
+      this.emit("auditVerdict", verdict);
+      this.relayAuditMessage(MT.AUDIT_VERDICT, verdict);
+    }
+    if (block.auditVerdicts.length > 0 || auditVerdicts.length > 0) this.persistAuditState();
 
     if (settledEpoch !== undefined) {
       this.emit("epochSettle", settledEpoch);
@@ -928,6 +1078,8 @@ export class JGCNode extends EventEmitter {
       epochBlockIndex:        block.header.height % BLOCKS_PER_EPOCH,
       epochFees:              chain.epochFees,
       utxos:                  chain.utxos,
+      getActiveBlock:         (height) => this.activeBlockAt(chain, height),
+      hasCommittedAudit:      (auditId) => this.chainHasAudit(chain, auditId),
     });
     if (!result.valid) {
       console.error(`[Node] Block ${hashBlockHeader(block.header).slice(0, 16)}… REJECTED: ${result.errors.join(", ")} (${result.warnings.join("; ")})`);
@@ -943,14 +1095,45 @@ export class JGCNode extends EventEmitter {
   private integrityCheck(chain: ChainState, block: Block): boolean {
     const h = block.header.height;
     if (block.header.prevHash !== chain.tipHash) return false;
-    if (computeTransactionMerkleRoot(block.transactions) !== block.header.merkleRoot) return false;
-    if (computeContributionsMerkleRoot(block.computeProofs) !== block.header.computeRoot) return false;
+    if (!this.committedBodyIntegrityCheck(chain, block)) return false;
     if (computeEpochRoot(chain.epochState) !== block.header.epochRoot) return false;
     if (h % BLOCKS_PER_EPOCH !== BLOCKS_PER_EPOCH - 1) {
       const minted = block.transactions[0]?.outputs.reduce((s, o) => s + o.value, 0n) ?? 0n;
       if (minted > 0n) return false;
     }
     return true;
+  }
+
+  /**
+   * Verify every body covered by a header commitment without applying mutable
+   * chain state. This also runs for blocks below a loaded snapshot.
+   */
+  private committedBodyIntegrityCheck(chain: ChainState, block: Block): boolean {
+    if (computeTransactionMerkleRoot(block.transactions) !== block.header.merkleRoot) return false;
+    if (computeContributionsMerkleRoot(block.computeProofs) !== block.header.computeRoot) return false;
+    if (computeAuditVerdictsMerkleRoot(block.auditVerdicts) !== block.header.auditRoot) return false;
+    return validateAuditVerdicts(block, {
+      getActiveBlock: (height) => this.activeBlockAt(chain, height),
+      hasCommittedAudit: (auditId) =>
+        this.chainHasAuditBefore(chain, auditId, block.header.height),
+    }).valid;
+  }
+
+  private activeBlockAt(chain: ChainState, height: number): Block | undefined {
+    const hash = chain.heightIndex.get(height);
+    return hash ? chain.blocks.get(hash) : undefined;
+  }
+
+  private chainHasAudit(chain: ChainState, auditId: string): boolean {
+    return this.chainHasAuditBefore(chain, auditId, chain.tipHeight + 1);
+  }
+
+  private chainHasAuditBefore(chain: ChainState, auditId: string, beforeHeight: number): boolean {
+    for (let height = 1; height < beforeHeight; height++) {
+      const block = this.activeBlockAt(chain, height);
+      if (block?.auditVerdicts.some((record) => record.auditId === auditId)) return true;
+    }
+    return false;
   }
 
   /**
@@ -1014,6 +1197,20 @@ export class JGCNode extends EventEmitter {
 
     this.chain = scratch;
     this.pendingProofs = [];
+    const auditReconciliation = this.audits.reconcile(
+      scratch.tipHeight,
+      (request) => this.auditRequestMatchesActiveChain(request),
+    );
+    this.indexActiveChainAuditVerdicts();
+    for (const verdict of auditReconciliation.finalized) {
+      this.emit("auditVerdict", verdict);
+      this.relayAuditMessage(MT.AUDIT_VERDICT, verdict);
+    }
+    if (auditReconciliation.dropped > 0 ||
+        auditReconciliation.finalized.length > 0 ||
+        targetPath.some((hash) => (scratch.blocks.get(hash)?.auditVerdicts.length ?? 0) > 0)) {
+      this.persistAuditState();
+    }
     if (!this.replaying) {
       console.log(`[Node] REORG to ${targetHash.slice(0, 16)}… (fork@${forkHeight}, new tip height ${scratch.tipHeight}); ${disconnected.length} tx(s) returned to mempool`);
     }
@@ -1223,6 +1420,52 @@ export class JGCNode extends EventEmitter {
 
   getMempool(): Transaction[] {
     return Array.from(this.mempool.values(), e => e.tx);
+  }
+
+  /** Register and gossip a locally constructed, active-chain-bound assignment. */
+  broadcastAuditRequest(request: AuditRequest): { ok: boolean; error?: string } {
+    if (!this.auditRequestMatchesActiveChain(request)) {
+      return { ok: false, error: "audit request is not bound to the active chain" };
+    }
+    const result = this.audits.registerRequest(request, this.chain.tipHeight);
+    if (!result.accepted) return { ok: false, error: result.error };
+    this.persistAuditState();
+    this.emit("auditRequest", request);
+    this.relayAuditMessage(MT.AUDIT_REQUEST, request);
+    return { ok: true };
+  }
+
+  /** Validate and gossip a locally produced ML-DSA-signed committee vote. */
+  broadcastAuditVote(vote: AuditVote): { ok: boolean; error?: string } {
+    const result = this.audits.submitVote(vote, this.chain.tipHeight);
+    if (!result.accepted) return { ok: false, error: result.error };
+    this.persistAuditState();
+    this.emit("auditVote", vote);
+    this.relayAuditMessage(MT.AUDIT_VOTE, vote);
+    return { ok: true };
+  }
+
+  getOpenAuditRequests(): AuditRequest[] {
+    return this.audits.getOpenRequests();
+  }
+
+  getAuditVotes(auditId: string): AuditVote[] {
+    return this.audits.getVotes(auditId);
+  }
+
+  getAuditVerdicts(): AuditVerdictRecord[] {
+    return this.audits.getVerdicts();
+  }
+
+  /** Finalized evidence not yet committed by an active-chain block. */
+  getPendingAuditVerdicts(): AuditVerdictRecord[] {
+    return this.audits.getVerdicts()
+      .filter((record) =>
+        record.finalizedAtHeight < this.chain.tipHeight + 1 &&
+        !this.chainHasAudit(this.chain, record.auditId)
+      )
+      .sort((a, b) => a.auditId.localeCompare(b.auditId))
+      .slice(0, 64);
   }
 
   // ─────────────────────────────────────────────────────────────────────────

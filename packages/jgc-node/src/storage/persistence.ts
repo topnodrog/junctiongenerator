@@ -26,6 +26,7 @@ import { appendFileSync, readFileSync, writeFileSync, renameSync, existsSync, mk
 import { join } from "path";
 import type { Block, EpochState, MinerComputeContribution } from "../types/index.js";
 import { ComputeTaskType } from "../types/index.js";
+import type { AuditVerdictRecord } from "../broker/audit-protocol.js";
 import {
   serializeBlockHeader, deserializeBlockHeader, BLOCK_HEADER_SIZE,
   serializeTransaction, deserializeTransaction,
@@ -165,11 +166,13 @@ function decodeEpochState(r: Reader): EpochState {
 /** Encode a full Block to its compact binary representation. */
 export function encodeBlock(block: Block): Buffer {
   const w = new Writer();
-  w.raw(serializeBlockHeader(block.header));                 // 160 bytes, fixed
+  w.raw(serializeBlockHeader(block.header));                 // fixed-size header
   w.varint(block.transactions.length);
   for (const tx of block.transactions) w.lenBytes(serializeTransaction(tx));
   w.varint(block.computeProofs.length);
   for (const c of block.computeProofs) encodeContribution(w, c);
+  w.varint(block.auditVerdicts.length);
+  for (const verdict of block.auditVerdicts) w.str(JSON.stringify(verdict));
   encodeEpochState(w, block.epochState);
   return w.build();
 }
@@ -184,8 +187,13 @@ export function decodeBlock(buf: Buffer): Block {
   const computeProofs: MinerComputeContribution[] = [];
   const proofCount = r.varint();
   for (let i = 0; i < proofCount; i++) computeProofs.push(decodeContribution(r));
+  const auditVerdicts: AuditVerdictRecord[] = [];
+  const auditCount = r.varint();
+  for (let i = 0; i < auditCount; i++) {
+    auditVerdicts.push(JSON.parse(r.str()) as AuditVerdictRecord);
+  }
   const epochState = decodeEpochState(r);
-  return { header, transactions, computeProofs, epochState };
+  return { header, transactions, computeProofs, auditVerdicts, epochState };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

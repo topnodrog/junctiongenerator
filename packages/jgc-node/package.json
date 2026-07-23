@@ -9,6 +9,7 @@
     "build:rust": "wasm-pack build rust --target nodejs --out-dir pkg --release",
     "build:all": "npm run build:rust && npm run build",
     "start": "node dist/index.js",
+    "testnet": "node dist/scripts/testnet-node.js",
     "typecheck": "tsc --noEmit",
     "test": "node --experimental-vm-modules --max-old-space-size=1536 ../../node_modules/jest/bin/jest.js --runInBand",
     "sync-demo": "node dist/scripts/sync-demo.js",
@@ -32,6 +33,7 @@
     "node-status": "node dist/scripts/node-status-server.js"
   },
   "dependencies": {
+    "@noble/post-quantum": "^0.6.1",
     "@noble/secp256k1": "^3.1.0",
     "ws": "^8.17.0"
   },
