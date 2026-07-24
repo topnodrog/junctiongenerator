@@ -8,6 +8,7 @@ import NewsletterSignup from "@/components/NewsletterSignup";
 import NodeStatusPanel from "@/components/NodeStatusPanel";
 import HireMePopup from "@/components/HireMePopup";
 import PartnerLinks from "@/components/PartnerLinks";
+import Link from "next/link";
 
 const PROOF_POINTS = [
   { value: "244", label: "node tests passing" },
@@ -37,10 +38,10 @@ const NETWORK_STEPS = [
 const COMMUNITY_PATHS = [
   {
     tag: "No code required",
-    title: "Follow the build",
-    body: "Get the meaningful milestones, honest setbacks, and first invitations to test the network.",
-    href: "#newsletter",
-    cta: "Join the field notes",
+    title: "Join the founding community",
+    body: "Choose a role, complete one meaningful action, and help shape the first 90 days.",
+    href: "/community",
+    cta: "Join the community",
   },
   {
     tag: "For builders",
@@ -88,8 +89,8 @@ export default function Home() {
         <nav className="jg-nav-links" aria-label="Primary navigation">
           <a href="#how-it-works">How it works</a>
           <a href="#status">Progress</a>
-          <a href="#community">Community</a>
-          <a href="/blog">Field notes</a>
+          <Link href="/community">Join</Link>
+          <Link href="/blog">Field notes</Link>
           <a href="#hire">Hire James</a>
         </nav>
         <div className="jg-wallet"><ConnectButton /></div>
@@ -106,7 +107,7 @@ export default function Home() {
               in the value they help create.
             </p>
             <div className="jg-actions">
-              <a href="#community" className="jg-button jg-button-primary">Join the early community</a>
+              <Link href="/community" className="jg-button jg-button-primary">Join the JG Founding Community</Link>
               <a href="#status" className="jg-button jg-button-secondary">See what actually works</a>
             </div>
             <p className="jg-trust-note">No token sale. No public mainnet claims. The code, limits, and progress are open for inspection.</p>
@@ -144,7 +145,7 @@ export default function Home() {
         <section id="status" className="jg-section">
           <div className="jg-section-heading jg-heading-row">
             <div><span className="jg-eyebrow">The honest state of the build</span><h2>Working foundations. Hard problems still open.</h2></div>
-            <a href="/whitepaper" className="jg-text-link">Read the concept paper <span>↗</span></a>
+            <Link href="/whitepaper" className="jg-text-link">Read the concept paper <span>↗</span></Link>
           </div>
           <div className="jg-status-grid">
             {STATUS_ITEMS.map((item) => (
@@ -164,7 +165,7 @@ export default function Home() {
           <div className="jg-community-intro">
             <span className="jg-eyebrow">A network starts with people</span>
             <h2>You do not need a mining rig—or permission—to matter here.</h2>
-            <p>Junction Generator needs careful critics, curious newcomers, researchers, node operators, storytellers, and people willing to introduce the idea to one more person. Pick the doorway that fits you.</p>
+            <p>Junction Generator needs careful critics, curious newcomers, researchers, node operators, storytellers, and people willing to introduce the idea to one more person. Join the founding community, then pick the doorway that fits you.</p>
           </div>
           <div className="jg-community-grid">
             {COMMUNITY_PATHS.map((path) => (
@@ -187,7 +188,7 @@ export default function Home() {
           </div>
           <div className="jg-lab-intro">
             <div><strong>Prompt → JGC node → local Gemma → reviewed draft</strong><p>The contract playground currently produces constrained browser templates. The node already supports local Gemma inference; connecting the two safely is a future milestone.</p></div>
-            <a href="/blog/becoming-quantum-ready" className="jg-text-link">Read the quantum-ready brief <span>↗</span></a>
+            <Link href="/blog/becoming-quantum-ready" className="jg-text-link">Read the quantum-ready brief <span>↗</span></Link>
           </div>
           <div className="section-grid jg-lab-grid">
             <div className="jg-span-two"><VibePlayground /></div>
@@ -221,7 +222,7 @@ export default function Home() {
           <a href="#top" className="jg-brand"><span className="jg-mark" aria-hidden="true">JG</span><span><strong>Junction Generator</strong><small>Useful compute, independently verified.</small></span></a>
           <p>Local/private testnet software. No public JGC mainnet is currently deployed.</p>
         </div>
-        <nav aria-label="Footer navigation"><a href="/whitepaper">Concept paper</a><a href="/blog">Field notes</a><a href="https://github.com/topnodrog/junctiongenerator" target="_blank" rel="noopener noreferrer">GitHub</a><a href="#hire">Hire James</a></nav>
+        <nav aria-label="Footer navigation"><Link href="/community">Join community</Link><Link href="/whitepaper">Concept paper</Link><Link href="/blog">Field notes</Link><a href="https://github.com/topnodrog/junctiongenerator" target="_blank" rel="noopener noreferrer">GitHub</a><a href="#hire">Hire James</a></nav>
         <span>© 2026 Junction Generator</span>
       </footer>
     </>

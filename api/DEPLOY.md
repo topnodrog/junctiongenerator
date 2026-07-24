@@ -6,11 +6,17 @@ Worker: `jgt-mining-api`
 
 URL: `https://jgt-mining-api.james-gordon.workers.dev`
 
-Current version: `27376d87-c982-46c1-b089-04ace3e01651`
+Current version: `2ad932ae-bbf3-4ee6-8a8c-f212c298492a`
 
 ## Live behavior
 
-- `POST /api/subscribe` and `POST /api/hire-lead` remain public.
+- `POST /api/subscribe`, `POST /api/hire-lead`,
+  `POST /api/community/join`, and `POST /api/community/activate` are public
+  and rate-limited.
+- `GET /api/community/scoreboard` returns aggregate community and funding
+  progress without personal data.
+- `POST /api/community/funding` and `POST /api/community/weekly-metrics`
+  require the owner bearer token.
 - Each valid submission is written to Turso before notification is attempted.
 - Newsletter signups and hire leads immediately email
   `james_gordon@junctiongenerator.net`.
@@ -34,6 +40,8 @@ Current version: `27376d87-c982-46c1-b089-04ace3e01651`
 | Scheduled trigger | `0 0 * * *` |
 | Database health | `/api/health` returned 200 and `database: connected` |
 | Protected endpoint | `/api/pending-rewards` returned 401 without a token |
+| Community scoreboard | `/api/community/scoreboard` returned aggregate launch-week data |
+| Community owner route | `/api/community/funding` returned 401 without a token |
 | Digest execution | `digest_state.last_sent_at` advanced to `2026-07-24 00:00:01` |
 | Immediate email | Live synthetic request logged `owner notification sent` |
 
@@ -50,6 +58,10 @@ The gitignored `.cf_token` belongs to older API automation and is not used by
 credential.
 
 ## Deploy
+
+Apply `db/schema_community_flywheel.sql` to Turso before deploying this Worker.
+The migration is additive and does not alter existing mining or newsletter
+records.
 
 From `C:\dev\JunctionGenerator\api`:
 

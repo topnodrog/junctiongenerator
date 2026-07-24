@@ -7,10 +7,13 @@
 //
 // Auth model:
 //   - Public (rate-limited): POST /api/subscribe, POST /api/hire-lead,
+//     POST /api/community/join, POST /api/community/activate,
 //     POST /api/airdrop/register, GET /api/user, GET /api/referral,
-//     GET /api/airdrop/status, GET /api/ads/campaigns, GET /api/health
+//     GET /api/community/scoreboard, GET /api/airdrop/status,
+//     GET /api/ads/campaigns, GET /api/health
 //   - Bearer API_SECRET (owner): POST /api/ad-view, POST /api/referral/claim,
-//     POST /api/ads/campaigns, GET /api/pending-rewards
+//     POST /api/ads/campaigns, POST /api/community/funding,
+//     POST /api/community/weekly-metrics, GET /api/pending-rewards
 //   - Bearer CRON_SECRET (automation): POST /api/dispense, POST /api/digest/run
 
 import { EmailMessage } from "cloudflare:email";
@@ -145,6 +148,27 @@ export default {
       }
       if (path === "/api/hire-lead" && request.method === "POST") {
         return await handleHireLead(request, env, corsHeaders);
+      }
+      if (path === "/api/community/join" && request.method === "POST") {
+        return await handleCommunityJoin(request, env, corsHeaders);
+      }
+      if (path === "/api/community/activate" && request.method === "POST") {
+        return await handleCommunityActivation(request, env, corsHeaders);
+      }
+      if (path === "/api/community/scoreboard" && request.method === "GET") {
+        return await handleCommunityScoreboard(env, corsHeaders);
+      }
+      if (path === "/api/community/funding" && request.method === "POST") {
+        if (!(await requireBearer(request, env.API_SECRET))) {
+          return jsonResponse({ error: "Unauthorized" }, corsHeaders, 401);
+        }
+        return await handleFundingRecord(request, env, corsHeaders);
+      }
+      if (path === "/api/community/weekly-metrics" && request.method === "POST") {
+        if (!(await requireBearer(request, env.API_SECRET))) {
+          return jsonResponse({ error: "Unauthorized" }, corsHeaders, 401);
+        }
+        return await handleWeeklyMetrics(request, env, corsHeaders);
       }
       if (path === "/api/referral" && request.method === "GET") {
         return await handleGetReferral(request, env, corsHeaders);
@@ -403,6 +427,201 @@ async function handleSubscribe(request, env, corsHeaders) {
     console.error("subscribe insert failed:", err.message);
     return jsonResponse({ error: "Subscription failed" }, corsHeaders, 500);
   }
+}
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const COMMUNITY_ACTIONS = new Set(["introduction", "event", "technical", "share", "offer"]);
+const AUDIENCE_TYPES = new Set(["ai-crypto-builder", "researcher", "operator", "community", "funder", "curious"]);
+const COMMUNITY_INTERESTS = new Set(["builder", "researcher", "operator", "connector", "supporter"]);
+
+function cleanText(value, maxLength) {
+  return typeof value === "string" ? value.trim().slice(0, maxLength) : "";
+}
+
+// Founding-community join. This also upserts the owned email list so a person
+// has one coherent identity and can receive the weekly operating loop.
+async function handleCommunityJoin(request, env, corsHeaders) {
+  if (!(await rateLimitOk(env, request, "community-join"))) {
+    return jsonResponse({ error: "Too many requests" }, corsHeaders, 429);
+  }
+
+  const body = await request.json();
+  const email = cleanText(body.email, 254).toLowerCase();
+  const discordName = cleanText(body.discordName, 80);
+  const audienceType = AUDIENCE_TYPES.has(body.audienceType) ? body.audienceType : "curious";
+  const interests = Array.isArray(body.interests)
+    ? [...new Set(body.interests.filter((item) => COMMUNITY_INTERESTS.has(item)))].slice(0, 5)
+    : [];
+  const source = cleanText(body.source, 240) || "direct";
+  const campaign = cleanText(body.campaign, 120) || "community-launch";
+  const referralCode = cleanText(body.referralCode, 120);
+
+  if (!EMAIL_RE.test(email)) return jsonResponse({ error: "A valid email is required" }, corsHeaders, 400);
+  if (body.consent !== true) return jsonResponse({ error: "Email permission is required" }, corsHeaders, 400);
+  if (interests.length === 0) return jsonResponse({ error: "Choose at least one community path" }, corsHeaders, 400);
+
+  await tursoQuery(
+    env,
+    `INSERT INTO community_members
+      (email, discord_name, audience_type, interests, source, campaign, referral_code, consent_email, consent_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, 1, datetime('now'))
+     ON CONFLICT(email) DO UPDATE SET
+       discord_name = CASE WHEN excluded.discord_name != '' THEN excluded.discord_name ELSE community_members.discord_name END,
+       audience_type = excluded.audience_type,
+       interests = excluded.interests,
+       source = CASE WHEN community_members.source IS NULL OR community_members.source = '' THEN excluded.source ELSE community_members.source END,
+       campaign = CASE WHEN community_members.campaign IS NULL OR community_members.campaign = '' THEN excluded.campaign ELSE community_members.campaign END,
+       referral_code = CASE WHEN community_members.referral_code IS NULL OR community_members.referral_code = '' THEN excluded.referral_code ELSE community_members.referral_code END,
+       consent_email = 1,
+       consent_at = datetime('now'),
+       updated_at = datetime('now')`,
+    [email, discordName, audienceType, JSON.stringify(interests), source, campaign, referralCode],
+  );
+  await tursoQuery(
+    env,
+    `INSERT INTO newsletter_subscribers (email, active) VALUES (?, 1)
+     ON CONFLICT(email) DO UPDATE SET active = 1`,
+    [email],
+  );
+
+  try {
+    await sendOwnerEmail(env, "New JG founding-community member", [
+      "A person joined the Junction Generator founding community.",
+      "",
+      `Email: ${email}`,
+      discordName ? `Discord: ${discordName}` : null,
+      `Audience: ${audienceType}`,
+      `Interests: ${interests.join(", ")}`,
+      `Source: ${source}`,
+      `Campaign: ${campaign}`,
+      referralCode ? `Referral: ${referralCode}` : null,
+    ].filter(Boolean).join("\n"));
+  } catch (error) {
+    console.error("community join notification failed:", error.message);
+  }
+
+  return jsonResponse({
+    success: true,
+    message: "Choose and complete one meaningful action within seven days to become activated.",
+  }, corsHeaders);
+}
+
+async function handleCommunityActivation(request, env, corsHeaders) {
+  if (!(await rateLimitOk(env, request, "community-activate"))) {
+    return jsonResponse({ error: "Too many requests" }, corsHeaders, 429);
+  }
+
+  const body = await request.json();
+  const email = cleanText(body.email, 254).toLowerCase();
+  const action = cleanText(body.action, 40);
+  const note = cleanText(body.note, 500);
+  if (!EMAIL_RE.test(email) || !COMMUNITY_ACTIONS.has(action)) {
+    return jsonResponse({ error: "Valid member email and action are required" }, corsHeaders, 400);
+  }
+
+  const memberResult = await tursoQuery(env, "SELECT id, activated_at FROM community_members WHERE email = ? LIMIT 1", [email]);
+  const member = getRows(memberResult)?.[0];
+  if (!member) return jsonResponse({ error: "Join the founding community before recording an action" }, corsHeaders, 404);
+
+  await tursoQuery(
+    env,
+    "INSERT OR IGNORE INTO community_actions (member_id, action_type, note) VALUES (?, ?, ?)",
+    [member[0], action, note],
+  );
+  if (!member[1]) {
+    await tursoQuery(
+      env,
+      "UPDATE community_members SET activated_at = datetime('now'), first_action = ?, updated_at = datetime('now') WHERE id = ?",
+      [action, member[0]],
+    );
+  }
+
+  return jsonResponse({
+    success: true,
+    message: member[1] ? "Action recorded. Thank you for continuing to contribute." : "You are now an activated JG community member.",
+  }, corsHeaders);
+}
+
+async function handleCommunityScoreboard(env, corsHeaders) {
+  const totals = getRows(await tursoQuery(env, `
+    SELECT
+      COUNT(*),
+      SUM(CASE WHEN activated_at IS NOT NULL THEN 1 ELSE 0 END),
+      SUM(CASE WHEN activated_at IS NOT NULL AND referral_code IS NOT NULL AND referral_code != '' THEN 1 ELSE 0 END)
+    FROM community_members
+  `))?.[0] || [];
+  const actionTotal = getRows(await tursoQuery(env, "SELECT COUNT(*) FROM community_actions"))?.[0]?.[0];
+  const funding = getRows(await tursoQuery(env, `
+    SELECT
+      COALESCE(SUM(CASE WHEN stage = 'received' THEN amount_usd ELSE 0 END), 0),
+      COALESCE(SUM(CASE WHEN stage = 'committed' THEN amount_usd ELSE 0 END), 0)
+    FROM funding_records
+  `))?.[0] || [];
+  const weekly = getRows(await tursoQuery(env, `
+    SELECT week_label, experiment, current_needs
+    FROM weekly_metrics
+    ORDER BY week_start DESC LIMIT 1
+  `))?.[0] || [];
+
+  return jsonResponse({
+    weekLabel: weekly[0] || "Launch week",
+    joins: parseInt(totals[0]) || 0,
+    activated: parseInt(totals[1]) || 0,
+    referralActivations: parseInt(totals[2]) || 0,
+    contributions: parseInt(actionTotal) || 0,
+    fundingReceived: parseFloat(funding[0]) || 0,
+    fundingCommitted: parseFloat(funding[1]) || 0,
+    experiments: weekly[1] ? [weekly[1]] : ["Founding-community onboarding"],
+    currentNeeds: weekly[2] ? weekly[2].split("|").filter(Boolean) : ["Builders", "Researchers", "Operator candidates", "Connectors"],
+  }, { ...corsHeaders, "Cache-Control": "public, max-age=300" });
+}
+
+async function handleFundingRecord(request, env, corsHeaders) {
+  const body = await request.json();
+  const route = cleanText(body.route, 60);
+  const stage = cleanText(body.stage, 20);
+  const amount = Number(body.amountUsd);
+  if (!route || !["pipeline", "committed", "received"].includes(stage) || !Number.isFinite(amount) || amount < 0 || amount > 100000000) {
+    return jsonResponse({ error: "Valid route, stage, and amountUsd are required" }, corsHeaders, 400);
+  }
+  await tursoQuery(
+    env,
+    "INSERT INTO funding_records (route, stage, amount_usd, source_label, next_follow_up) VALUES (?, ?, ?, ?, ?)",
+    [route, stage, amount, cleanText(body.sourceLabel, 160), cleanText(body.nextFollowUp, 40) || null],
+  );
+  return jsonResponse({ success: true, message: "Funding record added" }, corsHeaders, 201);
+}
+
+async function handleWeeklyMetrics(request, env, corsHeaders) {
+  const body = await request.json();
+  const weekStart = cleanText(body.weekStart, 10);
+  const weekLabel = cleanText(body.weekLabel, 80);
+  const dateValid = /^\d{4}-\d{2}-\d{2}$/.test(weekStart);
+  if (!dateValid || !weekLabel) {
+    return jsonResponse({ error: "weekStart (YYYY-MM-DD) and weekLabel are required" }, corsHeaders, 400);
+  }
+  const reach = Math.max(0, Math.min(1000000000, Math.trunc(Number(body.reach) || 0)));
+  const founderHours = Math.max(0, Math.min(168, Number(body.founderHours) || 0));
+  const growthSpend = Math.max(0, Math.min(100000000, Number(body.growthSpendUsd) || 0));
+  const needs = Array.isArray(body.currentNeeds)
+    ? body.currentNeeds.map((item) => cleanText(item, 80)).filter(Boolean).slice(0, 8).join("|")
+    : "";
+  await tursoQuery(
+    env,
+    `INSERT INTO weekly_metrics
+      (week_start, week_label, reach, founder_hours, growth_spend_usd, experiment, current_needs)
+     VALUES (?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(week_start) DO UPDATE SET
+       week_label = excluded.week_label,
+       reach = excluded.reach,
+       founder_hours = excluded.founder_hours,
+       growth_spend_usd = excluded.growth_spend_usd,
+       experiment = excluded.experiment,
+       current_needs = excluded.current_needs,
+       updated_at = datetime('now')`,
+    [weekStart, weekLabel, reach, founderHours, growthSpend, cleanText(body.experiment, 240), needs],
+  );
+  return jsonResponse({ success: true, message: "Weekly metrics updated" }, corsHeaders);
 }
 
 // "Hire me" lead capture (popup on the public site)

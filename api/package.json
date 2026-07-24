@@ -3,5 +3,8 @@
   "private": true,
   "dependencies": {
     "mimetext": "^3.0.24"
+  },
+  "devDependencies": {
+    "wrangler": "^4.114.0"
   }
 }
