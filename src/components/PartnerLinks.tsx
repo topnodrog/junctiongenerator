@@ -1,110 +1,72 @@
 "use client";
-import React from "react";
 
-// Full referral URLs. Paste the complete link from each partner dashboard —
-// whatever the dashboard gives you goes here verbatim, no assembly required.
-//   Coinbase:  https://www.coinbase.com/affiliates  (or Refer & Earn link)
-//   Kraken:    https://www.kraken.com/features/affiliate-program
-//   Ledger:    https://www.ledger.com/affiliates
-//   Koinly:    https://koinly.io/affiliates/
-// NOTE: coinbase/kraken are plain signup pages until you sign up — they work
-// but earn no commission. Replace them with your referral links when ready.
-const AFFILIATE_URLS = {
-  coinbase: "https://www.coinbase.com/signup", // TODO: replace with your Coinbase referral link
-  kraken: "https://www.kraken.com/sign-up",    // TODO: replace with your Kraken referral link
-  ledger: "https://shop.ledger.com/?r=3b782b7b6543",
-  koinly: "https://koinly.io/?via=9AA968EC&utm_source=affiliate",
-};
-
-const PARTNERS = [
-  {
-    name: "Coinbase",
-    color: "var(--color-cyan)",
-    tagline: "Buy your first crypto",
-    body: "The most beginner-friendly regulated US exchange. Publicly traded, insured custody, and the easiest on-ramp from a bank account.",
-    cta: "Sign up on Coinbase",
-    url: AFFILIATE_URLS.coinbase,
-  },
-  {
-    name: "Kraken",
-    color: "var(--color-purple)",
-    tagline: "Trade with pro tools",
-    body: "A security-first exchange running since 2011 with proof-of-reserves audits, low fees, and serious trading infrastructure.",
-    cta: "Sign up on Kraken",
-    url: AFFILIATE_URLS.kraken,
-  },
+const RESOURCES = [
   {
     name: "Ledger",
-    color: "var(--color-magenta)",
-    tagline: "Self-custody your keys",
-    body: "Hardware wallets that keep your private keys offline. If you hold coins you don't actively trade, they belong in cold storage.",
-    cta: "Get a Ledger wallet",
-    url: AFFILIATE_URLS.ledger,
+    tagline: "Protect your keys",
+    body: "A hardware wallet keeps private keys away from an internet-connected computer. Always buy directly and verify the device before moving funds.",
+    cta: "Visit Ledger",
+    url: "https://shop.ledger.com/?r=3b782b7b6543",
   },
   {
     name: "Koinly",
-    color: "var(--color-cyan)",
-    tagline: "Sort your crypto taxes",
-    body: "Imports trades from every major exchange and wallet and generates ready-to-file tax reports in minutes.",
-    cta: "Try Koinly",
-    url: AFFILIATE_URLS.koinly,
+    tagline: "Make tax records manageable",
+    body: "Koinly can bring wallet and exchange activity into one place and help prepare crypto tax reports. Review the result with a qualified tax professional.",
+    cta: "Visit Koinly",
+    url: "https://koinly.io/?via=9AA968EC&utm_source=affiliate",
   },
 ];
 
 export default function PartnerLinks() {
   return (
     <div className="glass-container" style={{ padding: "40px" }}>
-      <div style={{ textAlign: "center", marginBottom: "32px" }}>
-        <h2 style={{ fontSize: "28px", fontWeight: 800, marginBottom: "10px" }}>
-          <span className="text-gradient-blue">Getting Started with Crypto?</span>
+      <div style={{ marginBottom: "32px" }}>
+        <span className="jg-eyebrow">Practical resources</span>
+        <h2 style={{ fontSize: "28px", fontWeight: 800, margin: "10px 0" }}>
+          Tools for safer participation
         </h2>
-        <p style={{ color: "var(--text-secondary)", fontSize: "15px", maxWidth: "560px", margin: "0 auto" }}>
-          Trusted platforms we recommend for buying, securing, and reporting crypto —
-          the same regulated services we&apos;d point friends and family to.
+        <p style={{ color: "var(--text-secondary)", fontSize: "14px", maxWidth: "560px" }}>
+          Two services that can help with self-custody and record keeping. These
+          are independent companies, not Junction Generator partners.
         </p>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-        {PARTNERS.map((p) => (
-          <div
-            key={p.name}
+      <div style={{ display: "grid", gap: "12px" }}>
+        {RESOURCES.map((resource) => (
+          <article
+            key={resource.name}
             style={{
-              display: "flex",
-              flexDirection: "column",
+              display: "grid",
               gap: "10px",
               padding: "22px",
-              borderRadius: "12px",
+              borderRadius: "6px",
               background: "rgba(255,255,255,0.02)",
               border: "1px solid var(--glass-border)",
             }}
           >
-            <div style={{ fontSize: "13px", fontWeight: 700, color: p.color, letterSpacing: "0.08em", textTransform: "uppercase" }}>
-              {p.tagline}
-            </div>
-            <div style={{ fontSize: "18px", fontWeight: 800, color: "var(--text-primary)" }}>
-              {p.name}
-            </div>
-            <p style={{ fontSize: "13px", color: "var(--text-secondary)", lineHeight: 1.6, flexGrow: 1 }}>
-              {p.body}
+            <span className="jg-eyebrow">{resource.tagline}</span>
+            <h3 style={{ fontSize: "20px", color: "var(--text-primary)" }}>{resource.name}</h3>
+            <p style={{ fontSize: "13px", color: "var(--text-secondary)", lineHeight: 1.65 }}>
+              {resource.body}
             </p>
             <a
-              href={p.url}
+              href={resource.url}
               target="_blank"
               rel="noopener noreferrer sponsored"
-              className="btn-glow-cyan"
-              style={{ textDecoration: "none", fontSize: "13px", textAlign: "center" }}
+              className="jg-text-link"
+              style={{ marginTop: "6px" }}
             >
-              {p.cta} →
+              {resource.cta} ↗
             </a>
-          </div>
+          </article>
         ))}
       </div>
 
-      <p style={{ marginTop: "24px", fontSize: "12px", color: "var(--text-muted)", textAlign: "center", lineHeight: 1.6 }}>
-        Affiliate disclosure: the links above are referral links. Junction Generator may earn a
-        commission when you sign up or make a purchase through them, at no extra cost to you.
-        We only list regulated, established services — never send funds to platforms you
-        haven&apos;t independently verified.
+      <p style={{ marginTop: "22px", fontSize: "11px", color: "var(--text-muted)", lineHeight: 1.65 }}>
+        Disclosure: these two links are affiliate links. Junction Generator may
+        receive a commission at no extra cost to you. Inclusion is not a claim of
+        partnership, endorsement, or guaranteed safety. Verify every destination
+        before connecting a wallet or sending funds.
       </p>
     </div>
   );
