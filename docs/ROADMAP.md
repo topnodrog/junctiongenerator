@@ -1,6 +1,6 @@
 # Junction Generator — Completion Roadmap
 
-**Updated:** 2026-07-23 · **Owner:** James Gordon
+**Updated:** 2026-07-24 · **Owner:** James Gordon
 
 Three components, one repo. Keep them distinct:
 
@@ -8,7 +8,7 @@ Three components, one repo. Keep them distinct:
 |---|---|---|
 | **JGC coin** (`packages/jgc-node`) | Sovereign PoUC Layer-1 — the actual product | Local/private testnet validated; consensus v2; 244 tests green |
 | **JGT token** (`contracts/`) | ERC-20 on Base (legacy) | Deployed; held, not promoted (no-sale stance) |
-| **junctiongenerator.net** (`src/` + `api/`) | Public site + Cloudflare Worker backend | Live; worker hardened, one deploy pending |
+| **junctiongenerator.net** (`src/` + `api/`) | Public site + Cloudflare Worker backend | Worker live and verified; community-first site refresh pushed to `junctioning` |
 
 The strategy on record: fund via grants/donations, never JGT sales. JGC is
 the product; the site is its shop window and node-runner recruiting funnel.
@@ -17,24 +17,22 @@ the product; the site is its shop window and node-runner recruiting funnel.
 
 ## Phase 0 — Ship what's already built (this week)
 
-Everything here is finished code sitting undeployed. Order matters.
-
-1. **Rotate the Cloudflare API token** (current one fails auth) with
-   `Workers Scripts:Edit` + `Email Routing Addresses:Edit` + `Zone:Read`.
-2. **Enable Email Routing** for junctiongenerator.net and verify the
-   destination address (dashboard → Email → Email Routing). Blocks the
-   digest's `EMAIL_SENDER` binding.
-3. **Set the worker secrets**: `wrangler secret put API_SECRET` (newly
-   enforced — legacy mining/admin endpoints 401 without it) and confirm
-   `CRON_SECRET` + `TURSO_AUTH_TOKEN` are set.
-4. **`cd api && wrangler deploy`** — ships the hardened worker: auth-gated
-   legacy endpoints, PII masking, rate limiting, locked-down CORS, daily
-   digest cron.
-5. **Test the digest end-to-end**: `POST /api/digest/run` with the bearer
-   token, submit a real signup on the site, run it again, confirm the email.
-6. **Deploy the site** (Vercel) — picks up the new security headers.
-7. **Merge `junctioning` to `main`** after review. Commit `ad9b0a7` is pushed
-   to `origin/junctioning` with the node's post-quantum and audit-consensus work.
+- [x] Hardened Worker deployed (2026-07-08): protected legacy/admin endpoints,
+  PII masking, rate limits, restricted CORS, and the midnight digest.
+- [x] Worker secrets and bindings confirmed: `API_SECRET`, `CRON_SECRET`,
+  `TURSO_AUTH_TOKEN`, `EMAIL_SENDER`, `RATE_LIMITER`, `TURSO_URL`,
+  `DIGEST_RECIPIENT`, and `AD_REWARD_JGT`.
+- [x] `james_gordon@junctiongenerator.net` is a verified Cloudflare Email
+  destination.
+- [x] Midnight cron confirmed operational: `digest_state.last_sent_at`
+  advanced to `2026-07-24 00:00:01`.
+- [x] Immediate owner notifications added for newsletter signups and hire
+  leads, with Turso storage first and the midnight digest as fallback.
+- [x] Live synthetic hire-lead test stored successfully and Cloudflare tail
+  logged `owner notification sent`; both synthetic rows were then deleted.
+- [x] Community-first website refresh reviewed and pushed in commit `07cbe0a`.
+- [ ] Merge `junctioning` to `main` to deploy the refreshed site through
+  Vercel.
 
 ## Phase 1 — Lock the doors (1–2 weeks)
 

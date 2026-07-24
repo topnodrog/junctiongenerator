@@ -55,6 +55,10 @@ Use **Ctrl+Shift+F** (Obsidian global search) to find keywords across all notes.
 
 ## Recent Updates
 
+- **2026-07-24:** Community-first website refresh pushed to `junctioning`.
+  Cloudflare notifications verified end to end: newsletter signups and hire
+  leads are stored in Turso, trigger an immediate owner email, and remain
+  covered by the midnight digest fallback.
 - **2026-07-23:** JGC consensus v2: post-quantum ML-DSA identities/signatures,
   SHA3-256 wire checksums, delayed-beacon historical audits, and complete
   verdict evidence committed through `auditRoot`; 24 suites / 244 tests and a

@@ -1,5 +1,11 @@
 # JGT Attention Mining — Backend Setup Guide
 
+> **Current status (2026-07-24):** The Worker is deployed and verified. Public
+> newsletter and hire-lead submissions are stored in Turso, then immediately
+> emailed to the owner through Cloudflare; the midnight digest is a durable
+> fallback. This file is historical setup reference. See `api/DEPLOY.md` for
+> the current deployment record.
+
 ## Architecture
 
 ```

@@ -1,109 +1,98 @@
-# Deploying the hardened worker
+# Cloudflare Worker deployment and verification
 
-**Written 2026-07-07.** The security fixes are committed on `junctioning` (`api/worker.js`,
-`api/wrangler.toml`) but **not yet deployed** — the live worker is still the old, open version.
-This is the exact runbook to ship it.
+**Last verified:** 2026-07-24
 
-> Supersedes the digest-only checklist in `vault/06-Website-Backend/tonight-setup-steps.md`.
-> That file's two "blockers" (rotate `.cf_token`, enable Email Routing) **no longer apply** —
-> see Pre-flight below.
+Worker: `jgt-mining-api`
 
----
+URL: `https://jgt-mining-api.james-gordon.workers.dev`
 
-## What this deploy changes on the live API
+Current version: `27376d87-c982-46c1-b089-04ace3e01651`
 
-- Legacy mining/admin endpoints now require `Authorization: Bearer <API_SECRET>`:
-  `POST /api/ad-view`, `POST /api/referral/claim`, `POST /api/ads/campaigns`, `GET /api/pending-rewards`.
-- Ad rewards become server-authoritative (`AD_REWARD_JGT`, default 1); client `rewardAmount` ignored.
-- `GET /api/user` no longer returns email; `GET /api/airdrop/status` masks it.
-- CORS locked to junctiongenerator.net + localhost + `*.vercel.app` (was `*`).
-- Per-IP rate limiting on `subscribe` / `hire-lead` / `airdrop register` (20 req / 60 s).
-- Adds the daily-digest cron + `EMAIL_SENDER` binding (first time these ship).
+## Live behavior
 
-**The public site is unaffected.** It only calls `POST /api/subscribe` and `POST /api/hire-lead`,
-both of which stay public. Verified: `src/` calls none of the now-gated endpoints.
+- `POST /api/subscribe` and `POST /api/hire-lead` remain public.
+- Each valid submission is written to Turso before notification is attempted.
+- Newsletter signups and hire leads immediately email
+  `james_gordon@junctiongenerator.net`.
+- A notification failure is logged but does not fail or discard the stored
+  submission.
+- The `0 0 * * *` cron runs the midnight-UTC digest as a fallback.
+- Legacy mining/admin endpoints require
+  `Authorization: Bearer <API_SECRET>`.
+- CORS, rate limiting, server-authoritative rewards, and PII masking remain
+  enabled.
 
----
+## Verified Cloudflare state
 
-## Pre-flight — all already satisfied (2026-07-07)
+| Requirement | Verified state |
+|---|---|
+| Wrangler identity | OAuth as `james_gordon@junctiongenerator.net` |
+| Worker secrets | `API_SECRET`, `CRON_SECRET`, `TURSO_AUTH_TOKEN` present |
+| Send binding | `EMAIL_SENDER` → verified fixed destination |
+| Destination | `james_gordon@junctiongenerator.net`, verified 2026-06-26 |
+| Other bindings | `RATE_LIMITER`, `TURSO_URL`, `DIGEST_RECIPIENT`, `AD_REWARD_JGT` |
+| Scheduled trigger | `0 0 * * *` |
+| Database health | `/api/health` returned 200 and `database: connected` |
+| Protected endpoint | `/api/pending-rewards` returned 401 without a token |
+| Digest execution | `digest_state.last_sent_at` advanced to `2026-07-24 00:00:01` |
+| Immediate email | Live synthetic request logged `owner notification sent` |
 
-Nothing to set up. Each was checked tonight; re-run any command to confirm.
+The live synthetic verification rows were deleted after the test. Real contact
+records were not changed.
 
-| Requirement | State | Check command (run from `api/`) |
-|---|---|---|
-| wrangler logged in (correct account) | ✅ OAuth as james_gordon@…, acct …990c | `wrangler whoami` |
-| Worker secrets set | ✅ API_SECRET, CRON_SECRET, TURSO_AUTH_TOKEN | `wrangler secret list` |
-| Email Routing destination verified | ✅ james_gordon@… verified 2026-06-26 | `wrangler email routing addresses list` |
-| `mimetext` dependency installed | ✅ in `api/node_modules` | `npm ls mimetext` |
-| wrangler supports rate-limit binding | ✅ v4.98.0 | `wrangler --version` |
+Cloudflare currently reports zone-level **inbound Email Routing** as
+unconfigured/disabled. That is distinct from the Worker send binding: the
+destination address is verified and the outbound notification call completed
+successfully in the live Worker.
 
-> **The dead `.cf_token` does NOT block this.** That file is only used by the separate
-> Python/API automation (`scripts/db/deploy_worker.py`). `wrangler deploy` authenticates with
-> its own OAuth login, which is valid.
+The gitignored `.cf_token` belongs to older API automation and is not used by
+`wrangler deploy`; Wrangler's OAuth session is the working deployment
+credential.
 
----
+## Deploy
 
-## Step 1 — Baseline (prove the old worker is open)
-
-In PowerShell (use `curl.exe`, not `curl` — in Windows PowerShell `curl` is an alias for
-Invoke-WebRequest and won't take `-X`/`-H`):
-
-```powershell
-curl.exe https://jgt-mining-api.james-gordon.workers.dev/api/pending-rewards
-```
-
-**Now:** returns HTTP 200 with the full ledger (wallet addresses + pending JGT). That's the hole.
-
-## Step 2 — Deploy
+From `C:\dev\JunctionGenerator\api`:
 
 ```powershell
-cd C:\dev\JunctionGenerator\api
+wrangler deploy --dry-run
 wrangler deploy
 ```
 
-Expect a success summary listing bindings `EMAIL_SENDER`, `RATE_LIMITER`, `TURSO_URL`,
-`DIGEST_RECIPIENT`, `AD_REWARD_JGT`, and the cron trigger `0 0 * * *`. (`wrangler deploy --dry-run`
-first if you want a no-op rehearsal — it already passes.)
+The deployment summary should include `EMAIL_SENDER`, `RATE_LIMITER`,
+`TURSO_URL`, `DIGEST_RECIPIENT`, `AD_REWARD_JGT`, and schedule `0 0 * * *`.
 
-## Step 3 — Verify the fix is live
+## Read-only checks
 
 ```powershell
-# THE key proof: same request as Step 1 → now 401
-curl.exe https://jgt-mining-api.james-gordon.workers.dev/api/pending-rewards
-#   → {"error":"Unauthorized"}
+wrangler whoami
+wrangler secret list
+wrangler deployments status
+wrangler email routing addresses list
 
-# Same endpoint WITH the owner token → 200 ledger again
-curl.exe -H "Authorization: Bearer <API_SECRET>" https://jgt-mining-api.james-gordon.workers.dev/api/pending-rewards
-
-# Health still green
 curl.exe https://jgt-mining-api.james-gordon.workers.dev/api/health
-#   → {"status":"ok",...,"database":"connected"}
-
-# CORS is locked (note the echoed Origin is NOT reflected)
-curl.exe -i -H "Origin: https://evil.example" https://jgt-mining-api.james-gordon.workers.dev/api/health
-#   → Access-Control-Allow-Origin: https://junctiongenerator.net
-
-# Digest end-to-end (optional): triggers the email path
-curl.exe -X POST -H "Authorization: Bearer <CRON_SECRET>" https://jgt-mining-api.james-gordon.workers.dev/api/digest/run
-#   → {"success":true,"message":"Digest run triggered"}  — then check the inbox
+curl.exe https://jgt-mining-api.james-gordon.workers.dev/api/pending-rewards
 ```
 
-You need the actual `API_SECRET` / `CRON_SECRET` values (from your password manager — Cloudflare
-secrets can't be read back). If lost, re-set with `wrangler secret put API_SECRET`. Low risk:
-the site never uses `API_SECRET`, and `CRON_SECRET` only gates the manual digest/dispense triggers.
+Expected: health is 200 with a connected database; pending rewards is 401
+without the owner token.
 
-## Step 4 — Rollback (only if something looks wrong)
+## Manual digest
 
 ```powershell
-wrangler deployments list           # find the previous deployment id
-wrangler rollback <deployment-id>   # revert instantly
+curl.exe -X POST `
+  -H "Authorization: Bearer <CRON_SECRET>" `
+  https://jgt-mining-api.james-gordon.workers.dev/api/digest/run
 ```
 
----
+Cloudflare secrets cannot be read back. If one is lost, replace it with
+`wrangler secret put <NAME>`.
 
-## Not part of this deploy
+## Rollback
 
-- **The website** (Vercel) is separate. Deploying the worker does not touch it. The site's new
-  security headers ship when `junctioning` merges to `main` (Vercel auto-deploys `main`).
-- **Order if doing both tonight:** worker first (closes the live hole), then merge `main` for the
-  site. There's no dependency between them.
+```powershell
+wrangler deployments list
+wrangler rollback <deployment-id>
+```
+
+The website is deployed separately through Vercel when `junctioning` is merged
+to `main`.

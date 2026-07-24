@@ -1,27 +1,23 @@
 # Junction Generator
 
-**Turn Your Vibe Into Verifiable Web3 Code**
+**Make Mining Useful**
 
-AI-operated, mined-compute Web3 factory. Speak English to compile smart contracts, earn $JGT through useful compute.
+Junction Generator is building a community-owned Proof-of-Useful-Compute
+network where everyday devices contribute verifiable local AI inference.
 
 **Live site:** [junctiongenerator.net](https://junctiongenerator.net)
 **Repo:** [topnodrog/junctiongenerator](https://github.com/topnodrog/junctiongenerator) (GitHub Pages)
 
 ---
 
-## Sections on the Site
+## Public Site
 
-| # | Section | Component | Status |
-|---|---------|-----------|--------|
-| 1 | Compiler Sandbox | `VibePlayground.tsx` | Live |
-| 2 | Compute Grid | `MiningTelemetry.tsx` | Live |
-| 3 | OSCRP Stake | `OSCRPCalculator.tsx` | Live |
-| 4 | C-Suite Console | `AgentConsole.tsx` | Live |
-| 5 | Mine JGT | `AttentionMining.tsx` | Live (needs Bitmedia Publisher ID) |
-| 6 | Revenue Hub | `JGTRevenueHub.tsx` | Live (needs ETH + API URL) |
-| 7 | JGT Staking | `JGTStaking.tsx` | Live (needs staking contract deployed) |
-| 8 | Ad Slots | `AdSlotManager.tsx` | Live (needs ETH for on-chain campaigns) |
-| -- | Whitepaper | `whitepaper/page.tsx` | Live |
+The 2026-07-24 community-first refresh leads with the useful-compute mission,
+shows working evidence separately from open research, recruits early
+contributors, and keeps the interactive demos in a clearly labeled prototype
+lab. The hire-James flow remains prominent because client work funds
+development. The refresh is committed to `junctioning`; production remains on
+`main` until the branch is merged/deployed.
 
 ---
 
@@ -73,6 +69,8 @@ See [`packages/jgc-node/README.md`](packages/jgc-node/README.md) and
 | Vercel Frontend | `junctiongenerator.net` | Live |
 
 **Worker API endpoints:**
+- `POST /api/subscribe` -- Store a newsletter signup and notify the owner
+- `POST /api/hire-lead` -- Store an email/phone inquiry and notify the owner
 - `POST /api/ad-view` -- Record ad views for rewards
 - `GET /api/user` -- Get user stats
 - `POST /api/airdrop/register` -- Register for airdrop
@@ -84,7 +82,14 @@ See [`packages/jgc-node/README.md`](packages/jgc-node/README.md) and
 - `POST /api/dispense` -- Trigger batch reward distribution
 - `GET /api/pending-rewards` -- View pending reward queue
 
-**DB tables:** users, sessions, ad_views, pending_claims, dispense_batches, airdrop_registrations, referrals, ad_campaigns
+New newsletter and hire submissions trigger an immediate email to the verified
+owner address. A midnight-UTC digest retries visibility from durable Turso
+records. The live path was verified end-to-end on 2026-07-24; synthetic rows
+were removed afterward.
+
+**DB tables:** users, sessions, ad_views, pending_claims, dispense_batches,
+airdrop_registrations, referrals, ad_campaigns, newsletter_subscribers,
+hire_leads, digest_state
 
 ---
 

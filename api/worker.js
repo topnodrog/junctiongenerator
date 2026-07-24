@@ -94,6 +94,25 @@ function isHttpUrl(value) {
 
 const WALLET_RE = /^0x[a-fA-F0-9]{40}$/;
 
+async function sendOwnerEmail(env, subject, body) {
+  if (!env.EMAIL_SENDER) {
+    console.error("owner notification skipped: EMAIL_SENDER binding missing");
+    return false;
+  }
+
+  const recipient = env.DIGEST_RECIPIENT || "james_gordon@junctiongenerator.net";
+  const msg = createMimeMessage();
+  msg.setSender({ name: "Junction Generator", addr: "digest@junctiongenerator.net" });
+  msg.setRecipient(recipient);
+  msg.setSubject(subject);
+  msg.addMessage({ contentType: "text/plain", data: body });
+
+  const message = new EmailMessage("digest@junctiongenerator.net", recipient, msg.asRaw());
+  await env.EMAIL_SENDER.send(message);
+  console.log("owner notification sent");
+  return true;
+}
+
 export default {
   async scheduled(event, env, ctx) {
     await sendDailyDigest(env);
@@ -362,6 +381,23 @@ async function handleSubscribe(request, env, corsHeaders) {
 
   try {
     await tursoQuery(env, "INSERT OR IGNORE INTO newsletter_subscribers (email, wallet_address) VALUES (?, ?)", [email.toLowerCase(), wallet]);
+    try {
+      await sendOwnerEmail(
+        env,
+        "New Junction Generator newsletter signup",
+        [
+          "A visitor joined the Junction Generator field notes.",
+          "",
+          `Email: ${email.toLowerCase()}`,
+          wallet ? `Wallet: ${wallet}` : null,
+          `Received: ${new Date().toISOString()}`,
+        ].filter(Boolean).join("\n"),
+      );
+    } catch (notifyError) {
+      // The database remains the source of truth. The midnight digest retries
+      // visibility of this signup even if immediate email delivery fails.
+      console.error("immediate newsletter notification failed:", notifyError.message);
+    }
     return jsonResponse({ success: true, message: "Subscribed to JGT newsletter!" }, corsHeaders);
   } catch (err) {
     console.error("subscribe insert failed:", err.message);
@@ -396,6 +432,25 @@ async function handleHireLead(request, env, corsHeaders) {
       "INSERT INTO hire_leads (email, phone, interest, message) VALUES (?, ?, ?, ?)",
       [emailVal || null, phoneVal || null, typeof interest === "string" ? interest.slice(0, 200) : null, typeof message === "string" ? message.slice(0, 2000) : null]
     );
+    try {
+      await sendOwnerEmail(
+        env,
+        "New Junction Generator project inquiry",
+        [
+          "A visitor asked about hiring James through junctiongenerator.net.",
+          "",
+          emailVal ? `Email: ${emailVal}` : null,
+          phoneVal ? `Phone: ${phoneVal}` : null,
+          typeof interest === "string" && interest ? `Interest: ${interest.slice(0, 200)}` : null,
+          typeof message === "string" && message ? `Message: ${message.slice(0, 2000)}` : null,
+          `Received: ${new Date().toISOString()}`,
+        ].filter(Boolean).join("\n"),
+      );
+    } catch (notifyError) {
+      // Never discard a client lead because mail delivery is temporarily down.
+      // The stored lead remains eligible for the midnight digest.
+      console.error("immediate hire notification failed:", notifyError.message);
+    }
     return jsonResponse({ success: true, message: "Thanks — I'll be in touch soon!" }, corsHeaders);
   } catch (err) {
     console.error("hire-lead insert failed:", err.message);
@@ -503,19 +558,11 @@ async function sendDailyDigest(env) {
     });
   }
 
-  const msg = createMimeMessage();
-  msg.setSender({ name: "Junction Generator", addr: "digest@junctiongenerator.net" });
-  msg.setRecipient(env.DIGEST_RECIPIENT || "james_gordon@junctiongenerator.net");
-  msg.setSubject(`JGC daily digest: ${newsletterRows.length + airdropRows.length + hireLeadRows.length} new signup(s)`);
-  msg.addMessage({ contentType: "text/plain", data: lines.join("\n") });
-
-  const message = new EmailMessage(
-    "digest@junctiongenerator.net",
-    env.DIGEST_RECIPIENT || "james_gordon@junctiongenerator.net",
-    msg.asRaw()
+  await sendOwnerEmail(
+    env,
+    `JGC daily digest: ${newsletterRows.length + airdropRows.length + hireLeadRows.length} new signup(s)`,
+    lines.join("\n"),
   );
-
-  await env.EMAIL_SENDER.send(message);
   await tursoQuery(env, "UPDATE digest_state SET last_sent_at = ? WHERE id = 1", [now]);
 }
 
