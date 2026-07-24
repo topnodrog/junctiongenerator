@@ -8,10 +8,9 @@
 import type { Block, MinerComputeContribution, Transaction } from "../types/index.js";
 import { MessageType as MT } from "../types/index.js";
 import { JGCNode } from "../network/node.js";
-import { loadVerifierWasm } from "../crypto/zkp.js";
 import { txid, txSigHash } from "../consensus/utxo.js";
 import { hashBlockHeader } from "../consensus/block.js";
-import { p2pkhScript, signHash, p2pkhScriptSig, generateKeyPair } from "../crypto/signatures.js";
+import { pqScriptPubKey, pqSignHash, pqScriptSig, pqGenerateKeyPair } from "../crypto/pq-signatures.js";
 import { BASE_UNITS_PER_JGC } from "../consensus/emission.js";
 import {
   makeGenesisBlock, makePeer, makeMessage, makeContribution, BlockProducer, DEFAULT_MINERS,
@@ -19,8 +18,8 @@ import {
 import type { NodeConfig } from "../types/index.js";
 
 const J = (n: bigint): bigint => n * BASE_UNITS_PER_JGC;
-const alice = generateKeyPair();
-const bob = generateKeyPair();
+const alice = pqGenerateKeyPair("aa".repeat(32));
+const bob = pqGenerateKeyPair("bb".repeat(32));
 
 const cfg = (): NodeConfig => ({ listenPort: 0, rpcPort: 0, networkMagic: 0xD9B4BEF9, maxPeers: 8, enableBroker: false, junctionGeneratorMode: false });
 const contribs = (height: number): MinerComputeContribution[] => DEFAULT_MINERS.map(m => makeContribution(m, height));
@@ -46,12 +45,10 @@ function fundedGenesis(pub: string): Block {
   g.transactions = [
     { version: 1, inputs: [], outputs: [{ value: 0n, scriptPubKey: "6a" }], locktime: 0 }, // coinbase placeholder
     { version: 1, inputs: [{ prevOut: { txid: "00".repeat(32), vout: 0 }, scriptSig: "00", sequence: 0xFFFFFFFF }],
-      outputs: [{ value: J(10n), scriptPubKey: p2pkhScript(pub) }], locktime: 0 },
+      outputs: [{ value: J(10n), scriptPubKey: pqScriptPubKey(pub) }], locktime: 0 },
   ];
   return g;
 }
-
-beforeAll(async () => { await loadVerifierWasm({ mode: "simnet" }); });
 
 describe("fork choice + reorg", () => {
   test("switches to a heavier competing branch and matches a from-scratch chain", async () => {
@@ -110,13 +107,15 @@ describe("fork choice + reorg", () => {
       version: 1,
       inputs: [{ prevOut: { txid: fundingTxid, vout: 0 }, scriptSig: "", sequence: 0xFFFFFFFF }],
       outputs: [
-        { value: J(6n), scriptPubKey: p2pkhScript(bob.publicKey) },
-        { value: J(3n), scriptPubKey: p2pkhScript(alice.publicKey) }, // change; fee = 1 JGC
+        { value: J(6n), scriptPubKey: pqScriptPubKey(bob.publicKey) },
+        { value: J(3n), scriptPubKey: pqScriptPubKey(alice.publicKey) }, // change; fee = 1 JGC
       ],
       locktime: 0,
     };
-    spend.inputs[0]!.scriptSig = p2pkhScriptSig(signHash(alice.privateKey, txSigHash(spend)), alice.publicKey);
+    spend.inputs[0]!.scriptSig = pqScriptSig(pqSignHash(alice.privateKey, txSigHash(spend)), alice.publicKey);
 
+    // Put the spend in the mempool (as a miner would) so the reorg can return it.
+    expect(n.submitTransaction(spend).ok).toBe(true);
     const a1 = pA.produceBlock(contribs(1), [spend]); pA.confirmBlock(a1);
     await feed(n, a1);
     expect(n.getChainInfo().tipHeight).toBe(1);

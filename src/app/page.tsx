@@ -1,5 +1,3 @@
-"use client";
-import React from "react";
 import ConnectButton from "@/components/ConnectButton";
 import VibePlayground from "@/components/VibePlayground";
 import MiningTelemetry from "@/components/MiningTelemetry";
@@ -11,342 +9,220 @@ import NodeStatusPanel from "@/components/NodeStatusPanel";
 import HireMePopup from "@/components/HireMePopup";
 import PartnerLinks from "@/components/PartnerLinks";
 
-const MILESTONES = [
-  { done: true,  label: "PoUC concept & cryptoeconomic design" },
-  { done: true,  label: "Whitepaper & interactive demo site" },
-  { done: true,  label: "Junctioning Layer-1 — local inference over Ollama, block production live" },
-  { done: true,  label: "Honest FLOP measurement from real model parameter count" },
-  { done: true,  label: "Deterministic-replay verification — cryptographic proof of compute" },
-  { done: true,  label: "Sampling + slashing — economic incentive layer for honest miners" },
-  { done: true,  label: "Multi-challenger quorum — collusion-hardened verification" },
-  { done: true,  label: "Wallet & coinbase transactions — full block reward flow" },
-  { done: false, label: "Public testnet — P2P sync, block explorer, public nodes" },
-  { done: false, label: "GPU mining client & inference/training workload circuits" },
-  { done: false, label: "Mainnet launch" },
+const PROOF_POINTS = [
+  { value: "244", label: "node tests passing" },
+  { value: "31", label: "blocks synced in a two-node demo" },
+  { value: "10", label: "blocks per historical audit window" },
+  { value: "3", label: "validators per audit committee" },
+];
+
+const NETWORK_STEPS = [
+  {
+    number: "01",
+    title: "Contribute useful work",
+    body: "Ordinary computers run local AI inference instead of wasting energy on meaningless hash puzzles.",
+  },
+  {
+    number: "02",
+    title: "Verify what happened",
+    body: "Future block randomness selects historical claims for independent, signed committee review.",
+  },
+  {
+    number: "03",
+    title: "Reward honest participation",
+    body: "The intended network distributes JGC according to verified contribution, with economic penalties activated only when they are safe.",
+  },
+];
+
+const COMMUNITY_PATHS = [
+  {
+    tag: "No code required",
+    title: "Follow the build",
+    body: "Get the meaningful milestones, honest setbacks, and first invitations to test the network.",
+    href: "#newsletter",
+    cta: "Join the field notes",
+  },
+  {
+    tag: "For builders",
+    title: "Help shape the protocol",
+    body: "Review the open implementation, test assumptions, improve the node, or help solve verifiable inference.",
+    href: "https://github.com/topnodrog/junctiongenerator",
+    cta: "Explore on GitHub",
+    external: true,
+  },
+  {
+    tag: "Early operators",
+    title: "Prepare to run a node",
+    body: "The public network is not open yet. Read the runner guide now and be ready for the first safe test cohort.",
+    href: "https://github.com/topnodrog/junctiongenerator/tree/junctioning/packages/jgc-node",
+    cta: "Read the node guide",
+    external: true,
+  },
+  {
+    tag: "Keep it moving",
+    title: "Back the experiment",
+    body: "Fund development directly, share the project with one thoughtful person, or hire the builder for paid work.",
+    href: "#support",
+    cta: "Choose how to help",
+  },
+];
+
+const STATUS_ITEMS = [
+  { state: "working", title: "Local inference", body: "Gemma runs through Ollama on a contributor's own machine." },
+  { state: "working", title: "Post-quantum node path", body: "ML-DSA signatures, SHA3-256 checksums, and transparent proof foundations are active in the private node." },
+  { state: "working", title: "Historical audit consensus", body: "Signed verdict evidence survives mining, peer sync, restart, and chain reorganization." },
+  { state: "next", title: "Public testnet", body: "Waiting on peer hardening, model pinning, real-network soak tests, and safe node packaging." },
+  { state: "research", title: "Cross-hardware verification", body: "The central research problem: proving valid work across different processors, runtimes, and quantizations." },
+  { state: "later", title: "Economic enforcement", body: "Rewards and slashing stay off until validator identity, bonds, and stake snapshots belong to consensus." },
 ];
 
 export default function Home() {
   return (
     <>
       <HireMePopup />
-
-      {/* Navigation Header */}
-      <header className="nav-header">
-        <a href="#" className="nav-logo">
-          <div className="nav-logo-symbol">JG</div>
-          <span style={{ fontFamily: "var(--font-display)", fontWeight: 800 }}>Junction Generator</span>
+      <header className="jg-nav">
+        <a href="#top" className="jg-brand" aria-label="Junction Generator home">
+          <span className="jg-mark" aria-hidden="true">JG</span>
+          <span><strong>Junction Generator</strong><small>Proof of useful compute</small></span>
         </a>
-        <nav>
-          <ul className="nav-links">
-            <li className="nav-link-item"><a href="#technology">Technology</a></li>
-            <li className="nav-link-item"><a href="#quantum-ready">Quantum Ready</a></li>
-            <li className="nav-link-item"><a href="#telemetry">Compute Grid</a></li>
-            <li className="nav-link-item"><a href="#rewards">OSCRP</a></li>
-            <li className="nav-link-item"><a href="/whitepaper">Whitepaper</a></li>
-            <li className="nav-link-item"><a href="/blog">Blog</a></li>
-            <li className="nav-link-item"><a href="#newsletter">Newsletter</a></li>
-            <li className="nav-link-item"><a href="#partners">Get Crypto</a></li>
-            <li className="nav-link-item"><a href="#support">Support</a></li>
-            <li className="nav-link-item"><a href="#hire">Hire Me</a></li>
-          </ul>
+        <nav className="jg-nav-links" aria-label="Primary navigation">
+          <a href="#how-it-works">How it works</a>
+          <a href="#status">Progress</a>
+          <a href="#community">Community</a>
+          <a href="/blog">Field notes</a>
+          <a href="#hire">Hire James</a>
         </nav>
-        <div style={{ position: "relative" }}>
-          <ConnectButton />
-        </div>
+        <div className="jg-wallet"><ConnectButton /></div>
       </header>
 
-      {/* Main Container */}
-      <main style={{ maxWidth: "1200px", margin: "0 auto", padding: "120px 24px 80px", position: "relative" }}>
-
-        {/* Floating Ambient background orb */}
-        <div className="ambient-orb-2"></div>
-
-        {/* Hero Section */}
-        <section style={{ textAlign: "center", marginBottom: "80px", paddingTop: "20px" }}>
-          <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", background: "rgba(0, 242, 254, 0.08)", border: "1px solid rgba(0, 242, 254, 0.2)", padding: "6px 16px", borderRadius: "100px", color: "var(--color-cyan)", fontSize: "12px", fontWeight: "600", marginBottom: "24px" }}>
-            <span style={{ display: "inline-block", width: "6px", height: "6px", borderRadius: "50%", background: "var(--color-cyan)", animation: "glow-pulse 1.5s infinite" }}></span>
-            Layer-1 Testnet Live — Junctioning v1
-          </div>
-
-          <h1 className="text-gradient-cyber" style={{ fontSize: "56px", lineHeight: "1.1", marginBottom: "20px", fontWeight: "900", letterSpacing: "-0.03em" }}>
-            Mining Compute<br />Redirected to Real AI Work
-          </h1>
-
-          <p style={{ color: "var(--text-secondary)", fontSize: "18px", maxWidth: "680px", margin: "0 auto 12px", lineHeight: "1.6" }}>
-            Junction Generator is a Layer-1 blockchain where miners earn <strong style={{ color: "var(--text-primary)" }}>$JGC</strong> by running verifiable AI inference — replacing hash puzzles with productive compute that the world actually needs.
-          </p>
-          <p style={{ color: "var(--text-muted)", fontSize: "15px", maxWidth: "580px", margin: "0 auto 36px", lineHeight: "1.6" }}>
-            Proof-of-Useful-Compute (PoUC) • Deterministic-replay verification • Collusion-hardened quorum
-          </p>
-
-          <div style={{ display: "flex", gap: "16px", justifyContent: "center", marginBottom: "48px" }}>
-            <a href="/whitepaper" className="btn-glow-purple" style={{ textDecoration: "none", display: "inline-block" }}>
-              Read the Whitepaper
-            </a>
-            <a href="https://github.com/topnodrog/junctiongenerator" target="_blank" rel="noopener noreferrer" className="btn-glow-cyan" style={{ textDecoration: "none", display: "inline-block" }}>
-              View on GitHub
-            </a>
-          </div>
-
-          {/* Live local-node status — real data when the operator runs a node */}
-          <NodeStatusPanel />
-        </section>
-
-        {/* Technology / Milestones Section */}
-        <section id="technology" style={{ marginBottom: "80px", scrollMarginTop: "100px" }}>
-          <div className="glass-container" style={{ padding: "40px" }}>
-            <div style={{ textAlign: "center", marginBottom: "36px" }}>
-              <h2 style={{ fontSize: "28px", fontWeight: 800, marginBottom: "10px" }}>
-                <span className="text-gradient-blue">What We've Built</span>
-              </h2>
-              <p style={{ color: "var(--text-secondary)", fontSize: "15px", maxWidth: "540px", margin: "0 auto" }}>
-                A full proof-of-concept Layer-1 with a working verification model — no trusted hardware, no ZK circuits, no re-execution of every block.
-              </p>
-            </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-              {MILESTONES.map((m, i) => (
-                <div
-                  key={i}
-                  style={{
-                    display: "flex",
-                    alignItems: "flex-start",
-                    gap: "12px",
-                    padding: "14px 16px",
-                    borderRadius: "10px",
-                    background: m.done
-                      ? "rgba(0, 242, 254, 0.04)"
-                      : "rgba(255,255,255,0.02)",
-                    border: `1px solid ${m.done ? "rgba(0,242,254,0.12)" : "rgba(255,255,255,0.04)"}`,
-                  }}
-                >
-                  <span style={{
-                    flexShrink: 0,
-                    width: "20px",
-                    height: "20px",
-                    borderRadius: "50%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: "11px",
-                    fontWeight: 700,
-                    background: m.done ? "rgba(0,242,254,0.15)" : "rgba(255,255,255,0.05)",
-                    color: m.done ? "var(--color-cyan)" : "var(--text-muted)",
-                    border: `1px solid ${m.done ? "rgba(0,242,254,0.3)" : "rgba(255,255,255,0.08)"}`,
-                  }}>
-                    {m.done ? "✓" : "·"}
-                  </span>
-                  <span style={{
-                    fontSize: "14px",
-                    lineHeight: "1.4",
-                    color: m.done ? "var(--text-primary)" : "var(--text-muted)",
-                  }}>
-                    {m.label}
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            {/* Three pillars */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "20px", marginTop: "36px", borderTop: "1px solid var(--glass-border)", paddingTop: "36px" }}>
-              {[
-                {
-                  color: "var(--color-cyan)",
-                  title: "Deterministic Replay",
-                  body: "Any validator can re-run a miner's inference workload from a deterministic seed and compare outputs — no trusted execution environment required.",
-                },
-                {
-                  color: "var(--color-purple)",
-                  title: "Sampling + Slashing",
-                  body: "Validators randomly sample blocks and challenge suspect miners. Caught cheaters are slashed proportionally, making dishonest compute economically irrational.",
-                },
-                {
-                  color: "var(--color-magenta)",
-                  title: "Quorum Collusion Resistance",
-                  body: "Multiple independent challengers must agree before a slash is applied. No single validator can frame a miner; collusion requires coordinating an implausible majority.",
-                },
-              ].map((p, i) => (
-                <div key={i} style={{ textAlign: "center" }}>
-                  <div style={{ fontSize: "13px", fontWeight: 700, color: p.color, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "8px" }}>
-                    {p.title}
-                  </div>
-                  <p style={{ fontSize: "13px", color: "var(--text-secondary)", lineHeight: 1.6 }}>
-                    {p.body}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Quantum readiness */}
-        <section id="quantum-ready" style={{ marginBottom: "80px", scrollMarginTop: "100px" }}>
-          <div className="glass-container quantum-ready-panel">
-            <div>
-              <div className="section-eyebrow">Post-quantum migration in progress</div>
-              <h2 style={{ fontSize: "34px", fontWeight: 900, margin: "10px 0 14px" }}>
-                <span className="text-gradient-cyber">Almost quantum ready.</span>
-              </h2>
-              <p style={{ color: "var(--text-secondary)", fontSize: "15px", lineHeight: 1.7, marginBottom: "22px" }}>
-                The node&apos;s active consensus, wallet, and mining paths now use NIST-standardized
-                ML-DSA signatures, SHA3-256 hashing, transparent hash-based compute proofs, and
-                one-time addresses. The remaining work is production-scale proof engineering,
-                independent review, and migration of legacy demos.
-              </p>
-              <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
-                <a href="/blog/becoming-quantum-ready" className="btn-glow-purple" style={{ textDecoration: "none", fontSize: "14px" }}>
-                  Read the quantum-ready brief
-                </a>
-                <a href="https://github.com/topnodrog/junctiongenerator/tree/main/packages/jgc-node" target="_blank" rel="noopener noreferrer" className="btn-glow-cyan" style={{ textDecoration: "none", fontSize: "14px" }}>
-                  Inspect the implementation
-                </a>
-              </div>
-            </div>
-            <div className="quantum-checklist">
-              {[
-                ["ML-DSA-65", "Quantum-resistant transaction and miner signatures"],
-                ["SHA3-256", "Modern hashing with a post-quantum security margin"],
-                ["Transparent proofs", "No elliptic-curve pairing or trusted setup"],
-                ["Private payments", "Unlinkable, one-time recipient addresses"],
-              ].map(([title, body]) => (
-                <div key={title} className="quantum-check">
-                  <span aria-hidden="true">✓</span>
-                  <div><strong>{title}</strong><small>{body}</small></div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Run a Node CTA Section */}
-        <section id="run-node" style={{ marginBottom: "80px", scrollMarginTop: "100px" }}>
-          <div className="glass-container" style={{ padding: "48px", textAlign: "center", background: "linear-gradient(135deg, rgba(0, 242, 254, 0.06) 0%, rgba(155, 81, 224, 0.06) 100%)", border: "1px solid rgba(0, 242, 254, 0.15)" }}>
-            <h2 style={{ fontSize: "32px", fontWeight: 800, marginBottom: "12px", color: "var(--text-primary)" }}>
-              Be One of the First
-            </h2>
-            <p style={{ color: "var(--text-secondary)", fontSize: "16px", maxWidth: "640px", margin: "0 auto 32px", lineHeight: 1.6 }}>
-              Junction Generator is recruiting early developers to run testnet nodes. Validate compute, earn $JGC tokens, and help prove the protocol before mainnet.
+      <main id="top" className="jg-page">
+        <section className="jg-hero" aria-labelledby="hero-title">
+          <div className="jg-hero-copy">
+            <div className="jg-kicker"><span aria-hidden="true" />Local/private testnet • building in public</div>
+            <h1 id="hero-title">What if mining <span>did useful work?</span></h1>
+            <p className="jg-hero-lede">
+              Junction Generator is building a post-quantum-oriented network where everyday
+              devices contribute verifiable local AI inference—and honest participants share
+              in the value they help create.
             </p>
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "20px", marginBottom: "32px" }}>
-              {[
-                {
-                  label: "Run a Validator",
-                  desc: "Challenge suspect blocks, earn rewards for honest validation",
-                },
-                {
-                  label: "Mine Compute",
-                  desc: "Run inference on GPU hardware, earn $JGC per verified FLOP",
-                },
-                {
-                  label: "Shape the Protocol",
-                  desc: "Contribute code and research, claim OSCRP governance rewards",
-                },
-              ].map((item, i) => (
-                <div key={i} style={{ textAlign: "center" }}>
-                  <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--color-cyan)", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "6px" }}>
-                    {item.label}
-                  </div>
-                  <p style={{ fontSize: "13px", color: "var(--text-secondary)", lineHeight: 1.5 }}>
-                    {item.desc}
-                  </p>
-                </div>
-              ))}
+            <div className="jg-actions">
+              <a href="#community" className="jg-button jg-button-primary">Join the early community</a>
+              <a href="#status" className="jg-button jg-button-secondary">See what actually works</a>
             </div>
-
-            <div style={{ display: "flex", gap: "12px", justifyContent: "center", flexWrap: "wrap" }}>
-              <a href="https://github.com/topnodrog/junctiongenerator" target="_blank" rel="noopener noreferrer" className="btn-glow-cyan" style={{ textDecoration: "none", fontSize: "14px" }}>
-                View Node Setup Guide
-              </a>
-              <a href="/#support" className="btn-glow-purple" style={{ textDecoration: "none", fontSize: "14px" }}>
-                Join the Community
-              </a>
+            <p className="jg-trust-note">No token sale. No public mainnet claims. The code, limits, and progress are open for inspection.</p>
+          </div>
+          <div className="jg-system-map" aria-label="Junction Generator network loop">
+            <div className="jg-map-label">The useful-compute loop</div>
+            <div className="jg-map-orbit">
+              <div className="jg-map-core"><span>JGC</span><small>verified value</small></div>
+              <div className="jg-map-node jg-map-node-a"><b>Devices</b><small>local AI work</small></div>
+              <div className="jg-map-node jg-map-node-b"><b>Junctioning</b><small>efficient inference</small></div>
+              <div className="jg-map-node jg-map-node-c"><b>Audits</b><small>signed evidence</small></div>
+              <div className="jg-map-node jg-map-node-d"><b>Community</b><small>shared progress</small></div>
             </div>
+            <p>Consumer hardware → useful inference → independent verification → network rewards</p>
           </div>
         </section>
 
-        {/* Newsletter signup */}
-        <section id="newsletter" style={{ marginBottom: "60px", scrollMarginTop: "100px" }}>
+        <section className="jg-proof-bar" aria-label="Current project evidence">
+          {PROOF_POINTS.map((point) => <div key={point.label}><strong>{point.value}</strong><span>{point.label}</span></div>)}
+        </section>
+
+        <section id="how-it-works" className="jg-section jg-explainer">
+          <div className="jg-section-heading">
+            <span className="jg-eyebrow">A different bargain</span>
+            <h2>Compute should create value, not just consume energy.</h2>
+            <p>Proof of Useful Compute replaces the race for a meaningless hash with work people can use—then makes that work auditable before it earns trust.</p>
+          </div>
+          <div className="jg-step-grid">
+            {NETWORK_STEPS.map((step) => (
+              <article key={step.number} className="jg-step"><span>{step.number}</span><h3>{step.title}</h3><p>{step.body}</p></article>
+            ))}
+          </div>
+        </section>
+
+        <section id="status" className="jg-section">
+          <div className="jg-section-heading jg-heading-row">
+            <div><span className="jg-eyebrow">The honest state of the build</span><h2>Working foundations. Hard problems still open.</h2></div>
+            <a href="/whitepaper" className="jg-text-link">Read the concept paper <span>↗</span></a>
+          </div>
+          <div className="jg-status-grid">
+            {STATUS_ITEMS.map((item) => (
+              <article key={item.title} className="jg-status-card">
+                <div className={`jg-status-pill ${item.state}`}>{item.state === "working" ? "Working now" : item.state === "next" ? "Next gate" : item.state === "research" ? "Active research" : "Later"}</div>
+                <h3>{item.title}</h3><p>{item.body}</p>
+              </article>
+            ))}
+          </div>
+          <div className="jg-node-panel">
+            <div><span className="jg-eyebrow">A real signal, when a node is running</span><h3>Local node status</h3><p>This panel reads a node on your own machine. Offline is an honest state—not simulated activity.</p></div>
+            <NodeStatusPanel />
+          </div>
+        </section>
+
+        <section id="community" className="jg-section jg-community">
+          <div className="jg-community-intro">
+            <span className="jg-eyebrow">A network starts with people</span>
+            <h2>You do not need a mining rig—or permission—to matter here.</h2>
+            <p>Junction Generator needs careful critics, curious newcomers, researchers, node operators, storytellers, and people willing to introduce the idea to one more person. Pick the doorway that fits you.</p>
+          </div>
+          <div className="jg-community-grid">
+            {COMMUNITY_PATHS.map((path) => (
+              <a key={path.title} href={path.href} className="jg-community-card" target={path.external ? "_blank" : undefined} rel={path.external ? "noopener noreferrer" : undefined}>
+                <span>{path.tag}</span><h3>{path.title}</h3><p>{path.body}</p><b>{path.cta} →</b>
+              </a>
+            ))}
+          </div>
+        </section>
+
+        <section id="newsletter" className="jg-section jg-newsletter">
+          <div><span className="jg-eyebrow">Field notes, not hype</span><h2>Follow the experiment from the beginning.</h2><p>Occasional progress reports, research decisions, and invitations to early tests.</p></div>
           <NewsletterSignup />
         </section>
 
-        {/* Grid Sections */}
-        <div className="section-grid">
-          {/* Section 1: NLP Vibe Playground */}
-          <div id="playground" style={{ gridColumn: "span 2", scrollMarginTop: "100px" }}>
-            <div className="node-ai-bridge">
-              <div>
-                <span className="section-eyebrow">Node-powered AI preview</span>
-                <strong>Your node already has the path to local Gemma inference.</strong>
-                <p>
-                  Today, the playground below generates constrained contract templates in the browser.
-                  The node software can already send useful-compute jobs to a local model through Ollama.
-                  The next release will connect those pieces so an opted-in node can draft a small contract,
-                  return a compute commitment, and keep the model off the website download.
-                </p>
-              </div>
-              <div className="bridge-flow" aria-label="Planned contract generation flow">
-                <span>Prompt</span><b>→</b><span>JGC node</span><b>→</b><span>Local Gemma</span><b>→</b><span>Reviewed draft</span>
-              </div>
-            </div>
-            <VibePlayground />
+        <section id="lab" className="jg-section">
+          <div className="jg-section-heading">
+            <span className="jg-eyebrow">Open prototype lab</span><h2>Explore the ideas behind the network.</h2>
+            <p>These interactive demonstrations show the direction of travel. Simulators are labeled as simulations; they are not evidence of a public network.</p>
           </div>
+          <div className="jg-lab-intro">
+            <div><strong>Prompt → JGC node → local Gemma → reviewed draft</strong><p>The contract playground currently produces constrained browser templates. The node already supports local Gemma inference; connecting the two safely is a future milestone.</p></div>
+            <a href="/blog/becoming-quantum-ready" className="jg-text-link">Read the quantum-ready brief <span>↗</span></a>
+          </div>
+          <div className="section-grid jg-lab-grid">
+            <div className="jg-span-two"><VibePlayground /></div>
+            <div><MiningTelemetry /></div>
+            <div><OSCRPCalculator /></div>
+            <div className="jg-span-two"><AgentConsole /></div>
+          </div>
+        </section>
 
-          {/* Section 2: JGT Mining Telemetry */}
-          <div id="telemetry" style={{ scrollMarginTop: "100px" }}>
-            <MiningTelemetry />
-          </div>
+        <section id="support" className="jg-section jg-support-grid">
+          <div><BackTheProject /></div><div id="partners"><PartnerLinks /></div>
+        </section>
 
-          {/* Section 3: OSCRP Rewards Simulator */}
-          <div id="rewards" style={{ scrollMarginTop: "100px" }}>
-            <OSCRPCalculator />
+        <section id="hire" className="jg-hire">
+          <div className="jg-hire-copy">
+            <span className="jg-eyebrow">Fund the work by hiring the builder</span>
+            <h2>Need a clear website or a useful AI assistant?</h2>
+            <p>James Gordon is available for focused website builds, practical business automation, and ongoing AI-agent support. Paid client work directly sustains Junction Generator&apos;s development.</p>
+            <div className="jg-service-list"><span>Websites that explain and convert</span><span>Business AI assistants</span><span>Monthly maintenance and support</span></div>
           </div>
-
-          {/* Section 4: C-Suite Agent Console */}
-          <div id="agents" style={{ gridColumn: "span 2", scrollMarginTop: "100px" }}>
-            <AgentConsole />
+          <div className="jg-hire-action">
+            <p>Tell me what you need. A short description is enough to start.</p>
+            <a href="mailto:james_gordon@junctiongenerator.net?subject=Project%20inquiry%20from%20Junction%20Generator" className="jg-button jg-button-primary">Start a conversation</a>
+            <small>james_gordon@junctiongenerator.net</small>
           </div>
-
-          {/* Partner / affiliate links */}
-          <div id="partners" style={{ gridColumn: "span 2", scrollMarginTop: "100px" }}>
-            <PartnerLinks />
-          </div>
-
-          {/* Support / donations */}
-          <div id="support" style={{ gridColumn: "span 2", scrollMarginTop: "100px" }}>
-            <BackTheProject />
-          </div>
-          <div id="hire" className="glass-container hire-strip" style={{ gridColumn: "span 2", scrollMarginTop: "100px" }}>
-            <div>
-              <span className="section-eyebrow">Fund the build by hiring the builder</span>
-              <h2>Need a website or an AI assistant?</h2>
-              <p>James Gordon is available for focused web development and business AI-agent work.</p>
-            </div>
-            <a href="mailto:james@junctiongenerator.net?subject=Project%20inquiry" className="btn-glow-purple" style={{ textDecoration: "none" }}>
-              Hire James
-            </a>
-          </div>
-        </div>
+        </section>
       </main>
 
-      {/* Footer */}
-      <footer style={{ borderTop: "1px solid var(--glass-border)", padding: "40px 24px", textAlign: "center", background: "rgba(3,2,9,0.8)", position: "relative", zIndex: 10 }}>
-        <div style={{ maxWidth: "1200px", margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "20px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--text-muted)", fontSize: "14px" }}>
-            <div className="nav-logo-symbol" style={{ width: "24px", height: "24px", fontSize: "12px", borderRadius: "4px" }}>JG</div>
-            <span>© 2026 Junction Generator. Open Source under OSCRP.</span>
-          </div>
-          <div style={{ display: "flex", gap: "24px", fontSize: "14px", flexWrap: "wrap" }}>
-            <a href="https://junctiongenerator.net" target="_blank" rel="noopener noreferrer" className="footer-link">
-              junctiongenerator.net
-            </a>
-            <a href="/whitepaper" className="footer-link">Whitepaper</a>
-            <a href="/blog" className="footer-link">Blog</a>
-            <a href="https://github.com/topnodrog/junctiongenerator" target="_blank" rel="noopener noreferrer" className="footer-link">
-              GitHub
-            </a>
-          </div>
+      <footer className="jg-footer">
+        <div>
+          <a href="#top" className="jg-brand"><span className="jg-mark" aria-hidden="true">JG</span><span><strong>Junction Generator</strong><small>Useful compute, independently verified.</small></span></a>
+          <p>Local/private testnet software. No public JGC mainnet is currently deployed.</p>
         </div>
+        <nav aria-label="Footer navigation"><a href="/whitepaper">Concept paper</a><a href="/blog">Field notes</a><a href="https://github.com/topnodrog/junctiongenerator" target="_blank" rel="noopener noreferrer">GitHub</a><a href="#hire">Hire James</a></nav>
+        <span>© 2026 Junction Generator</span>
       </footer>
     </>
   );

@@ -13,10 +13,10 @@
  * Bitcoin serializes integers in little-endian order (same as Satoshi's
  * original C++ implementation using CDataStream with READWRITE macros).
  *
- * JGC HEADER — 160 bytes:
- *   version(4) | prevHash(32) | merkleRoot(32) | computeRoot(32) | epochRoot(32)
+ * JGC HEADER — 192 bytes:
+ *   version(4) | prevHash(32) | merkleRoot(32) | computeRoot(32) | epochRoot(32) | auditRoot(32)
  *   | timestamp(8) | difficultyBits(4) | nonce(4) | height(8) | reserved(4)
- *   Total: 4+32+32+32+32+8+4+4+8+4 = 160 bytes
+ *   Total: 4+32+32+32+32+32+8+4+4+8+4 = 192 bytes
  *
  * Additions over Bitcoin:
  *   computeRoot  — Merkle root of all ComputeProofs (PoUC work attestation)
@@ -40,16 +40,20 @@ import type {
 } from "../types/index.js";
 import { buildMerkleTree, hashTransaction } from "../crypto/merkle.js";
 import { computeContributionsMerkleRoot, computeEpochRoot } from "./epoch.js";
+import {
+  auditVerdictCommitment,
+  type AuditVerdictRecord,
+} from "../broker/audit-protocol.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Header Serialization
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Size of the serialized JGC block header in bytes. */
-export const BLOCK_HEADER_SIZE = 160;
+export const BLOCK_HEADER_SIZE = 192;
 
 /**
- * Serialize a BlockHeader to its canonical 160-byte binary representation.
+ * Serialize a BlockHeader to its canonical 192-byte binary representation.
  *
  * BITCOIN ANALOG: CBlockHeader::Serialize() via SERIALIZE_METHODS macro.
  *   READWRITE(obj.nVersion);
@@ -63,7 +67,7 @@ export const BLOCK_HEADER_SIZE = 160;
  * timestamp to 8 bytes and adds height (8 bytes) + reserved (4 bytes).
  *
  * @param header BlockHeader to serialize.
- * @returns 160-byte Buffer in canonical serialization order.
+ * @returns 192-byte Buffer in canonical serialization order.
  */
 export function serializeBlockHeader(header: BlockHeader): Buffer {
   const buf = Buffer.alloc(BLOCK_HEADER_SIZE);
@@ -83,6 +87,9 @@ export function serializeBlockHeader(header: BlockHeader): Buffer {
 
   // epochRoot: 32 bytes big-endian (JGC addition)
   Buffer.from(header.epochRoot, "hex").copy(buf, offset);       offset += 32;
+
+  // auditRoot: 32 bytes big-endian (signed audit verdict evidence)
+  Buffer.from(header.auditRoot, "hex").copy(buf, offset);       offset += 32;
 
   // timestamp: 8 bytes little-endian (extended from Bitcoin's 4-byte nTime)
   buf.writeBigUInt64LE(BigInt(header.timestamp), offset);        offset += 8;
@@ -107,7 +114,7 @@ export function serializeBlockHeader(header: BlockHeader): Buffer {
 }
 
 /**
- * Deserialize a 160-byte Buffer back into a BlockHeader.
+ * Deserialize a 192-byte Buffer back into a BlockHeader.
  *
  * BITCOIN ANALOG: CBlockHeader::Unserialize()
  */
@@ -125,13 +132,14 @@ export function deserializeBlockHeader(buf: Buffer): BlockHeader {
   const merkleRoot     = buf.subarray(offset, offset + 32).toString("hex");  offset += 32;
   const computeRoot    = buf.subarray(offset, offset + 32).toString("hex");  offset += 32;
   const epochRoot      = buf.subarray(offset, offset + 32).toString("hex");  offset += 32;
+  const auditRoot      = buf.subarray(offset, offset + 32).toString("hex");  offset += 32;
   const timestamp      = Number(buf.readBigUInt64LE(offset));   offset += 8;
   const difficultyBits = buf.readUInt32LE(offset);              offset += 4;
   const nonce          = buf.readUInt32LE(offset);              offset += 4;
   const height         = Number(buf.readBigUInt64LE(offset));   offset += 8;
   // reserved (4 bytes) — skip                                  offset += 4;
 
-  return { version, prevHash, merkleRoot, computeRoot, epochRoot, timestamp, difficultyBits, nonce, height };
+  return { version, prevHash, merkleRoot, computeRoot, epochRoot, auditRoot, timestamp, difficultyBits, nonce, height };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -144,7 +152,7 @@ export function deserializeBlockHeader(buf: Buffer): BlockHeader {
  * BITCOIN ANALOG: CBlockHeader::GetHash()
  *   Returns SHA256d of the serialized 80-byte header.
  *
- * JGC: identical primitive, applied to the 160-byte serialized header.
+ * JGC: identical primitive, applied to the 192-byte serialized header.
  * The resulting hash is used as:
  *   - The block's unique identifier.
  *   - The prevHash for the next block.
@@ -325,6 +333,16 @@ export function computeTransactionMerkleRoot(txs: Transaction[]): Hash256 {
   return buildMerkleTree(txids).root;
 }
 
+/** Commit finalized audit records in canonical audit-id order. */
+export function computeAuditVerdictsMerkleRoot(
+  verdicts: AuditVerdictRecord[],
+): Hash256 {
+  const leaves = [...verdicts]
+    .sort((a, b) => a.auditId.localeCompare(b.auditId))
+    .map(auditVerdictCommitment);
+  return buildMerkleTree(leaves).root;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Genesis Block
 // ─────────────────────────────────────────────────────────────────────────────
@@ -360,7 +378,8 @@ export function computeTransactionMerkleRoot(txs: Transaction[]): Hash256 {
 export const GENESIS_TIMESTAMP = 1749600000; // 2026-06-11 00:00:00 UTC
 export const GENESIS_DIFFICULTY_BITS = 0x043B9ACA;
 export const GENESIS_PREV_HASH = "0".repeat(64);
-export const GENESIS_BLOCK_VERSION = 0x01000000;
+/** Consensus v2 adds auditRoot and the audit-verdict block body. */
+export const GENESIS_BLOCK_VERSION = 0x02000000;
 
 /**
  * Construct the JGC genesis block header.
@@ -369,6 +388,7 @@ export const GENESIS_BLOCK_VERSION = 0x01000000;
 export function createGenesisHeader(difficultyBits: number = GENESIS_DIFFICULTY_BITS): BlockHeader {
   const genesisComputeRoot = "0".repeat(64);  // No proofs in genesis block
   const genesisEpochRoot   = "0".repeat(64);  // Empty epoch state at genesis
+  const genesisAuditRoot   = "0".repeat(64);  // No audit verdicts in genesis
 
   // Genesis coinbase tx: "JGC 2026: Compute for Civilization"
   const genesisCoinbase = Buffer.from(
@@ -387,6 +407,7 @@ export function createGenesisHeader(difficultyBits: number = GENESIS_DIFFICULTY_
     merkleRoot:     genesisMerkleRoot,
     computeRoot:    genesisComputeRoot,
     epochRoot:      genesisEpochRoot,
+    auditRoot:      genesisAuditRoot,
     timestamp:      GENESIS_TIMESTAMP,
     difficultyBits,
     nonce:          0,
@@ -416,6 +437,7 @@ export const GENESIS_BLOCK_HASH: Hash256 = hashBlockHeader(createGenesisHeader()
  * @param difficultyBits  Compact difficulty target (nBits).
  * @param nonce           Minor nonce (for tie-breaking).
  * @param timestamp       Block timestamp (current UNIX time).
+ * @param auditVerdicts   Finalized signed audit evidence to commit.
  * @returns Assembled Block with all Merkle roots computed.
  */
 export function assembleBlock(
@@ -426,12 +448,16 @@ export function assembleBlock(
   difficultyBits:  number,
   nonce:           number,
   timestamp:       number,
+  auditVerdicts:   AuditVerdictRecord[] = [],
 ): Block {
   const height = prevHeader.height + 1;
+  const canonicalAuditVerdicts = [...auditVerdicts]
+    .sort((a, b) => a.auditId.localeCompare(b.auditId));
 
   const merkleRoot  = computeTransactionMerkleRoot(transactions);
   const computeRoot = computeContributionsMerkleRoot(contributions);
   const epochRoot   = computeEpochRoot(epochState);
+  const auditRoot   = computeAuditVerdictsMerkleRoot(canonicalAuditVerdicts);
   const prevHash    = hashBlockHeader(prevHeader);
 
   const header: BlockHeader = {
@@ -440,6 +466,7 @@ export function assembleBlock(
     merkleRoot,
     computeRoot,
     epochRoot,
+    auditRoot,
     timestamp,
     difficultyBits,
     nonce,
@@ -450,6 +477,7 @@ export function assembleBlock(
     header,
     transactions,
     computeProofs: contributions,
+    auditVerdicts: canonicalAuditVerdicts,
     epochState,
   };
 }

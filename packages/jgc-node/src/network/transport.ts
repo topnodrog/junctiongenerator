@@ -67,7 +67,7 @@ function attachSocket(
       inbound,
     },
     send: (msg) => new Promise<void>((resolve, reject) => {
-      const data = encodePeerMessage(msg);
+      const data = encodePeerMessage(msg, node.config.networkMagic);
       conn.info.bytesSent += data.length;
       ws.send(data, err => (err ? reject(err) : resolve()));
     }),
@@ -77,11 +77,15 @@ function attachSocket(
   // Per-peer serialized processing pipeline (see file header).
   let pipeline: Promise<void> = Promise.resolve();
   ws.on("message", (data) => {
-    const text = data.toString();
-    conn.info.bytesReceived += text.length;
+    const frame = Buffer.isBuffer(data)
+      ? data
+      : Array.isArray(data)
+        ? Buffer.concat(data)
+        : Buffer.from(data);
+    conn.info.bytesReceived += frame.length;
     pipeline = pipeline
       .then(async () => {
-        const msg = decodePeerMessage(text);
+        const msg = decodePeerMessage(frame, node.config.networkMagic);
         if (msg === null) {
           console.warn(`[Transport] ${peerId}: dropping malformed message`);
           return;
@@ -124,13 +128,16 @@ export function startP2PServer(
       attachSocket(node, ws, address, true);
     });
 
-    wss.on("listening", () => resolve({
-      port,
-      close: () => new Promise<void>((done) => {
-        for (const client of wss.clients) client.terminate();
-        wss.close(() => done());
-      }),
-    }));
+    wss.on("listening", () => {
+      const address = wss.address();
+      resolve({
+        port: typeof address === "string" || address === null ? port : address.port,
+        close: () => new Promise<void>((done) => {
+          for (const client of wss.clients) client.terminate();
+          wss.close(() => done());
+        }),
+      });
+    });
 
     wss.on("error", reject);
   });

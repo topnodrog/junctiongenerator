@@ -15,8 +15,8 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://junctiongenerator.net"),
-  title: "Junction Generator | Proof-of-Useful-Compute Layer-1 Blockchain",
-  description: "Junction Generator is an almost quantum-ready Layer-1 blockchain where miners earn $JGC by running verifiable AI inference. Proof-of-Useful-Compute replaces hash puzzles with real AI workloads.",
+  title: "Junction Generator | Make Mining Useful",
+  description: "Junction Generator is building a community-owned Proof-of-Useful-Compute network where everyday devices contribute verifiable local AI inference.",
   keywords: ["Junction Generator", "JGC", "Proof of Useful Compute", "PoUC", "post-quantum blockchain", "quantum ready", "ML-DSA", "useful compute", "verifiable inference", "Layer-1 blockchain", "AI mining", "OSCRP", "decentralized compute"],
   alternates: {
     canonical: "/",
@@ -26,13 +26,13 @@ export const metadata: Metadata = {
     siteName: "Junction Generator",
     type: "website",
     url: "/",
-    title: "Junction Generator | Proof-of-Useful-Compute Layer-1 Blockchain",
-    description: "A Layer-1 blockchain where miners earn $JGC by running verifiable AI inference — replacing hash puzzles with productive compute.",
+    title: "Junction Generator | Make Mining Useful",
+    description: "A community-owned network turning local AI inference into independently verifiable useful compute.",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Junction Generator | Proof-of-Useful-Compute Layer-1 Blockchain",
-    description: "A Layer-1 blockchain where miners earn $JGC by running verifiable AI inference — replacing hash puzzles with productive compute.",
+    title: "Junction Generator | Make Mining Useful",
+    description: "A community-owned network turning local AI inference into independently verifiable useful compute.",
   },
 };
 

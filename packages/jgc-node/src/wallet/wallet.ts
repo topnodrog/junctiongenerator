@@ -11,8 +11,9 @@
  *
  * BITCOIN ANALOG: the wallet half of Bitcoin Core — CWallet (keystore) + coin
  * selection (CreateTransaction) + signing (SignTransaction). Address/script
- * conventions match src/crypto/signatures.ts so wallet-built spends are
- * indistinguishable from any other P2PKH spend on the chain.
+ * QUANTUM-READY: keys are ML-DSA-65 (FIPS 204) and spends are PQ-signed
+ * (src/crypto/pq-signatures.ts). Legacy secp256k1 keystore records are NOT
+ * loadable — this is the clean-sheet quantum chain.
  */
 
 import {
@@ -22,9 +23,9 @@ import type { Transaction, JGCSatoshis } from "../types/index.js";
 import { UTXOSet, txid, txSigHash, COINBASE_MATURITY } from "../consensus/utxo.js";
 import { BASE_UNITS_PER_JGC, DECIMALS } from "../consensus/emission.js";
 import {
-  generateKeyPair, addressFromPublicKey, p2pkhScript, p2pkhScriptSig,
-  signHash, scriptPubKeyFromAddress, publicKeyFromPrivate,
-} from "../crypto/signatures.js";
+  pqGenerateKeyPair, pqAddressFromPublicKey, pqScriptPubKey, pqScriptSig,
+  pqSignHash, pqScriptPubKeyFromAddress, pqIsValidPublicKey,
+} from "../crypto/pq-signatures.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Money formatting (16-decimal JGC ⇄ base units), string-exact (no float)
@@ -128,17 +129,19 @@ export class Wallet {
    *  rerun can never silently overwrite — and orphan — funded keys). */
   generate(label: string): string {
     if (this.keys.has(label)) throw new Error(`key "${label}" already exists`);
-    const kp = generateKeyPair();
+    const kp = pqGenerateKeyPair();
     this.keys.set(label, kp);
-    return addressFromPublicKey(kp.publicKey);
+    return pqAddressFromPublicKey(kp.publicKey);
   }
 
-  /** Import an existing private key under `label`. */
-  importKey(label: string, privateKeyHex: string): string {
+  /** Import an existing ML-DSA keypair under `label`. Unlike secp256k1, an
+   *  ML-DSA secret key does NOT cheaply yield its public key, so both halves are
+   *  required (as produced by generate()/pqGenerateKeyPair). */
+  importKey(label: string, privateKeyHex: string, publicKeyHex: string): string {
     if (this.keys.has(label)) throw new Error(`key "${label}" already exists`);
-    if (!/^[0-9a-fA-F]{64}$/.test(privateKeyHex)) throw new Error("private key must be 32 bytes hex");
-    this.keys.set(label, { privateKey: privateKeyHex.toLowerCase(), publicKey: publicKeyFromPrivate(privateKeyHex) });
-    return addressFromPublicKey(this.keys.get(label)!.publicKey);
+    if (!pqIsValidPublicKey(publicKeyHex)) throw new Error("public key must be a valid ML-DSA-65 public key (hex)");
+    this.keys.set(label, { privateKey: privateKeyHex.toLowerCase(), publicKey: publicKeyHex.toLowerCase() });
+    return pqAddressFromPublicKey(publicKeyHex);
   }
 
   has(label: string): boolean { return this.keys.has(label); }
@@ -152,13 +155,13 @@ export class Wallet {
 
   publicKey(label: string): string { return this.rec(label).publicKey; }
   privateKey(label: string): string { return this.rec(label).privateKey; }
-  address(label: string): string { return addressFromPublicKey(this.rec(label).publicKey); }
+  address(label: string): string { return pqAddressFromPublicKey(this.rec(label).publicKey); }
 
   // ── Chain views ─────────────────────────────────────────────────────────────
 
   /** Spendable UTXOs for `label` at `currentHeight` (mature coinbase only). */
   listUnspent(label: string, utxo: UTXOSet, currentHeight: number): SpendUTXO[] {
-    const mine = p2pkhScript(this.rec(label).publicKey);
+    const mine = pqScriptPubKey(this.rec(label).publicKey);
     const out: SpendUTXO[] = [];
     for (const { txid: id, vout, entry } of utxo.entries()) {
       if (entry.scriptPubKey !== mine) continue;
@@ -212,12 +215,12 @@ export class Wallet {
 
     const change = inSum - need;
     const outputs: Transaction["outputs"] = [
-      { value: amount, scriptPubKey: scriptPubKeyFromAddress(toAddress) },
+      { value: amount, scriptPubKey: pqScriptPubKeyFromAddress(toAddress) },
     ];
     // Return change to the sender. Zero change adds no output (addTransactionOutputs
     // would drop a 0-value output anyway); the difference stays as the fee.
     if (change > 0n) {
-      outputs.push({ value: change, scriptPubKey: p2pkhScript(this.rec(fromLabel).publicKey) });
+      outputs.push({ value: change, scriptPubKey: pqScriptPubKey(this.rec(fromLabel).publicKey) });
     }
 
     const tx: Transaction = {
@@ -231,7 +234,7 @@ export class Wallet {
     const sigHash = txSigHash(tx);
     const { privateKey, publicKey } = this.rec(fromLabel);
     for (const input of tx.inputs) {
-      input.scriptSig = p2pkhScriptSig(signHash(privateKey, sigHash), publicKey);
+      input.scriptSig = pqScriptSig(pqSignHash(privateKey, sigHash), publicKey);
     }
 
     return { tx, txid: txid(tx), fee, change };

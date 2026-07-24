@@ -5,7 +5,7 @@
  * BITCOIN ANALOG: Bitcoin Core's CCoinsViewCache (chainstate). A transaction is
  * valid against the ledger iff every input spends an existing, unspent output
  * (no double-spend / no spending thin air), the spend is authorized by the
- * output's owner (P2PKH signature), coinbase outputs are mature, and
+ * output's owner (ML-DSA signature), coinbase outputs are mature, and
  *   Σ inputs ≥ Σ outputs   (no inflation; the difference is the fee).
  *
  * The coinbase / epoch-settlement transaction creates value (no inputs) and its
@@ -20,7 +20,7 @@ import { createHash } from "crypto";
 import type { Transaction, JGCSatoshis, Hash256 } from "../types/index.js";
 import { serializeTransaction } from "./block.js";
 import { hashTransaction } from "../crypto/merkle.js";
-import { verifyP2PKHSpend, JGC_NETWORK_ID } from "../crypto/signatures.js";
+import { pqVerifySpend, JGC_PQ_NETWORK_ID } from "../crypto/pq-signatures.js";
 
 /** Coinbase outputs (epoch settlement payouts) can't be spent for this many blocks. */
 export const COINBASE_MATURITY = 100;
@@ -45,12 +45,14 @@ export function txid(tx: Transaction): Hash256 {
  */
 export function txSigHash(tx: Transaction): Uint8Array {
   const blanked: Transaction = { ...tx, inputs: tx.inputs.map(i => ({ ...i, scriptSig: "" })) };
-  // Bind the network id so a spend can't be replayed on a fork/testnet.
-  const first = createHash("sha256")
-    .update(JGC_NETWORK_ID)
-    .update(serializeTransaction(blanked))
-    .digest();
-  return new Uint8Array(createHash("sha256").update(first).digest());
+  // QUANTUM-READY: bind the PQ network id and hash with SHA3-256 (Grover-resistant).
+  // A spend can't be replayed on a fork/testnet or the legacy ECDSA chain.
+  return new Uint8Array(
+    createHash("sha3-256")
+      .update(JGC_PQ_NETWORK_ID)
+      .update(serializeTransaction(blanked))
+      .digest()
+  );
 }
 
 /** The unspent-transaction-output set (chainstate). */
@@ -128,7 +130,7 @@ export interface SpendResult {
  *   - every input exists and is unspent (no double-spend / no phantom inputs),
  *   - no duplicate inputs within the tx,
  *   - coinbase inputs are mature,
- *   - each input is authorized (P2PKH signature over the tx sighash),
+ *   - each input is authorized (ML-DSA signature over the tx sighash),
  *   - Σ inputs ≥ Σ outputs (no inflation).
  * Returns the fee on success.
  */
@@ -156,7 +158,9 @@ export function validateSpend(
     }
 
     if (requireSignatures) {
-      const sig = verifyP2PKHSpend(input.scriptSig, entry.scriptPubKey, sigHash);
+      // QUANTUM-READY: spends are authorized by an ML-DSA signature (pqVerifySpend),
+      // not secp256k1/ECDSA — see src/crypto/pq-signatures.ts.
+      const sig = pqVerifySpend(input.scriptSig, entry.scriptPubKey, sigHash);
       if (!sig.ok) return { ok: false, error: `input ${key}: ${sig.error}` };
     }
 

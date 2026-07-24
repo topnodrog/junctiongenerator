@@ -113,10 +113,10 @@ async function run(f: Args): Promise<number> {
       return 0;
     }
     case "import": {
-      const [label, priv] = f.pos; if (!label || !priv) throw new Error("usage: import <label> <privhex>");
+      const [label, priv, pub] = f.pos; if (!label || !priv || !pub) throw new Error("usage: import <label> <privhex> <pubhex>  (ML-DSA needs both key halves)");
       const pass = passphrase(f);
       const { wallet, path } = loadWallet(f, false);
-      const address = wallet.importKey(label, priv);
+      const address = wallet.importKey(label, priv, pub);
       saveWallet(wallet, path, pass);
       console.log(`imported "${label}"\n  address: ${address}`);
       return 0;

@@ -1,27 +1,47 @@
 # Junction Generator
 
-**Turn Your Vibe Into Verifiable Web3 Code**
+**Make Mining Useful**
 
-AI-operated, mined-compute Web3 factory. Speak English to compile smart contracts, earn $JGT through useful compute.
+Junction Generator is building a community-owned Proof-of-Useful-Compute
+network where everyday devices contribute verifiable local AI inference.
 
 **Live site:** [junctiongenerator.net](https://junctiongenerator.net)
 **Repo:** [topnodrog/junctiongenerator](https://github.com/topnodrog/junctiongenerator) (GitHub Pages)
 
 ---
 
-## Sections on the Site
+## Public Site
 
-| # | Section | Component | Status |
-|---|---------|-----------|--------|
-| 1 | Compiler Sandbox | `VibePlayground.tsx` | Live |
-| 2 | Compute Grid | `MiningTelemetry.tsx` | Live |
-| 3 | OSCRP Stake | `OSCRPCalculator.tsx` | Live |
-| 4 | C-Suite Console | `AgentConsole.tsx` | Live |
-| 5 | Mine JGT | `AttentionMining.tsx` | Live (needs Bitmedia Publisher ID) |
-| 6 | Revenue Hub | `JGTRevenueHub.tsx` | Live (needs ETH + API URL) |
-| 7 | JGT Staking | `JGTStaking.tsx` | Live (needs staking contract deployed) |
-| 8 | Ad Slots | `AdSlotManager.tsx` | Live (needs ETH for on-chain campaigns) |
-| -- | Whitepaper | `whitepaper/page.tsx` | Live |
+The 2026-07-24 community-first refresh leads with the useful-compute mission,
+shows working evidence separately from open research, recruits early
+contributors, and keeps the interactive demos in a clearly labeled prototype
+lab. The hire-James flow remains prominent because client work funds
+development. The refresh is committed to `junctioning`; production remains on
+`main` until the branch is merged/deployed.
+
+---
+
+## JGC Sovereign Node
+
+The primary protocol product lives in `packages/jgc-node`; it is separate from
+the legacy JGT token on Base.
+
+Current node milestone (2026-07-23):
+
+- consensus v2 uses a 192-byte header with `auditRoot`;
+- historical compute is selected in 10-block windows using a delayed block-hash
+  beacon and verified by ML-DSA-signed validator committees;
+- complete audit evidence is committed to blocks and independently checked
+  during mining, peer sync, restart, and reorg;
+- post-quantum identity/signature paths and SHA3-256 wire checksums are active;
+- the suite passes 24 test suites / 244 tests and a 31-block two-node sync demo.
+
+The node is local/private testnet software. No JGC public blockchain or mainnet
+has been deployed. Rewards and slashing from audit verdicts remain disabled
+until bonded validator state is consensus-owned.
+
+See [`packages/jgc-node/README.md`](packages/jgc-node/README.md) and
+[`packages/jgc-node/docs/AUDIT-PROTOCOL.md`](packages/jgc-node/docs/AUDIT-PROTOCOL.md).
 
 ---
 
@@ -49,6 +69,8 @@ AI-operated, mined-compute Web3 factory. Speak English to compile smart contract
 | Vercel Frontend | `junctiongenerator.net` | Live |
 
 **Worker API endpoints:**
+- `POST /api/subscribe` -- Store a newsletter signup and notify the owner
+- `POST /api/hire-lead` -- Store an email/phone inquiry and notify the owner
 - `POST /api/ad-view` -- Record ad views for rewards
 - `GET /api/user` -- Get user stats
 - `POST /api/airdrop/register` -- Register for airdrop
@@ -60,7 +82,14 @@ AI-operated, mined-compute Web3 factory. Speak English to compile smart contract
 - `POST /api/dispense` -- Trigger batch reward distribution
 - `GET /api/pending-rewards` -- View pending reward queue
 
-**DB tables:** users, sessions, ad_views, pending_claims, dispense_batches, airdrop_registrations, referrals, ad_campaigns
+New newsletter and hire submissions trigger an immediate email to the verified
+owner address. A midnight-UTC digest retries visibility from durable Turso
+records. The live path was verified end-to-end on 2026-07-24; synthetic rows
+were removed afterward.
+
+**DB tables:** users, sessions, ad_views, pending_claims, dispense_batches,
+airdrop_registrations, referrals, ad_campaigns, newsletter_subscribers,
+hire_leads, digest_state
 
 ---
 
@@ -138,11 +167,15 @@ AI-operated, mined-compute Web3 factory. Speak English to compile smart contract
 
 ```bash
 # Local dev
-cd /home/Kali/Junction_Generator
+cd C:/dev/JunctionGenerator
 npm run dev
 
-# Push to GitHub (auto-triggers Vercel deploy)
-python3 push_page.py
+# Verify the JGC node
+cd packages/jgc-node
+npm run typecheck
+npm test
+npm run build
+npm run sync-demo
 
 # Deploy contract (when ETH available)
 # Update .env with private key, then:
@@ -162,7 +195,7 @@ python3 push_page.py
 ## Important Notes
 
 - **ONE repo:** `topnodrog/junctiongenerator` (lowercase). The old `Junction_Generator` (capitals) was deleted.
-- **Local clone:** `/home/Kali/Junction_Generator` (directory has underscore, remote does not)
-- **Stale dir:** `/home/Kali/junctiongenerator` -- old copy from June 2, ignore it
-- **Push token:** stored in `.gh_token`, read at runtime by `push_page.py`
+- **Canonical local clone:** `C:\dev\JunctionGenerator`
+- **Do not store access tokens or private keys in the repository.** Use the
+  authenticated Git credential manager and environment/secret stores.
 - **Vercel env:** needs `NEXT_PUBLIC_API_URL` set to Worker URL

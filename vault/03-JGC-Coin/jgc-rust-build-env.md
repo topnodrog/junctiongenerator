@@ -1,13 +1,17 @@
 ---
 name: jgc-rust-build-env
-description: "How to build the JGC Rust/WASM verifier on this machine — toolchain, SAC blocker, and workaround"
+description: "Historical build notes for the legacy JGC Groth16/WASM verifier; current PQ consensus does not require it"
 metadata: 
   node_type: memory
   type: project
   originSessionId: 9c068aa4-5366-42b6-b8f5-01e71bf2c4a0
 ---
 
-Building the JGC Groth16 verifier (`npm run build:rust` → wasm-pack) at `packages/jgc-node/rust/`.
+**Status update (2026-07-23):** these are historical build notes for the
+legacy Groth16 verifier (`npm run build:rust` → wasm-pack) at
+`packages/jgc-node/rust/`. Current consensus uses `src/crypto/pq-zkp.ts` via
+the post-quantum facade and does not require this Rust/WASM build. Keep these
+instructions only for legacy research or migration work.
 
 **Toolchain (installed 2026-06-12):**
 - Rust 1.96.0, default toolchain `stable-x86_64-pc-windows-gnu` (GNU, not MSVC — no VS Build Tools present), target `wasm32-unknown-unknown`

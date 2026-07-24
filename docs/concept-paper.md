@@ -2,13 +2,26 @@
 
 **A Protocol for Redirecting Mining Compute to Real AI Workloads**
 
-*Version 0.1 — Draft for Public Comment*
+*Version 0.2 — Implementation-aligned draft, 2026-07-23*
+
+> **Implementation status:** JGC currently runs as local/private testnet
+> software. Consensus v2 commits delayed-beacon, ML-DSA-signed historical-audit
+> evidence through `auditRoot`; 24 suites / 244 tests and a 31-block two-node
+> sync demo pass. The public validator network, consensus-owned bonds,
+> rewards/slashing, marketplace, and mainnet are proposed—not deployed.
 
 ---
 
 ## Abstract
 
-Global cryptocurrency mining consumes an estimated 150 terawatt-hours of electricity per year — more than many nations — to solve computational puzzles with no productive output beyond securing a ledger. Simultaneously, artificial intelligence companies face a severe and worsening shortage of GPU compute for training and inference workloads. Junction Generator proposes **Proof-of-Useful-Compute (PoUC)**, a protocol that replaces the wasteful hash-puzzle paradigm with verifiable AI workload completion. Miners earn $JGC tokens by running real inference, training, and fine-tuning tasks, and their work is cryptographically verified on-chain. The result: mining hardware produces measurable economic value, AI companies gain access to affordable distributed compute, and the environmental cost of mining drops to near zero.
+Proof-of-work spends computation to secure a ledger, while AI systems have
+growing demand for useful compute. Junction Generator proposes
+**Proof-of-Useful-Compute (PoUC)**, a protocol intended to connect useful AI
+work with independently auditable consensus evidence. The current
+implementation validates a narrower foundation: local inference contribution,
+delayed historical sampling, signed quorum evidence, and block commitment.
+Token rewards, broad workload support, marketplace economics, and environmental
+impact remain hypotheses to validate rather than deployed results.
 
 ---
 
@@ -18,24 +31,22 @@ Global cryptocurrency mining consumes an estimated 150 terawatt-hours of electri
 
 Bitcoin's Proof-of-Work consensus requires miners to repeatedly compute SHA-256 hashes, searching for a nonce that produces a hash below a target threshold. This process is intentionally wasteful — the difficulty exists solely to limit block production speed, not to produce any useful output.
 
-As of 2026:
-
-- The Bitcoin network consumes approximately **150 TWh/year** of electricity
-- Global mining hardware represents **billions of dollars** in GPU and ASIC investment
-- The computational output of this hardware — trillions of hash operations per second — produces **zero productive work** beyond securing the Bitcoin ledger
+Before external publication, add current primary-source citations for energy
+use, hardware economics, and the distinction between ledger security and
+application-useful output. Those market figures are intentionally not frozen
+into this implementation note.
 
 The energy and hardware are real. The useful output is not.
 
 ### 1.2 AI Companies Are Desperate for Compute
 
-The artificial intelligence industry faces an acute and growing compute shortage:
+The artificial-intelligence industry has substantial demand for training and
+inference compute. Exact growth rates, GPU-hour prices, and capacity forecasts
+change quickly and must be sourced when used externally.
 
-- Training frontier models requires **thousands of GPUs running for months**
-- AI inference demand is growing **10x annually** as companies deploy models in production
-- Cloud GPU costs remain prohibitively high — **$2-4 per GPU-hour** for high-end hardware
-- Access to compute has become the **primary bottleneck** in AI development
-
-The hardware that AI companies need is the same hardware that miners already own: NVIDIA GPUs, high-bandwidth memory, fast interconnects. The supply exists. The demand exists. They are simply not connected.
+Some general-purpose GPU capacity may be suitable for AI workloads; ASIC mining
+hardware generally is not. Hardware compatibility, bandwidth, memory, latency,
+and model licensing all constrain the addressable supply.
 
 ### 1.3 The Gap
 
@@ -47,18 +58,20 @@ On one side: billions of dollars in GPU hardware burning electricity to solve me
 
 ### 2.1 Core Concept
 
-Proof-of-Useful-Compute (PoUC) replaces hash puzzles with verifiable AI workload completion. Instead of racing to find a nonce, miners:
+The target PoUC design replaces hash puzzles with auditable useful-work
+completion. In the proposed full network, compute providers would:
 
 1. **Receive AI workloads** from the JGC network (inference requests, training batches, fine-tuning tasks)
 2. **Execute the workload** on their GPU hardware
-3. **Submit the result** along with a cryptographic proof of correct computation
-4. **Earn $JGC tokens** proportional to the useful compute they contributed
+3. **Submit the result** with signed execution evidence
+4. **Earn $JGC tokens** under a consensus-owned reward policy
 
-The key insight: the consensus mechanism itself becomes the productive work. Miners are not rewarded for wasting energy — they are rewarded for doing something valuable.
+The local node already meters contributed inference and commits sampled audit
+evidence. It does not yet activate the reward transition in step 4.
 
 ### 2.2 Workload Types
 
-The JGC network supports several categories of AI workloads:
+The long-term design considers several categories of AI workloads:
 
 | Workload Type | Description | Typical Duration | GPU Requirements |
 |---|---|---|---|
@@ -67,20 +80,30 @@ The JGC network supports several categories of AI workloads:
 | **Fine-Tuning** | Adapting a pre-trained model to specific data | Hours–days | High-VRAM GPU |
 | **Distributed Training** | Splitting large training jobs across many GPUs | Days–weeks | Multi-GPU clusters |
 
-This flexibility means that virtually any GPU mining rig can participate — from a single consumer card running inference to a multi-GPU farm handling distributed training.
+The current Junctioning seam supports local inference. Batch inference,
+fine-tuning, distributed training, and broad hardware eligibility require
+additional protocol, reproducibility, scheduling, and security work.
 
 ### 2.3 Verification
 
 The critical challenge of Proof-of-Useful-Compute is verification: how do you prove that a miner actually ran the workload correctly, rather than returning garbage data?
 
-JGC uses a multi-layered verification approach:
+Consensus v2 currently implements:
 
-1. **Redundant Execution**: Critical workloads are assigned to multiple miners. Results must agree within a tolerance threshold.
-2. **Spot Checks**: A random subset of completed workloads is re-executed by verifier nodes. Miners caught producing incorrect results are slashed.
-3. **Cryptographic Attestation**: Miners produce execution proofs using trusted execution environments (TEE) where available, providing hardware-level guarantees of correct computation.
-4. **Statistical Validation**: For inference workloads, output distributions are monitored. Systematic deviations from expected distributions flag potential fraud.
+1. **Contribution commitments**: blocks bind useful-work records to model, input,
+   output, and execution metadata.
+2. **Delayed historical sampling**: ten-block windows use a two-block-delayed
+   chain hash so the audited contribution is not chosen from a proposer-controlled
+   future value.
+3. **Signed quorum observations**: assigned validators sign replay results with
+   ML-DSA identities.
+4. **Consensus commitment**: complete verdict evidence is summarized by
+   `auditRoot`, then reverified during block validation, sync, restart, and reorg.
 
-This hybrid approach provides strong guarantees while keeping verification costs low — the network does not need to re-execute every workload.
+This provides tamper-evident, independently replayable evidence under the tested
+local conditions. It does not yet prove cross-hardware determinism, committee
+Sybil resistance, or economic security. Automatic slashing is deliberately
+disabled until validator bonds and stake snapshots are consensus-owned.
 
 ---
 
@@ -88,14 +111,15 @@ This hybrid approach provides strong guarantees while keeping verification costs
 
 ### 3.1 Participants
 
-The JGC network consists of four participant types:
+The proposed public JGC network has four participant roles:
 
 - **Miners**: GPU operators who execute AI workloads and earn $JGC rewards
 - **Compute Buyers**: AI companies that submit workloads and pay for compute
 - **Validators**: Nodes that verify workload completion and maintain consensus
-- **Stakers**: $JGC holders who stake tokens to secure the network and earn staking rewards
+- **Stakers**: future $JGC holders who would bond tokens under the validator
+  economics design
 
-### 3.2 Workload Lifecycle
+### 3.2 Target Workload Lifecycle
 
 ```
 AI Company                  JGC Network                    Miner
@@ -116,14 +140,16 @@ AI Company                  JGC Network                    Miner
 
 ### 3.3 Workload Marketplace
 
-The JGC network includes a decentralized marketplace where:
+The roadmap includes a decentralized marketplace where:
 
 - **AI companies** post workloads with compute requirements, deadlines, and budgets
 - **Miners** bid on workloads they can fulfill based on their hardware capabilities
 - **Pricing** is determined by market dynamics — supply of compute vs. demand for workloads
-- **SLAs** are enforced on-chain — miners who fail to deliver on time forfeit their stake
+- **SLAs** could be enforced through future consensus-owned bonds and penalties
 
-This marketplace model means compute pricing is set by genuine supply and demand, not by cloud provider margins. Early modeling suggests JGC compute costs could be **60-80% lower** than equivalent cloud GPU pricing.
+The marketplace and any cost advantage remain unvalidated. Pricing claims
+require measured pilots against comparable cloud hardware, workload, support,
+availability, and data-transfer costs.
 
 ---
 
@@ -131,23 +157,28 @@ This marketplace model means compute pricing is set by genuine supply and demand
 
 ### 4.1 Utility
 
-$JGC serves multiple roles in the ecosystem:
+$JGC is intended to serve multiple roles:
 
-- **Mining Rewards**: Miners earn $JGC for completing verified AI workloads
-- **Compute Payment**: AI companies purchase compute using $JGC
-- **Staking**: Validators and delegators stake $JGC to participate in consensus
-- **Governance**: $JGC holders vote on protocol upgrades and network parameters
-- **OSCRP Rewards**: Open-source contributors earn $JGC through the contributor reward protocol
+- **Mining Rewards**: Compute providers could earn $JGC for verified workloads
+- **Compute Payment**: Buyers could purchase compute using $JGC
+- **Staking**: Validators and delegators could bond $JGC under a
+  consensus-owned policy
+- **Governance**: A future governance design may coordinate protocol parameters
+- **OSCRP Rewards**: A future contributor program may distribute $JGC
+
+None of these reward, staking, governance, or contributor-payment transitions
+is active in the current local testnet.
 
 ### 4.2 Supply
 
-The $JGC supply model is designed to reward early participants while maintaining long-term sustainability:
+The following supply mechanics are design candidates, not active policy:
 
 - **Mining Rewards**: Emitted per block, proportional to useful compute completed
 - **Halving Schedule**: Block rewards decrease over time, similar to Bitcoin, but triggered by total useful compute milestones rather than block count
 - **Burn Mechanism**: A percentage of compute marketplace fees is burned, creating deflationary pressure as network usage grows
 
-Detailed tokenomics will be published in a separate specification after community review.
+Detailed tokenomics require a separate specification, simulations, security
+review, and community review before activation.
 
 ---
 
@@ -155,18 +186,22 @@ Detailed tokenomics will be published in a separate specification after communit
 
 ### 5.1 Motivation
 
-Junction Generator is an open-source project. The protocol, mining client, marketplace, and supporting tools are all built in the open. OSCRP ensures that contributors — not just investors — benefit from the network's success.
+Junction Generator is an open-source project. OSCRP is a proposal intended to
+let contributors—not just investors—share in the network's success. No
+automatic JGC or equity payout is active.
 
 ### 5.2 How It Works
 
-When a contributor merges code into the Junction Generator codebase:
+Under the proposed design, when a qualifying contribution is merged:
 
 1. **Impact Assessment**: The contribution is scored based on scope, complexity, and criticality (documentation fix vs. security patch vs. core protocol implementation)
 2. **Immediate Reward**: The contributor receives an immediate $JGC payout proportional to their impact score
 3. **Autonomy Equity (AE)**: The contributor also receives a stake in the protocol's treasury — a non-voting claim that appreciates as the network grows
 4. **Vesting**: AE stakes vest over time, incentivizing long-term participation
 
-OSCRP aligns contributor incentives with network success: the more the network grows, the more valuable contributor equity becomes.
+The legal form, valuation, eligibility rules, funding source, and on-chain
+enforcement of OSCRP remain unresolved. “Autonomy Equity” must not be described
+as issued equity or a guaranteed claim before those questions are settled.
 
 ---
 
@@ -174,12 +209,12 @@ OSCRP aligns contributor incentives with network success: the more the network g
 
 | Phase | Status | Description |
 |---|---|---|
-| **1. Concept & Design** | ✅ Complete | Core concept validated. Protocol architecture designed. Brand established. |
-| **2. Frontend & Demo** | 🔄 In Progress | Interactive demo site. Open-source repository. Community building. |
-| **3. Protocol Specification** | ⬜ Planned | Formal PoUC specification. Verification cryptography. Consensus design. |
-| **4. Mining Client MVP** | ⬜ Planned | GPU mining client (Linux/Windows). Workload scheduling. Testnet. |
-| **5. AI Marketplace** | ⬜ Planned | Workload marketplace for compute buyers and miners. Pricing engine. |
-| **6. Mainnet Launch** | ⬜ Planned | $JGC token launch. Mainnet deployment. OSCRP rewards live. |
+| **1. Concept & architecture** | ✅ Complete | Core PoUC direction and sovereign-node architecture established. |
+| **2. Local node foundation** | ✅ Complete | UTXO ledger, wallets, PoUC records, local inference seam, and safe loopback testnet. |
+| **3. Audit consensus v2** | ✅ Complete | Delayed historical sampling, ML-DSA signed quorum evidence, `auditRoot`, persistence, sync, and adversarial validation. |
+| **4. Public-testnet preconditions** | 🔄 Next | Consensus-owned validator identities/bonds, deterministic committee selection, P2P hardening, cross-machine validation, and external review. |
+| **5. Marketplace and pilots** | ⬜ Planned | Buyer/provider scheduling, pricing, privacy, SLA design, and measured research pilots. |
+| **6. Mainnet** | ⬜ Not scheduled | Requires successful public soak tests, audited economics, operations, governance, and security review. |
 
 ---
 
@@ -203,7 +238,8 @@ Junction Generator is open source and actively seeking contributors:
 - **AI Companies**: Register interest as a compute buyer
 - **Researchers**: Help formalize the Proof-of-Useful-Compute specification
 
-Every contribution — code, documentation, research, or feedback — earns OSCRP rewards.
+Contributions are welcome, but no OSCRP reward is currently guaranteed or
+automatically issued.
 
 ---
 

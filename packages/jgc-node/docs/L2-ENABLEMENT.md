@@ -1,8 +1,15 @@
 # JGC Layer-2 Enablement — Design Options
 
-**Status:** Draft for review · **Scope:** design only, no consensus changes
+**Status:** Draft for review, implementation-aligned 2026-07-23 · **Scope:**
+design only, no L2 consensus changes
 **Audience:** JGC protocol engineering
-**Prerequisite reading:** `src/types/index.ts` (core types), `src/consensus/validation.ts` (validation pipeline), `src/crypto/zkp.ts` (Groth16 verifier layer)
+**Prerequisite reading:** `src/types/index.ts` (core types),
+`src/consensus/validation.ts` (validation pipeline), `src/crypto/pq-zkp.ts`
+(live post-quantum proof path), and `docs/QUANTUM-READY.md`
+
+> The Groth16/BN254 modules remain legacy reference code and are not on the
+> current consensus path. Any L2 design must preserve the node's post-quantum
+> security boundary.
 
 ---
 
@@ -48,27 +55,23 @@ users trust an external operator or federation, not JGC consensus.
 
 ### 2.1 What JGC already has that an L2 needs
 
-**Enshrined Groth16 verification (the headline asset).**
-Unlike Bitcoin — where SNARK verification would require new opcodes — JGC
-already runs Groth16 pairing checks *inside consensus* for PoUC:
+**Post-quantum proof-verification seam.**
+JGC already verifies hash-based transparent PoUC proofs inside consensus:
 
-- `src/crypto/zkp.ts` — `verifyComputeProof()` / `batchVerifyComputeProofs()`
-  (batch path amortizes pairing cost ~3×), backed by the Rust verifier in
-  `rust/src/zkp_verify.rs`.
-- `CIRCUIT_REGISTRY` (`src/crypto/zkp.ts`) maps `circuitId → VerificationKey`
-  with an `activeSinceHeight` field — an existing **governance activation
-  path** for registering new circuit families without a hard-fork mechanism
-  redesign. An L2 state-transition circuit is "just another circuit family"
-  from the registry's perspective.
+- `src/crypto/pq-zkp.ts` implements the current proof format and
+  `PQ_CIRCUIT_REGISTRY`.
+- `src/crypto/pq.ts` exposes `quantumVerifyProofForConsensus()` and the
+  batch-verification facade used by consensus.
 
-This is requirement **(b)** nearly for free: the most expensive and
-security-critical component of a ZK-rollup host already exists and is already
-consensus-critical code.
+That is a useful integration pattern, but it is **not** a ready-made L2 state
+transition verifier. The current Merkle-IOP is sized for bounded PoUC claims;
+hosting a validity rollup requires a production-scale post-quantum proof system,
+new public inputs, resource limits, and external cryptographic review.
 
 **Header extension points.**
-The 160-byte header (`src/consensus/block.ts`, `serializeBlockHeader()`)
-already carries two non-Bitcoin Merkle roots (`computeRoot`, `epochRoot`)
-plus a 4-byte `reserved` field. Adding a third commitment root for L2 data
+The 192-byte header (`src/consensus/block.ts`, `serializeBlockHeader()`)
+already carries three non-Bitcoin Merkle roots (`computeRoot`, `epochRoot`,
+and `auditRoot`) plus a 4-byte `reserved` field. Adding a fourth commitment root for L2 data
 follows an established pattern rather than inventing one.
 
 **Enshrined special-transaction precedent.**
@@ -95,25 +98,27 @@ prove the rollups settling on it (see §6).
 | No covenants / output-spending constraints | UTXO types in `src/types/index.ts` carry raw script strings only | (c) |
 | No DA commitment or fee market for L2 data bytes | Header has no DA root; `calculateBlockFees()` in `src/network/node.ts` returns `0n` (fee plumbing is stubbed) | (a) |
 | No L2 message types in P2P | `MessageType` enum (`src/types/index.ts`) covers blocks/txs/proofs/bids only | (a) data gossip |
-| Groth16 verifier currently falls back to an accept-all JS stub when `rust/pkg` is absent | `loadVerifierWasm()` in `src/crypto/zkp.ts` | (b) — must be build-mandatory before any L2 work |
+| No production-scale post-quantum L2 state-transition proof verifier | Current `pq-zkp.ts` is a bounded PoUC proof skeleton; legacy Groth16 is not live consensus | (b) |
 
 ---
 
-## 3. Option A — Enshrined ZK-rollup settlement *(recommended)*
+## 3. Option A — Enshrined post-quantum validity settlement *(recommended research direction)*
 
 A Bitcoin-philosophy answer with an Ethereum-grade result: instead of a
 general-purpose VM, the protocol defines **one new special transaction type**
 that consensus validates by recomputation — exactly like the epoch settlement
-coinbase — using the Groth16 machinery that already exists.
+coinbase—using a future production-scale, post-quantum validity-proof verifier.
 
 ### 3.1 Components
 
-**1. L2 circuit family in the registry.**
-Register `CIRCUIT_L2_STATE_TRANSITION_V1` in `CIRCUIT_REGISTRY` with public
+**1. L2 proof family in the registry.**
+Register a future `PQ_CIRCUIT_L2_STATE_TRANSITION_V1` in
+`PQ_CIRCUIT_REGISTRY` with public
 inputs `[prevStateRoot, newStateRoot, daCommitment, withdrawalsRoot]`.
-Activation via the existing `activeSinceHeight` mechanism. The circuit itself
-(a zkEVM if EVM compatibility is the goal, or a simpler custom L2 VM) is an
-external dependency — see §3.4.
+Activation must be bound to consensus height and immutable proof parameters.
+The proof system and circuit itself (a post-quantum zkVM if EVM compatibility
+is the goal, or a simpler custom L2 VM) are external research dependencies—see
+§3.4.
 
 **2. Settlement transaction.**
 A protocol-defined tx (mirroring the coinbase convention: no script
@@ -123,8 +128,9 @@ withdrawalsRoot, proofBytes }`. Validation slots in as a new step in
 
 - `prevStateRoot` must equal the rollup's last finalized root (per-rollup
   state tracked in `ChainState`, alongside the existing epoch state).
-- Proof verified through `batchVerifyComputeProofs()` — same code path as
-  PoUC proofs, same batch amortization.
+- Proof verified through a new consensus method behind the post-quantum
+  facade. It may reuse the existing verifier interface, but must not silently
+  fall back to the legacy Groth16 path.
 
 **3. Data availability.**
 - Blocks gain an `l2Data` section; the header's 4-byte `reserved` field is
@@ -146,17 +152,18 @@ withdrawalsRoot, proofBytes }`. Validation slots in as a new step in
 
 ### 3.2 Security model
 
-Full L1 security via validity proofs. No fraud-proof window, no challenge
-games, no honest-minority assumption — if the proof verifies, the state root
-is correct; if data is unavailable, the settlement is invalid. This is the
-strongest L2 security class (ZK-rollup).
+The target is full L1 security via validity proofs: if the reviewed proof
+system verifies and data is available, an invalid state transition cannot
+finalize under its security assumptions. This guarantee does not exist until
+the L2 proof verifier, data-availability rules, and bridge are implemented and
+audited.
 
 ### 3.3 Cost
 
-The largest consensus diff of the three options: new tx type, header change,
-per-rollup chain state, DA gossip and fee rules. Mitigated by the fact that
-the two hardest pieces (SNARK verification in consensus; enshrined-tx
-validation pattern) already exist and are already tested in production paths.
+The largest consensus diff of the three options: a new proof verifier and
+transaction type, header change, per-rollup chain state, DA gossip, and fee
+rules. JGC has reusable verifier and enshrined-transaction interfaces, but the
+production-scale L2 proof system remains a major new security component.
 
 ### 3.4 External dependency
 
@@ -168,18 +175,19 @@ registry addition, not a protocol change.
 
 ---
 
-## 4. Option B — General script layer with a SNARK-verify opcode
+## 4. Option B — General script layer with a post-quantum proof-verify opcode
 
 Implement the deferred script interpreter (P2PKH/P2WPKH validation is already
 a production TODO), then extend it with covenant opcodes and an
-`OP_GROTH16_VERIFY` that exposes the Rust verifier to user scripts. Rollup
+`OP_PQ_PROOF_VERIFY` that exposes a resource-bounded, post-quantum verifier to
+user scripts. Rollup
 bridges become **user-space constructions** (BitVM-style or covenant-based),
 permissionlessly deployable without further protocol changes.
 
 - **Pros:** maximal generality; one protocol change enables many L2 designs;
   no per-rollup state in consensus.
-- **Cons:** the largest *security surface* of any option — a script VM with
-  pairing-check opcodes and covenants is far harder to bound than one
+- **Cons:** the largest *security surface* of any option—a script VM with
+  proof-verification opcodes and covenants is far harder to bound than one
   protocol-defined transaction validated by recomputation. Bridge UX and
   exit guarantees built from covenants are research-grade, not
   engineering-grade. Fee/DoS pricing for script-level pairing ops needs its
@@ -228,26 +236,25 @@ network TFLOPS and difficulty).
 
 ## 7. Comparison & recommendation
 
-| | A — Enshrined ZK settlement | B — Script + SNARK opcode | C — Federated sidechain |
+| | A — Enshrined PQ validity settlement | B — Script + PQ-proof opcode | C — Federated sidechain |
 |---|---|---|---|
 | Security inherited from JGC | **Full (validity proofs)** | Full, if covenant bridges proven sound | None (federation trust) |
 | Consensus diff size | Large but bounded | Largest (script VM) | ~None |
 | Security surface added | One tx type, validated by recomputation | Entire script VM + opcode pricing | Bridge keys (off-protocol) |
 | EVM-compatibility path | zkEVM circuit in registry | User-space (research-grade) | Immediate (but trusted) |
-| Reuses existing code | Verifier, registry, enshrined-tx pattern, Merkle proofs | Verifier (via opcode) | Almost nothing |
+| Reuses existing code | Verifier interface, registry pattern, enshrined-tx pattern, Merkle proofs | Verifier interface (via opcode) | Almost nothing |
 | Time to ship | Quarters | Year+ | Weeks |
 
 **Recommendation: Option A**, phased:
 
 - **Phase 0 — Hardening (prerequisite, independently necessary):**
-  implement UTXO script validation and real fee accounting (both existing
-  production TODOs in `src/network/node.ts`); make the Rust verifier build
-  mandatory — remove the accept-all JS stub fallback outside test builds
-  (`loadVerifierWasm()` in `src/crypto/zkp.ts`).
+  finish public-network gates, implement UTXO script validation and real fee
+  accounting, specify a production-scale post-quantum L2 proof system, and
+  obtain external cryptographic review.
 - **Phase 1 — DA:** `l2Data` block section, `daRoot` header commitment,
   per-byte fee policy, P2P gossip messages.
 - **Phase 2 — Settlement:** per-rollup chain state, enshrined settlement tx
-  + deposit/exit outputs, `CIRCUIT_L2_STATE_TRANSITION_V1` registry entry,
+  + deposit/exit outputs, `PQ_CIRCUIT_L2_STATE_TRANSITION_V1` registry entry,
   validation step in `validateBlock()`.
 - **Phase 3 — Ecosystem:** broker-routed proving market (`L2_PROVING` task
   type); zkEVM circuit family for EVM compatibility.
@@ -260,10 +267,9 @@ network TFLOPS and difficulty).
 
 1. **DA pricing:** flat satoshis/byte, or a target-utilization adjusting fee
    (EIP-4844-style)? Interacts with the stubbed fee plumbing.
-2. **Circuit governance:** `activeSinceHeight` exists, but the process that
-   sets it (foundation multisig → on-chain votes per the comment in
-   `src/crypto/zkp.ts`) is unspecified. L2 VK registration inherits whatever
-   is decided.
+2. **Proof-parameter governance:** define how immutable post-quantum proof
+   parameters activate at a height, how upgrades are reviewed, and how old
+   proof families retire. L2 registration inherits that process.
 3. **Proving TFLOPS and consensus weight:** count broker-routed L2 proving
    toward epoch settlement shares, or keep it revenue-only? (§6.)
 4. **Per-rollup limits:** max rollups, max settlement frequency, max DA bytes

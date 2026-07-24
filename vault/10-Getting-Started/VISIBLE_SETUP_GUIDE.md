@@ -1,5 +1,9 @@
 # Visible Setup & Investor Tracking Guide
 
+> **Technical status (2026-07-23):** JGC is a validated local/private testnet.
+> Signed audit evidence is consensus-committed; bonded rewards/slashing and a
+> public network are not deployed. Keep outreach language aligned with this.
+
 ## Why Use Visible?
 
 **Visible does three things:**
@@ -66,8 +70,8 @@
 ```
 Hi [Name],
 
-We shipped a Layer-1 verification network. Live testnet, junctioning Layer-1 live, 
-full verification model working.
+We shipped and validated a local Layer-1 node: junctioning works, and consensus
+commits post-quantum signed audit evidence.
 
 Here's the deck: [VISIBLE_LINK]
 
@@ -98,7 +102,7 @@ Saw you checked out the deck. A few thoughts:
 
 - Slide 5 (Technical Architecture) is the core — deterministic replay + multi-challenger 
   quorum is how we avoid the oracle problem.
-- Slide 8 (Market Opportunity) breaks down the $14.4B TAM.
+- Slide 8 (Market Opportunity) must use a current, scoped, cited market figure.
 
 Any questions on the approach? Would love to walk through it.
 
@@ -132,9 +136,9 @@ Hi [Name],
 
 Quick follow-up in case that got buried. One-pager below if you prefer to skim:
 
-Problem: $14.4B crypto fraud losses
+Problem: Costly crypto fraud and an execution-verification gap
 Solution: Deterministic verification + multi-challenger quorum
-Proof: Testnet live, junctioning Layer-1 shipped
+Proof: Local testnet validated; junctioning and audit consensus shipped
 
 Interested in a brief chat?
 
@@ -291,7 +295,8 @@ Best of both: personal email + automatic tracking
 ### Deck Updates
 - **Update deck every 2 weeks** — New metrics, progress updates
 - **Re-share with Tier 1 investors** — "We've shipped X since we last connected"
-- **Use new data as hook** — "Just hit 50 validators on testnet — worth a look?"
+- **Use verified new data as hook** — for example, replace `[measured milestone]`
+  only after it has actually been observed and recorded
 
 ---
 
@@ -331,10 +336,12 @@ Best of both: personal email + automatic tracking
 ```
 Hi [Name],
 
-$14.4B annual crypto fraud losses. We're solving this with Proof of Useful 
-Computation — deterministic verification that's cryptoeconomically secure.
+Crypto verification failures remain costly. We're addressing part of that gap
+with Proof of Useful Computation — replay plus consensus-committed signed
+evidence.
 
-Live testnet. Junctioning Layer-1 shipped. Full verification model working.
+Local testnet validated. Junctioning and audit-consensus evidence shipped;
+bonded economic enforcement is next.
 
 Here's the overview: [VISIBLE_DECK_LINK]
 

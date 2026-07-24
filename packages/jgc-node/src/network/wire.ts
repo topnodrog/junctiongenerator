@@ -1,63 +1,146 @@
 /**
  * @file src/network/wire.ts
- * @description Wire encoding for P2P messages.
+ * @description Versioned binary framing for JGC peer messages.
  *
- * BITCOIN COMPARISON — serialize.h / CDataStream
- * ───────────────────────────────────────────────
- * Bitcoin uses a hand-rolled binary wire format (little-endian integers,
- * var-length vectors) framed by a 24-byte message header (magic, command,
- * length, checksum).
+ * Frame layout (network byte order):
  *
- * JGC v0 uses JSON framing over WebSocket for development velocity.
- * Plain JSON.stringify is NOT sufficient for JGC payloads:
- *   - JGCSatoshis amounts are BigInt  → JSON.stringify throws
- *   - EpochState.minerContributions is a Map → JSON.stringify yields {}
+ *   0..3    network magic (uint32)
+ *   4       wire version
+ *   5       message type code
+ *   6..7    reserved (must be zero)
+ *   8..11   payload byte length (uint32)
+ *   12..15  first four bytes of SHA3-256(payload)
+ *   16..    UTF-8 protocol payload
  *
- * Both are encoded with explicit tagged wrappers so decoding is unambiguous
- * (a tagged object can never collide with protocol data, unlike suffix or
- * pattern conventions on plain strings).
- *
- * PRODUCTION NOTE: replace with canonical binary serialization + message
- * checksums before any public network deployment. JSON framing is for
- * local/dev networks only.
+ * The fixed binary envelope gives peers an early, bounded rejection path for
+ * wrong-network, unsupported-version, unknown-command, truncated, padded, and
+ * corrupted frames. The inner payload remains the tagged protocol codec for
+ * now so BigInt and Map values round-trip without losing precision. Individual
+ * consensus objects already use canonical binary encodings where their hashes
+ * or signatures depend on bytes.
  */
 
-import type { PeerMessage } from "../types/index.js";
+import { createHash } from "crypto";
+import { MessageType, type PeerMessage } from "../types/index.js";
 
-/** Tag key marking an encoded BigInt: { "$jgc:bigint": "123" }. */
+export const WIRE_VERSION = 1;
+export const WIRE_HEADER_BYTES = 16;
+export const MAX_WIRE_PAYLOAD_BYTES = 8 * 1024 * 1024 - WIRE_HEADER_BYTES;
+
 const BIGINT_TAG = "$jgc:bigint";
-
-/** Tag key marking an encoded Map: { "$jgc:map": [[k, v], ...] }. */
 const MAP_TAG = "$jgc:map";
 
-/** Encode a PeerMessage to its JSON wire representation. */
-export function encodePeerMessage(msg: PeerMessage): string {
-  return JSON.stringify(msg, (_key, value: unknown) => {
+const MESSAGE_TYPES: readonly MessageType[] = [
+  MessageType.VERSION,
+  MessageType.VERACK,
+  MessageType.INV,
+  MessageType.GETDATA,
+  MessageType.BLOCK,
+  MessageType.TX,
+  MessageType.GETBLOCKS,
+  MessageType.GETHEADERS,
+  MessageType.HEADERS,
+  MessageType.PING,
+  MessageType.PONG,
+  MessageType.COMPUTE_PROOF,
+  MessageType.EPOCH_SETTLE,
+  MessageType.BROKER_BID,
+  MessageType.GETADDR,
+  MessageType.ADDR,
+  MessageType.AUDIT_REQUEST,
+  MessageType.AUDIT_VOTE,
+  MessageType.AUDIT_VERDICT,
+];
+
+const TYPE_TO_CODE = new Map<MessageType, number>(
+  MESSAGE_TYPES.map((type, index) => [type, index + 1]),
+);
+
+function checksum(payload: Buffer): Buffer {
+  return createHash("sha3-256").update(payload).digest().subarray(0, 4);
+}
+
+function encodePayload(msg: PeerMessage): Buffer {
+  const body = JSON.stringify({
+    payload: msg.payload,
+    timestamp: msg.timestamp,
+    senderPublicKey: msg.senderPublicKey,
+    signature: msg.signature,
+  }, (_key, value: unknown) => {
     if (typeof value === "bigint") return { [BIGINT_TAG]: value.toString() };
-    if (value instanceof Map)      return { [MAP_TAG]: [...value.entries()] };
+    if (value instanceof Map) return { [MAP_TAG]: [...value.entries()] };
     return value;
   });
+  return Buffer.from(body, "utf8");
+}
+
+/** Encode a peer message into a checksummed, network-bound binary frame. */
+export function encodePeerMessage(msg: PeerMessage, networkMagic: number): Buffer {
+  const typeCode = TYPE_TO_CODE.get(msg.type);
+  if (typeCode === undefined) throw new Error(`unsupported peer message type: ${String(msg.type)}`);
+
+  const payload = encodePayload(msg);
+  if (payload.length > MAX_WIRE_PAYLOAD_BYTES) {
+    throw new Error(`peer message payload exceeds ${MAX_WIRE_PAYLOAD_BYTES} bytes`);
+  }
+
+  const frame = Buffer.allocUnsafe(WIRE_HEADER_BYTES + payload.length);
+  frame.writeUInt32BE(networkMagic >>> 0, 0);
+  frame.writeUInt8(WIRE_VERSION, 4);
+  frame.writeUInt8(typeCode, 5);
+  frame.writeUInt16BE(0, 6);
+  frame.writeUInt32BE(payload.length, 8);
+  checksum(payload).copy(frame, 12);
+  payload.copy(frame, WIRE_HEADER_BYTES);
+  return frame;
 }
 
 /**
- * Decode a wire string back into a PeerMessage.
- * Returns null for malformed input — callers must drop the message
- * (never throw on peer-supplied bytes; same posture as Bitcoin's
- * ProcessMessage which disconnects rather than crashes).
+ * Decode an untrusted wire frame. Returns null for every malformed or
+ * incompatible input; peer-supplied bytes never escape as an exception.
  */
-export function decodePeerMessage(text: string): PeerMessage | null {
+export function decodePeerMessage(data: Buffer | Uint8Array, networkMagic: number): PeerMessage | null {
   try {
-    const msg = JSON.parse(text, (_key, value: unknown) => {
+    const frame = Buffer.isBuffer(data)
+      ? data
+      : Buffer.from(data.buffer, data.byteOffset, data.byteLength);
+
+    if (frame.length < WIRE_HEADER_BYTES) return null;
+    if (frame.readUInt32BE(0) !== (networkMagic >>> 0)) return null;
+    if (frame.readUInt8(4) !== WIRE_VERSION) return null;
+    if (frame.readUInt16BE(6) !== 0) return null;
+
+    const type = MESSAGE_TYPES[frame.readUInt8(5) - 1];
+    if (type === undefined) return null;
+
+    const payloadLength = frame.readUInt32BE(8);
+    if (payloadLength > MAX_WIRE_PAYLOAD_BYTES) return null;
+    if (frame.length !== WIRE_HEADER_BYTES + payloadLength) return null;
+
+    const payload = frame.subarray(WIRE_HEADER_BYTES);
+    if (!checksum(payload).equals(frame.subarray(12, 16))) return null;
+
+    const decoded = JSON.parse(payload.toString("utf8"), (_key, value: unknown) => {
       if (value !== null && typeof value === "object") {
         const tagged = value as Record<string, unknown>;
         if (typeof tagged[BIGINT_TAG] === "string") return BigInt(tagged[BIGINT_TAG]);
-        if (Array.isArray(tagged[MAP_TAG]))         return new Map(tagged[MAP_TAG] as [unknown, unknown][]);
+        if (Array.isArray(tagged[MAP_TAG])) return new Map(tagged[MAP_TAG] as [unknown, unknown][]);
       }
       return value;
-    }) as PeerMessage;
+    }) as Partial<Omit<PeerMessage, "type">>;
 
-    if (msg === null || typeof msg !== "object" || typeof msg.type !== "string") return null;
-    return msg;
+    if (decoded === null || typeof decoded !== "object") return null;
+    if (!Number.isSafeInteger(decoded.timestamp) || (decoded.timestamp as number) < 0) return null;
+    if (typeof decoded.senderPublicKey !== "string" || typeof decoded.signature !== "string") return null;
+    if (!Object.prototype.hasOwnProperty.call(decoded, "payload")) return null;
+
+    return {
+      type,
+      payload: decoded.payload,
+      timestamp: decoded.timestamp as number,
+      senderPublicKey: decoded.senderPublicKey,
+      signature: decoded.signature,
+    };
   } catch {
     return null;
   }

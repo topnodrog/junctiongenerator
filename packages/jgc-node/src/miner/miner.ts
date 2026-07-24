@@ -29,8 +29,12 @@ import type {
   MinerComputeContribution, PublicKey, Transaction,
 } from "../types/index.js";
 import { ComputeTaskType } from "../types/index.js";
-import { buildPublicInputs } from "../crypto/zkp.js";
+import {
+  pqGenerateKeyPair, pqAddressFromPublicKey, pqSignContribution,
+} from "../crypto/pq-signatures.js";
+import { pqProveCompute, pqToComputeProof, pqNewNonce } from "../crypto/pq-zkp.js";
 import { assembleBlock } from "../consensus/block.js";
+import type { AuditVerdictRecord } from "../broker/audit-protocol.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Miner Identity
@@ -42,7 +46,9 @@ export interface MinerIdentity {
   minerAddress: Address;
   /** Public key carried in MinerComputeContribution for signature checks. */
   publicKey: PublicKey;
-  /** Circuit the miner generates proofs for (must exist in CIRCUIT_REGISTRY). */
+  /** ML-DSA secret key (hex) used to sign contributions (quantum-ready). */
+  secretKey: string;
+  /** Circuit the miner generates proofs for (must exist in PQ_CIRCUIT_REGISTRY). */
   circuitId: string;
   /** Task category — must match the circuit family. */
   taskType: ComputeTaskType;
@@ -54,12 +60,13 @@ export function createRegtestMiner(
   circuitId: string,
   taskType:  ComputeTaskType,
 ): MinerIdentity {
-  // Deterministic-looking dev credentials derived from the label.
-  // Production: secp256k1 keypair + Base58Check P2PKH address.
+  // QUANTUM-READY: a real ML-DSA keypair derived deterministically from the label.
   const seed = createHash("sha256").update(`jgc-regtest:${label}`).digest("hex");
+  const kp = pqGenerateKeyPair(seed);
   return {
-    minerAddress: `1JGC${seed.slice(0, 30)}`,
-    publicKey:    `02${seed}`,
+    minerAddress: pqAddressFromPublicKey(kp.publicKey),
+    publicKey:    kp.publicKey,
+    secretKey:    kp.privateKey,
     circuitId,
     taskType,
   };
@@ -90,31 +97,35 @@ export function generateContribution(
   identity:        MinerIdentity,
   tflopsWeight:    number,
   epochBlockIndex: number,
+  blockHeight:     number = epochBlockIndex,  // sign against block HEIGHT (what validation checks)
 ): MinerComputeContribution {
   // Task commitment: hash of the task parameters (model weights, batch, …).
-  // Regtest: random 32 bytes; mainnet: SHA256 of the actual task bundle.
-  const taskCommitment = createHash("sha256").update(randomBytes(32)).digest("hex");
+  // Regtest: random 32 bytes; mainnet: SHA3-256 of the actual task bundle.
+  const taskCommitment = createHash("sha3-256").update(randomBytes(32)).digest("hex");
 
-  const proof: ComputeProof = {
+  // QUANTUM-READY: build a real hash-based PQ proof (transparent, no trusted
+  // setup). The circuit id must be a PQ_* circuit present in PQ_CIRCUIT_REGISTRY.
+  const pqProof = pqProveCompute(identity.circuitId, taskCommitment, {
     taskCommitment,
-    // 256 bytes = canonical uncompressed Groth16 proof size (A‖B‖C).
-    proofBytes:       randomBytes(256).toString("base64"),
-    circuitId:        identity.circuitId,
-    publicInputs:     [],            // filled canonically below
     tflopsWeight,
+    nonce: pqNewNonce(),
+  });
+  const proof: ComputeProof = {
+    ...(pqToComputeProof(pqProof) as any),
+    taskCommitment,
     taskType:         identity.taskType,
     computeStartedAt: new Date().toISOString(),
   };
-  proof.publicInputs = buildPublicInputs(proof, epochBlockIndex);
 
-  return {
+  const contribution: MinerComputeContribution = {
     minerAddress: identity.minerAddress,
     proof,
-    // Regtest placeholder — production: Schnorr sig over
-    // SHA256(taskCommitment ∥ minerAddress ∥ blockHeight).
-    signature: randomBytes(64).toString("hex"),
+    signature: "",
     publicKey: identity.publicKey,
   };
+  // Sign the contribution with the miner's ML-DSA key, binding work+payee+height.
+  contribution.signature = pqSignContribution(identity.secretKey, contribution, blockHeight);
+  return contribution;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -138,6 +149,7 @@ export function buildBlockCandidate(
   epochState:     EpochState,
   difficultyBits: number,
   timestamp:      number,
+  auditVerdicts:  AuditVerdictRecord[] = [],
 ): Block {
   return assembleBlock(
     prevHeader,
@@ -147,6 +159,7 @@ export function buildBlockCandidate(
     difficultyBits,
     /* nonce */ 0,   // tie-break nonce — unused in single-candidate regtest
     timestamp,
+    auditVerdicts,
   );
 }
 

@@ -11,13 +11,52 @@ The end-state vision unifying JGC, the node network, and JunctionGenerator into 
 
 **Closed loop:** consumer devices (PCs + phones, incl. Gemma 3n on phones) run local LLM inference → PoUC verifies the work → nodes earn JGC → aggregate verified compute powers a fleet of AI agents → those agents autonomously run JunctionGenerator → JunctionGenerator produces value that funds the loop. "Useful work" in JGC's PoUC = LLM inference. Context compression ("junctioning") is the efficiency layer that makes inference viable on weak hardware — and is therefore an economic throughput parameter, not a side utility. See [[junctioning-milestone]].
 
-**L5 — verification model:** DIRECTION CHOSEN 2026-06-18 = **deterministic-replay** (from the design space of redundant execution / spot-check / replay / attestation). First primitive is BUILT and live: `packages/jgc-node/src/broker/verification.ts` — a node publishes a claim (VerifiableTask spec + output + sha256 commitment); a challenger replays the spec and compares commitments. Enabled by the junctioning seam being deterministic (temp 0 + seed; see [[junctioning-milestone]]). Verified live against `gemma4:e2b` (replay reproduced output → verified; tampered claim → distinct commitment). 153/153 tests green; commit `e78cac4`.
+**L5 — verification model:** DIRECTION CHOSEN 2026-06-18 =
+**deterministic replay + unpredictable historical sampling + signed quorum**
+(from the design space of redundant execution / spot-check / replay /
+attestation). First primitive: `packages/jgc-node/src/broker/verification.ts`
+— a node publishes a claim (VerifiableTask spec + output + commitment); a
+challenger replays the spec and compares commitments. Enabled by the
+junctioning seam being deterministic (temp 0 + seed; see
+[[junctioning-milestone]]). It was verified locally against `gemma4:e2b`.
+The historical 153-test figure describes that milestone, not the current suite.
 
-**Economic layer BUILT 2026-06-18** (commit `95e2ed8`, `broker/challenge.ts`): sampling + slashing so we DON'T replay every task (the cost problem from [[trusted-compute-research]]). Challenge a random sample; slash a caught liar so cheating is -EV even at low sample rate (`p·slash > gain`). Verifiable sampling: `shouldChallenge` draws from `sha256(commitment‖beacon)` — prover can't predict the beacon, network recomputes the verdict. Plus StakeLedger + ChallengeCoordinator (sample→replay→slash, pays challenger). Deterrence math is pure/exported. 167/167 green.
+**Economic prototype BUILT 2026-06-18** (commit `95e2ed8`,
+`broker/challenge.ts`): sampling + a local `StakeLedger`/slashing coordinator
+demonstrated the deterrence condition `p·slash > gain`. This is design and
+test code only; it was never connected to consensus-owned balances and must
+not be described as active network slashing.
 
-**Collusion layer BUILT 2026-06-18** (commit `eaa0e40`, `broker/quorum.ts`): multi-challenger quorum. Sortition draws a verifiable, prover-unpredictable subset (`sha256(commitment‖beacon‖id)`); each replays independently; slash only when a supermajority CONVERGES on one commitment (converged≠claim → slash; scatter → inconclusive, so honest cross-machine scatter is never a wrongful slash). Pays only the correct voters. 2/3 threshold ⇒ tolerates <1/3 colluding/faulty challengers (BFT bound), tested both directions. 183/183 green.
+**Collusion layer prototype BUILT 2026-06-18** (commit `eaa0e40`,
+`broker/quorum.ts`): multi-challenger quorum showed that a 2/3 threshold can
+tolerate fewer than 1/3 colluding/faulty challengers and that scattered replay
+results must be inconclusive. The historical suite reached 183 tests.
 
-**Honest open scope (still UNSOLVED — keep private):** (a) collusion — ADDRESSED by the quorum within the <1/3 BFT bound (beyond that a liar still escapes; classic limit); (b) **cross-machine determinism** — bit-exact replay breaks across runtimes/hardware (FP reduction order); the quorum MITIGATES it (scatter→inconclusive) but the real fix is a canonical reference runtime or output tolerance — THE hard part, still open; (c) **empirical fraud-rate tuning** of `p` (needs live data); (d) **beacon source** — sampling/sortition need an external randomness beacon (future block hash / drand); consuming it is wired, sourcing it is a protocol TODO. The replay verdict is a fraud-proof BASIS, not a succinct proof. **Stance unchanged: network stays private/permissioned until the verification model is complete; permissionless is the end state.** The Rust ZK-SNARK verifier remains the load-bearing on-chain piece for the coin's PoUC proofs.
+**Consensus audit layer BUILT 2026-07-23** (commit `ad9b0a7`): claims are
+grouped into fixed 10-block windows. The hash two blocks after the window is
+the prover-unpredictable randomness beacon. Every claimant receives one
+coverage audit; selected claims receive three validators. Votes are ML-DSA
+signed, and the complete request/deadline/verdict/evidence set is committed to
+the block header's `auditRoot`. Full nodes independently reconstruct and
+validate the claim and beacon from active-chain data, verify signatures and
+quorum math, reject premature/forged/replayed verdicts, and rebuild the audit
+index on sync or restart. Current baseline: 24 suites / 244 tests plus a
+passing 31-block two-node sync demo.
+
+**Honest open scope:** (a) collusion is bounded by the quorum assumption but
+not eliminated beyond the <1/3 fault bound; (b) **cross-machine determinism**
+still breaks bit-exact replay across runtimes/hardware (FP reduction order);
+scatter→inconclusive prevents wrongful penalties but does not prove the claim;
+(c) empirical audit/fraud-rate tuning needs real soak data; (d) the delayed
+block-hash beacon is now implemented, but the committee still depends on a
+validator roster that is not yet consensus-owned; (e) before any economic
+penalty, add an on-chain bond/stake snapshot and deterministic committee
+reconstruction from that snapshot. The replay verdict is durable fraud
+evidence, not a succinct proof and not authority to move funds. **Stance:
+network stays local/private until these gates and public-P2P protections are
+complete; permissionless remains the end state.** The post-quantum
+`pq-zkp.ts` verifier is the live PoUC proof path. The Rust Groth16/BN254 crate
+is retained only as legacy reference code.
 
 **L6 — agent org architecture:** Research top organizations (historical + current) → extract roles that brought them to the top AND held them there (two distinct skill sets). Each role = a **triad**: left-hemisphere agent (analytical/logical) + right-hemisphere agent (holistic/intuitive) + context agent (synthesizes into words/action). Left + right deliberate/debate to reach a decision; context agent verbalizes it. Agent count ≈ 3 × roles. Open: how left/right differ in practice (prompt/temp/model), whether context agent breaks deadlocks, whether a coordinating layer sits above roles.
 

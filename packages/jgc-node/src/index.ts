@@ -92,6 +92,7 @@ async function main(): Promise<void> {
     header:        genesisHeader,
     transactions:  [],
     computeProofs: [],
+    auditVerdicts: [],
     epochState:    initEpochState(0, GENESIS_TIMESTAMP),
   };
 
@@ -122,9 +123,9 @@ async function main(): Promise<void> {
   //    above each circuit's minTFLOPSPerProof and the 10%-of-target per-proof
   //    floor (= 100 TFLOPS at the 1000-TFLOPS genesis difficulty).
   const miners = [
-    { id: createRegtestMiner("alpha", "CIRCUIT_AI_INFERENCE_V1", ComputeTaskType.AI_INFERENCE), base: 450 },
-    { id: createRegtestMiner("bravo", "CIRCUIT_AI_TRAINING_V1",  ComputeTaskType.AI_TRAINING),  base: 650 },
-    { id: createRegtestMiner("carol", "CIRCUIT_FOLD_SIM_V1",     ComputeTaskType.FOLD_SIM),     base: 350 },
+    { id: createRegtestMiner("alpha", "PQ_CIRCUIT_AI_INFERENCE_V1", ComputeTaskType.AI_INFERENCE), base: 450 },
+    { id: createRegtestMiner("bravo", "PQ_CIRCUIT_AI_TRAINING_V1",  ComputeTaskType.AI_TRAINING),  base: 650 },
+    { id: createRegtestMiner("carol", "PQ_CIRCUIT_FOLD_SIM_V1",     ComputeTaskType.FOLD_SIM),     base: 350 },
   ];
 
   // 5. Mine. Timestamps tick 1s/block — strictly increasing (median-past rule)
@@ -138,7 +139,7 @@ async function main(): Promise<void> {
     // Miners broadcast proofs for this block window (P2P COMPUTE_PROOF).
     for (const miner of miners) {
       const tflops  = miner.base + Math.round(Math.random() * 100);
-      const contrib = generateContribution(miner.id, tflops, epochSlot);
+      const contrib = generateContribution(miner.id, tflops, epochSlot, height);
       await node.processMessage(peer.info.peerId, envelope(MessageType.COMPUTE_PROOF, contrib));
     }
 
@@ -151,6 +152,7 @@ async function main(): Promise<void> {
       node.getEpochState(),
       node.getCurrentDifficultyBits(),
       baseTime + height,
+      node.getPendingAuditVerdicts(),
     );
 
     // Submit through the full validation pipeline (P2P BLOCK).

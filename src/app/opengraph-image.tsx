@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 
-export const alt = "Junction Generator — Proof-of-Useful-Compute Layer-1 blockchain";
+export const alt = "Junction Generator — make mining useful";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -13,41 +13,45 @@ export default function Image() {
           height: "100%",
           display: "flex",
           flexDirection: "column",
-          justifyContent: "center",
-          alignItems: "center",
-          gap: "36px",
-          background: "linear-gradient(135deg, #030209 0%, #0d0a24 60%, #1a0d33 100%)",
-          color: "#ffffff",
+          alignItems: "flex-start",
+          gap: "28px",
+          padding: "76px 84px",
+          background: "radial-gradient(circle at 80% 15%, rgba(88,228,178,.18), transparent 35%), #070b0d",
+          color: "#effbf6",
           fontFamily: "sans-serif",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "18px" }}>
           <div
             style={{
-              width: "80px",
-              height: "80px",
-              borderRadius: "16px",
-              background: "linear-gradient(135deg, #00f2fe, #9b51e0)",
+              width: "64px",
+              height: "64px",
+              borderRadius: "32px",
+              border: "2px solid #58e4b2",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              fontSize: "38px",
+              fontSize: "24px",
               fontWeight: 800,
-              color: "#030209",
+              color: "#9fffd9",
             }}
           >
             JG
           </div>
-          <div style={{ fontSize: "56px", fontWeight: 800 }}>Junction Generator</div>
+          <div style={{ display: "flex", fontSize: "30px", fontWeight: 700 }}>Junction Generator</div>
         </div>
-        <div style={{ display: "flex", fontSize: "34px", color: "#8b8aa0", textAlign: "center", maxWidth: "900px" }}>
-          Mining compute redirected to real AI work
+        <div style={{ display: "flex", flexDirection: "column", marginTop: "28px", fontSize: "78px", fontWeight: 700, lineHeight: .96, letterSpacing: "-4px" }}>
+          <span>What if mining</span>
+          <span style={{ color: "#58e4b2" }}>did useful work?</span>
         </div>
-        <div style={{ display: "flex", fontSize: "26px", color: "#00f2fe" }}>
-          Proof-of-Useful-Compute • Layer-1 testnet live
+        <div style={{ display: "flex", fontSize: "23px", color: "#93aaa1", maxWidth: "850px", lineHeight: 1.4 }}>
+          A community-owned network turning local AI inference into independently verifiable useful compute.
+        </div>
+        <div style={{ display: "flex", marginTop: "auto", fontSize: "17px", color: "#58e4b2", letterSpacing: "2px" }}>
+          LOCAL/PRIVATE TESTNET • BUILDING IN PUBLIC
         </div>
       </div>
     ),
-    { ...size }
+    { ...size },
   );
 }

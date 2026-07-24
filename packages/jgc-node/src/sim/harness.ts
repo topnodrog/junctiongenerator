@@ -15,7 +15,7 @@
  *      node state directly — so the full validateBlock() pipeline runs.
  */
 
-import { createHash, randomBytes } from "crypto";
+import { createHash } from "crypto";
 import type {
   Block, BlockHeader, Transaction, MinerComputeContribution, ComputeProof,
   EpochState, PeerMessage, Hash256,
@@ -26,8 +26,12 @@ import {
 } from "../consensus/block.js";
 import { initEpochState, applyBlockToEpoch, computeEpochSettlement } from "../consensus/epoch.js";
 import { BLOCKS_PER_EPOCH } from "../consensus/emission.js";
-import { buildPublicInputs } from "../crypto/zkp.js";
+import {
+  pqGenerateKeyPair, pqAddressFromPublicKey, pqSignContribution,
+} from "../crypto/pq-signatures.js";
+import { pqProveCompute, pqToComputeProof, pqNewNonce } from "../crypto/pq-zkp.js";
 import type { JGCNode, PeerConnection } from "../network/node.js";
+import type { AuditVerdictRecord } from "../broker/audit-protocol.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Simulated Miners
@@ -36,14 +40,23 @@ import type { JGCNode, PeerConnection } from "../network/node.js";
 export interface SimMinerSpec {
   address: string;
   pubKey:  string;
+  /** ML-DSA secret key (hex) — needed to sign contributions in quantum mode. */
+  secretKey: string;
   /** TFLOPS-seconds attested per block — fixed per miner for predictable shares. */
   tflops:  number;
 }
 
-/** Two miners whose combined 1050 TFLOPS clears the 1000-TFLOPS genesis target. */
+/** Build a deterministic PQ miner from a seed (stable across test runs). */
+export function makePQMiner(seedHex: string, tflops: number): SimMinerSpec {
+  const kp = pqGenerateKeyPair(seedHex);
+  return { address: pqAddressFromPublicKey(kp.publicKey), pubKey: kp.publicKey, secretKey: kp.privateKey, tflops };
+}
+
+/** Two miners whose combined 1050 TFLOPS clears the 1000-TFLOPS genesis target.
+ *  QUANTUM-READY: real ML-DSA identities (deterministic seeds for reproducibility). */
 export const DEFAULT_MINERS: SimMinerSpec[] = [
-  { address: "1JGCMinerAlphaXXXXXXXXXXXXXXXXXXXX", pubKey: "02" + "a1".repeat(32), tflops: 600 },
-  { address: "1JGCMinerBravoXXXXXXXXXXXXXXXXXXXX", pubKey: "03" + "b2".repeat(32), tflops: 450 },
+  makePQMiner("11".repeat(32), 600),
+  makePQMiner("22".repeat(32), 450),
 ];
 
 export function sha256d(data: Buffer): Hash256 {
@@ -51,27 +64,30 @@ export function sha256d(data: Buffer): Hash256 {
   return createHash("sha256").update(first).digest("hex");
 }
 
-/** Build a compute contribution whose public inputs match the canonical layout. */
+/** Build a QUANTUM-READY compute contribution: a real hash-based PQ proof plus
+ *  a real ML-DSA signature binding the work to this miner and height. */
 export function makeContribution(miner: SimMinerSpec, height: number): MinerComputeContribution {
+  const outputCommitment = sha256d(Buffer.from(`${miner.address}:task:${height}`));
+  const pqProof = pqProveCompute("PQ_CIRCUIT_AI_INFERENCE_V1", outputCommitment, {
+    taskCommitment: outputCommitment,
+    tflopsWeight: miner.tflops,
+    nonce: pqNewNonce(),
+  });
   const proof: ComputeProof = {
-    taskCommitment:   sha256d(Buffer.from(`${miner.address}:task:${height}`)),
-    // 256-byte uncompressed A‖B‖C layout expected by the Rust verifier's
-    // structural checks (random bytes — not a cryptographically valid proof).
-    proofBytes:       randomBytes(256).toString("base64"),
-    circuitId:        "CIRCUIT_AI_INFERENCE_V1",
-    publicInputs:     [],  // filled below — must equal canonical reconstruction
-    tflopsWeight:     miner.tflops,
-    taskType:         ComputeTaskType.AI_INFERENCE,
+    ...(pqToComputeProof(pqProof) as any),
+    taskCommitment: outputCommitment,
+    taskType: ComputeTaskType.AI_INFERENCE,
     computeStartedAt: new Date().toISOString(),
   };
-  proof.publicInputs = buildPublicInputs(proof, height % BLOCKS_PER_EPOCH);
 
-  return {
+  const contribution: MinerComputeContribution = {
     minerAddress: miner.address,
     proof,
-    signature: "0".repeat(128),
+    signature: "",
     publicKey: miner.pubKey,
   };
+  contribution.signature = pqSignContribution(miner.secretKey, contribution, height);
+  return contribution;
 }
 
 /**
@@ -146,6 +162,7 @@ export function makeGenesisBlock(difficultyBits?: number): Block {
     header:        createGenesisHeader(difficultyBits),
     transactions:  [],
     computeProofs: [],
+    auditVerdicts: [],
     epochState:    initEpochState(0, GENESIS_TIMESTAMP),
   };
 }
@@ -190,7 +207,11 @@ export class BlockProducer {
    * At the epoch boundary the first tx is the settlement coinbase, computed
    * exactly as validation does: on a post-apply copy of the accumulator.
    */
-  produceBlock(contributions: MinerComputeContribution[], extraTxs: Transaction[] = []): Block {
+  produceBlock(
+    contributions: MinerComputeContribution[],
+    extraTxs: Transaction[] = [],
+    auditVerdicts: AuditVerdictRecord[] = [],
+  ): Block {
     const height          = this.height + 1;
     const isEpochBoundary = height % BLOCKS_PER_EPOCH === BLOCKS_PER_EPOCH - 1;
 
@@ -204,7 +225,8 @@ export class BlockProducer {
         inputs:   [],   // coinbase convention: no inputs
         outputs:  settlement.payouts.map(p => ({
           value:        p.satoshis,
-          scriptPubKey: "76a914" + sha256d(Buffer.from(p.minerAddress)).slice(0, 40) + "88ac",
+          // QUANTUM-READY: settlement pays to the PQ script for the miner's 1QGC address.
+          scriptPubKey: "5114" + p.minerAddress.slice(4) + "63ac",
         })),
         locktime: 0,
       }];
@@ -223,6 +245,7 @@ export class BlockProducer {
       this.difficultyBits,
       height,
       this.baseTime + height * 30,
+      auditVerdicts,
     );
   }
 
@@ -267,7 +290,11 @@ export async function mineBlocks(
       await node.processMessage(viaPeerId, makeMessage(MT.COMPUTE_PROOF, contrib));
     }
 
-    const block = producer.produceBlock(node.getPendingProofs());
+    const block = producer.produceBlock(
+      node.getPendingProofs(),
+      [],
+      node.getPendingAuditVerdicts(),
+    );
     await node.processMessage(viaPeerId, makeMessage(MT.BLOCK, block));
 
     if (node.getChainInfo().tipHeight !== height) {

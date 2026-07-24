@@ -1,42 +1,59 @@
 # JunctionGenerator (JGC) — One-Pager
 
+> **Implementation status (2026-07-23):** JGC is a local/private testnet, not a
+> deployed public chain. Consensus commits post-quantum signed audit evidence;
+> bonded-validator rewards and slashing are the next economic milestone and
+> are not active today.
+
 ## The Problem
-**$14.4 billion in annual crypto fraud losses.** Users cannot verify code execution, smart contracts are black boxes, centralized oracles are manipulable, and no mechanism proves fairness in automated systems. Trust in crypto is broken.
+Crypto scams, exploits, and oracle failures remain costly. Execution evidence
+can be opaque or concentrated in a small number of trusted parties. Any
+external market-size figure must be current, scoped, and cited.
 
 ## The Solution
-**Proof of Useful Computation (PoUC).** A cryptoeconomic primitive where useful work (AI inference) becomes the basis for consensus. Deterministic replay + multi-challenger quorum + economic slashing create collusion-resistant verification without wasteful proof-of-work.
+**Proof of Useful Computation (PoUC).** A cryptoeconomic primitive where useful work (AI inference) becomes the basis for consensus. Deterministic replay + delayed-beacon sampling + post-quantum signed quorum evidence provide independently auditable verification without wasteful proof-of-work.
 
 ## What is JGC?
 
 | Component | Role |
 |-----------|------|
-| **JGC Coin** | Native Layer-1 currency. 16 decimals. Rewards honest validators; slashing punishes dishonesty. |
+| **JGC Coin** | Native Layer-1 currency. 16 decimals. Bonded validator rewards/slashing are planned, not active. |
 | **Junctioning** | Local inference compression layer. Deterministic execution traces enable replay verification. |
-| **Verification Model** | Multi-challenger quorum: sampling + honest-majority consensus prevents cartels. |
+| **Verification Model** | Delayed sampling + signed quorum reduces single-observer risk; economic Sybil/cartel resistance is pending. |
 
 ## Market Opportunity
-- **$14.4B** annual crypto fraud losses (immediate TAM)
+- **Recurring crypto losses** from scams, exploits, and oracle failures; add a
+  current, scoped citation before external publication
 - **DeFi protocols** seeking oracle alternatives
 - **AI inference marketplaces** needing verifiable computation
 - **Enterprise smart contracts** requiring auditability
 - **Compliance demand** for transparent verification
 
 ## Technical Differentiation
-✅ **Collusion-hardened** — Multi-challenger quorum prevents validator cartels  
-✅ **Deterministic** — Reproducible computation = verifiable results  
-✅ **Useful** — AI inference is the proof; no wasted energy  
-✅ **Cryptoeconomic** — Slashing ensures honest participation  
+✅ **Multi-observer** — Quorum evidence reduces single-verifier risk; bonded
+identity and Sybil resistance remain pending
+
+✅ **Replayable** — Controlled-runtime work produces checkable evidence;
+cross-hardware consistency remains research
+
+✅ **Useful-work focused** — Local AI inference is measured and replayed instead
+of performing discarded hash work
+
+✅ **Audit-ready** — Signed evidence is consensus-committed; economic enforcement is the next milestone
 
 ## Roadmap
 | Milestone | Status |
 |-----------|--------|
-| Testnet Launch | ✓ June 2026 |
-| Layer-1 Junctioning | ✓ Live June 2026 |
-| Mainnet Launch | → Q3 2026 |
-| Exchange Integration | → Q4 2026 |
+| Local/private testnet | ✓ June 2026 |
+| Layer-1 Junctioning | ✓ Working locally since June 2026 |
+| Quantum-ready audit consensus v2 | ✓ July 2026 |
+| Bonded validator registry + stake snapshots | → Next |
+| Public multi-machine testnet | → After P2P hardening and soak testing |
+| Mainnet Launch | → Date not committed |
 
 ## Ask
-Seed funding to accelerate mainnet launch, exchange partnerships, and market adoption.
+Seed/grant funding for external security review, bonded-validator consensus,
+public-testnet hardening, and multi-machine verification research.
 
 ---
 

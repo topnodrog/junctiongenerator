@@ -21,7 +21,7 @@
  *      - prevHash chain linkage
  *
  * 2. Proof-of-Useful-Compute verification (most expensive step):
- *      - Groth16 pairing check for each ComputeProof (via zkp.ts)
+ *      - Post-quantum hash-based proof check for each ComputeProof (via pq.ts)
  *      - Merkle root reconstruction from verified proofs
  *      - Total TFLOPS ≥ difficulty target
  *
@@ -41,7 +41,7 @@
  *
  * SECURITY NOTE:
  *   Steps 1 and 3 are cheap and run first to reject obviously invalid blocks
- *   before paying the Groth16 verification cost (Step 2 ~5ms per proof).
+ *   before paying the post-quantum proof verification cost (Step 2).
  *   This matches Bitcoin's design where CheckBlock's header check rejects
  *   malformed blocks before the expensive script validation in CheckTxInputs.
  */
@@ -50,13 +50,24 @@ import type {
   Block, BlockHeader, Transaction, MinerComputeContribution,
   EpochState, BlockHeight, JGCSatoshis,
 } from "../types/index.js";
-import { computeTransactionMerkleRoot } from "./block.js";
+import {
+  computeAuditVerdictsMerkleRoot,
+  computeTransactionMerkleRoot,
+  GENESIS_BLOCK_VERSION,
+  hashBlockHeader,
+} from "./block.js";
 import { computeContributionsMerkleRoot, computeEpochRoot, computeEpochSettlement, applyBlockToEpoch } from "./epoch.js";
 import { decodeDifficultyBits, BLOCKS_PER_EPOCH, HARD_CAP_SATOSHIS } from "./emission.js";
-import { batchVerifyComputeProofs, getVerifierMode } from "../crypto/zkp.js";
-import { verifyContributionSignature, scriptPubKeyFromAddress } from "../crypto/signatures.js";
+import {
+  getQuantumVerifierMode,
+  quantumVerifyContributionSignature,
+  quantumVerifyProofForConsensus,
+  quantumScriptPubKeyFromAddress,
+} from "../crypto/pq.js";
 import { UTXOSet, validateSpend } from "./utxo.js";
 import { verifyMerkleProof, getMerkleProof, buildMerkleTree, hashComputeProof } from "../crypto/merkle.js";
+import { validateAuditVerdictRecord } from "../broker/audit-protocol.js";
+import { auditWindow, computeAuditClaimId } from "../broker/audit-schedule.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Validation Result Types
@@ -85,6 +96,8 @@ export enum ValidationError {
   INVALID_COINBASE         = "INVALID_COINBASE",
   COINBASE_OVERFLOW        = "COINBASE_OVERFLOW",
   MERKLE_ROOT_MISMATCH     = "MERKLE_ROOT_MISMATCH",
+  AUDIT_ROOT_MISMATCH      = "AUDIT_ROOT_MISMATCH",
+  INVALID_AUDIT_VERDICT    = "INVALID_AUDIT_VERDICT",
   INVALID_TRANSACTION      = "INVALID_TRANSACTION",
   DOUBLE_SPEND             = "DOUBLE_SPEND",
   INPUT_SUM_OVERFLOW       = "INPUT_SUM_OVERFLOW",
@@ -100,7 +113,7 @@ export interface ValidationResult {
   valid: boolean;
   errors: ValidationError[];
   warnings: string[];
-  /** Milliseconds spent on Groth16 verification (profiling). */
+  /** Milliseconds spent on post-quantum proof verification (profiling). */
   zkVerifyMs?: number;
 }
 
@@ -145,9 +158,9 @@ export function validateBlockHeader(
   nowUnix:          number,
   medianPastTime:   number,
 ): ValidationResult {
-  // Version check — must be 0x01000000 for JGC v1.
+  // Version check — v2 commits signed historical-audit evidence.
   // BITCOIN: nVersion must not be negative; BIP 34/65/66/CSV version bits enforced.
-  if (header.version !== 0x01000000) {
+  if (header.version !== GENESIS_BLOCK_VERSION) {
     return fail(ValidationError.INVALID_VERSION, `Got 0x${header.version.toString(16)}`);
   }
 
@@ -242,7 +255,7 @@ export function validateBlockHeader(
 export async function validateComputeProofs(
   contributions:  MinerComputeContribution[],
   header:         BlockHeader,
-  epochBlockIndex: number,
+  _epochBlockIndex: number,  // unused: PQ verification is height-gated, not epoch-indexed
   currentHeight:   BlockHeight,
 ): Promise<ValidationResult> {
   const difficultyTarget = decodeDifficultyBits(header.difficultyBits);
@@ -280,32 +293,27 @@ export async function validateComputeProofs(
   // Each contribution must be signed by the key controlling its payout address,
   // over a sighash binding the proven work and this height. Cheap — runs before
   // the expensive pairing checks. Skipped in "simnet" mode (placeholder sigs).
-  if (getVerifierMode() === "strict") {
+  if (getQuantumVerifierMode() === "strict") {
     for (let i = 0; i < contributions.length; i++) {
-      const sig = verifyContributionSignature(contributions[i]!, currentHeight);
-      if (!sig.ok) {
+      const sigOk = quantumVerifyContributionSignature(contributions[i]!, currentHeight);
+      if (!sigOk) {
         return {
           valid: false,
           errors: [ValidationError.INVALID_SIGNATURE],
-          warnings: [`Contribution ${i} (miner ${contributions[i]!.minerAddress}): ${sig.error}`],
+          warnings: [`Contribution ${i} (miner ${contributions[i]!.minerAddress}): ML-DSA signature invalid`],
         };
       }
     }
   }
 
-  // ── Batch Groth16 verification ───────────────────────────────────────────
+  // ── Post-quantum proof verification (replaces Groth16 pairing checks) ────
   const zkStart = Date.now();
 
-  // Per-proof minimum: each individual proof must meet the minimum circuit threshold,
-  // but not necessarily the full block difficulty target (which is the SUM threshold).
-  // Use 10% of block target as per-proof floor (prevents submitting thousands of tiny proofs).
+  // Per-proof minimum: 10% of block target (prevents thousands of tiny proofs).
   const perProofMin = difficultyTarget * 0.1;
 
-  const verificationResults = batchVerifyComputeProofs(
-    contributions.map(c => ({ proof: c.proof })),
-    epochBlockIndex,
-    perProofMin,
-    currentHeight,
+  const verificationResults = contributions.map(c =>
+    quantumVerifyProofForConsensus(c.proof, currentHeight, perProofMin)
   );
 
   const zkMs = Date.now() - zkStart;
@@ -457,7 +465,7 @@ export function validateCoinbaseTx(
   for (let i = 0; i < settlement.payouts.length; i++) {
     const payout = settlement.payouts[i]!;
     const output = coinbaseTx.outputs[i]!;
-    const expectedScript = scriptPubKeyFromAddress(payout.minerAddress);
+    const expectedScript = quantumScriptPubKeyFromAddress(payout.minerAddress);
 
     if (output.scriptPubKey !== expectedScript) {
       return fail(
@@ -527,6 +535,127 @@ export interface BlockValidationContext {
   /** Current UTXO set (chainstate). When present, every non-coinbase tx (tx[1..])
    *  is validated against it: inputs exist & unspent, authorized, value conserved. */
   utxos?: UTXOSet;
+  /** Active-chain historical block lookup, required when a block carries audits. */
+  getActiveBlock?: (height: BlockHeight) => Block | undefined;
+  /** True when this audit id is already committed on the active chain. */
+  hasCommittedAudit?: (auditId: string) => boolean;
+}
+
+const MAX_AUDIT_VERDICTS_PER_BLOCK = 64;
+
+export function validateAuditVerdicts(
+  block: Block,
+  context: Pick<BlockValidationContext, "getActiveBlock" | "hasCommittedAudit">,
+): ValidationResult {
+  if (!Array.isArray(block.auditVerdicts)) {
+    return fail(ValidationError.INVALID_AUDIT_VERDICT, "Block audit verdict body is missing");
+  }
+  if (block.auditVerdicts.length > MAX_AUDIT_VERDICTS_PER_BLOCK) {
+    return fail(
+      ValidationError.INVALID_AUDIT_VERDICT,
+      `Block carries ${block.auditVerdicts.length} audits; maximum is ${MAX_AUDIT_VERDICTS_PER_BLOCK}`,
+    );
+  }
+  if (block.auditVerdicts.some((record) =>
+    !record || typeof record.auditId !== "string" || !/^[0-9a-f]{64}$/i.test(record.auditId)
+  )) {
+    return fail(ValidationError.INVALID_AUDIT_VERDICT, "Block contains a malformed audit id");
+  }
+
+  const expectedRoot = computeAuditVerdictsMerkleRoot(block.auditVerdicts);
+  if (block.header.auditRoot !== expectedRoot) {
+    return fail(
+      ValidationError.AUDIT_ROOT_MISMATCH,
+      `Header auditRoot: ${block.header.auditRoot} ≠ computed: ${expectedRoot}`,
+    );
+  }
+  if (block.auditVerdicts.length === 0) return ok();
+  if (!context.getActiveBlock || !context.hasCommittedAudit) {
+    return fail(
+      ValidationError.INVALID_AUDIT_VERDICT,
+      "Historical chain lookup is required to validate audit evidence",
+    );
+  }
+
+  const seen = new Set<string>();
+  let previousAuditId = "";
+  for (const record of block.auditVerdicts) {
+    if (seen.has(record.auditId) ||
+        (previousAuditId && previousAuditId.localeCompare(record.auditId) >= 0)) {
+      return fail(
+        ValidationError.INVALID_AUDIT_VERDICT,
+        "Audit verdicts must be unique and in canonical audit-id order",
+      );
+    }
+    if (context.hasCommittedAudit(record.auditId)) {
+      return fail(ValidationError.INVALID_AUDIT_VERDICT, `Audit ${record.auditId} is already committed`);
+    }
+
+    const evidenceError = validateAuditVerdictRecord(record);
+    if (evidenceError) {
+      return fail(
+        ValidationError.INVALID_AUDIT_VERDICT,
+        `Audit ${record.auditId}: ${evidenceError}`,
+      );
+    }
+
+    const assignment = record.request.assignment;
+    if (record.finalizedAtHeight >= block.header.height ||
+        assignment.claimHeight >= block.header.height ||
+        assignment.beaconHeight >= block.header.height) {
+      return fail(
+        ValidationError.INVALID_AUDIT_VERDICT,
+        `Audit ${record.auditId} does not predate its containing block`,
+      );
+    }
+
+    let window: ReturnType<typeof auditWindow>;
+    try {
+      window = auditWindow(assignment.windowIndex);
+    } catch {
+      return fail(ValidationError.INVALID_AUDIT_VERDICT, `Audit ${record.auditId} has an invalid window`);
+    }
+    if (assignment.claimHeight < window.startHeight ||
+        assignment.claimHeight > window.endHeight ||
+        assignment.beaconHeight !== window.beaconHeight) {
+      return fail(
+        ValidationError.INVALID_AUDIT_VERDICT,
+        `Audit ${record.auditId} does not match its deterministic window`,
+      );
+    }
+
+    const beaconBlock = context.getActiveBlock(assignment.beaconHeight);
+    if (!beaconBlock || hashBlockHeader(beaconBlock.header) !== assignment.beaconHash.toLowerCase()) {
+      return fail(
+        ValidationError.INVALID_AUDIT_VERDICT,
+        `Audit ${record.auditId} beacon is not on the active chain`,
+      );
+    }
+
+    const claimBlock = context.getActiveBlock(assignment.claimHeight);
+    if (!claimBlock) {
+      return fail(
+        ValidationError.INVALID_AUDIT_VERDICT,
+        `Audit ${record.auditId} claim block is not on the active chain`,
+      );
+    }
+    const claimHash = hashBlockHeader(claimBlock.header);
+    const claim = claimBlock.computeProofs.find((contribution, index) =>
+      computeAuditClaimId(claimHash, index) === assignment.claimId &&
+      contribution.minerAddress === assignment.claimantId &&
+      contribution.proof.taskCommitment.toLowerCase() === assignment.commitment.toLowerCase()
+    );
+    if (!claim) {
+      return fail(
+        ValidationError.INVALID_AUDIT_VERDICT,
+        `Audit ${record.auditId} claim is not on the active chain`,
+      );
+    }
+
+    seen.add(record.auditId);
+    previousAuditId = record.auditId;
+  }
+  return ok();
 }
 
 /**
@@ -625,11 +754,15 @@ export async function validateBlock(
     );
   }
 
-  // ── Step 4: Epoch root ────────────────────────────────────────────────────
+  // ── Step 4: Historical audit evidence ─────────────────────────────────────
+  const auditResult = validateAuditVerdicts(block, context);
+  if (!auditResult.valid) return auditResult;
+
+  // ── Step 5: Epoch root ────────────────────────────────────────────────────
   const epochRootResult = validateEpochRoot(header, context.epochState);
   if (!epochRootResult.valid) return epochRootResult;
 
-  // ── Step 5: ZK Proof verification (core PoUC check) ──────────────────────
+  // ── Step 6: ZK Proof verification (core PoUC check) ──────────────────────
   const pouCResult = await validateComputeProofs(
     block.computeProofs,
     header,
@@ -641,7 +774,7 @@ export async function validateBlock(
     warnings.push(`ZK verification took ${pouCResult.zkVerifyMs}ms`);
   }
 
-  // ── Step 6: Coinbase validation at epoch boundary ─────────────────────────
+  // ── Step 7: Coinbase validation at epoch boundary ─────────────────────────
   if (isEpochBoundary) {
     if (block.transactions.length === 0) {
       return fail(ValidationError.MISSING_EPOCH_SETTLEMENT,

@@ -154,7 +154,7 @@ I am building Junction Generator because I believe crypto's future depends on sy
 
 You cannot close that gap with willpower. You close it with structure — cold storage, separation, revocation, and a healthy refusal to trust any opportunity that found you first. Do those few things and you have already defended against the attacks that take down the most people.
 
-If this saved you a single bad click, it did its job. The specific tools I actually recommend — a hardware wallet, and regulated exchanges — are in the partners section below, and if you want more field notes like this one, the newsletter is right there too. Stay skeptical. Verify everything.`,
+If this saved you a single bad click, it did its job. The self-custody and record-keeping tools I currently recommend are in the resources section below, and if you want more field notes like this one, the newsletter is right there too. Stay skeptical. Verify everything.`,
   },
   {
     slug: "proof-of-useful-compute",

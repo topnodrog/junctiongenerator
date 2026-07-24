@@ -1,5 +1,10 @@
 # JGC Fundraising Action Plan — Cold Outreach to $1M Seed
 
+> **Technical status (2026-07-23):** JGC is a validated local/private testnet.
+> Consensus-v2 commits post-quantum signed audit evidence. A public testnet,
+> consensus-owned validator bonds, and automatic rewards/slashing remain future
+> milestones. Verify every metric and external claim again before outreach.
+
 ## Week 1 Timeline
 
 | Day | Task | Target | Deliverable |
@@ -78,9 +83,9 @@ Why JGC: Paradigm invested in Eigen (verification), JGC is verification + L1 →
 ### Cold Email Formula (for investors without warm intro)
 
 **Subject Line:** [Problem or Proof]
-- "Crypto fraud losses hit $14.4B (and we're solving it)"
+- "Crypto verification failures remain costly — here is what we shipped"
 - "Layer-1 junctioning + deterministic verification"
-- "We shipped a testnet. You should see it."
+- "We shipped local audit consensus. You should see it."
 
 **Body Structure:**
 1. **Hook** (1 sentence) — Problem or shipped fact
@@ -177,7 +182,7 @@ This turns Week 2 into "follow up with warm leads based on deck engagement" inst
 ## Contingency: If Cold Outreach Is Slow
 
 - **Day 5 pivot:** Start building in public (Twitter, crypto forums)
-- **Post:** "Shipped junctioning Layer-1 + live verification"
+- **Post:** "Shipped local junctioning + consensus-committed audit evidence"
 - **Tag:** @a16zcrypto, @ParadigmC2, relevant investors
 - **Benefit:** Signals traction, may get DMs from interested investors
 
@@ -191,9 +196,9 @@ This turns Week 2 into "follow up with warm leads based on deck engagement" inst
 - **50% of serious meetings → term sheet** (rare, but possible)
 
 **Why you can win despite cold:**
-- Live product (most competitors don't have this)
-- Clear problem ($14.4B fraud)
-- Shipped proof (testnet + junctioning)
+- Working local prototype with repeatable tests
+- Clear problem (costly fraud and a measurable verification gap)
+- Shipped proof (local testnet + junctioning + audit consensus)
 - Founder with deep technical credibility
 
 **Your competitive advantage:** You're not pitching an idea. You're showing what you built.
@@ -211,6 +216,8 @@ This turns Week 2 into "follow up with warm leads based on deck engagement" inst
 
 ---
 
-**You've got this.** You don't need to be a salesman. You just need to tell the truth: "We solved verification. Here's the proof. Here's why it matters. Want to see it?"
+**You've got this.** You don't need to be a salesman. You just need to tell the
+truth: "We shipped a local, testable verification milestone. Here is what it
+does, what remains open, and why it matters. Want to see it?"
 
 Start with research today. Emails ready by Wednesday. Outreach starts Thursday.

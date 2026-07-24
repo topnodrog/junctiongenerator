@@ -46,6 +46,7 @@ function sampleBlock(): Block {
       locktime: 0,
     }],
     computeProofs: [contrib("minerA", 600)],
+    auditVerdicts: [],
     epochState,
   };
 }
@@ -70,7 +71,7 @@ describe("binary block codec", () => {
     const block = sampleBlock();
     const back = decodeBlock(encodeBlock(block));
 
-    // Header identity (the hash is over the 160-byte header) and money fields.
+    // Header identity (the hash is over the fixed-size header) and money fields.
     expect(back.header).toEqual(block.header);
     expect(back.transactions[0]!.outputs[0]!.value).toBe(123n * BASE_UNITS_PER_JGC);
     expect(typeof back.transactions[0]!.outputs[0]!.value).toBe("bigint");

@@ -35,7 +35,7 @@ import { JGCNode } from "../network/node.js";
 import { makeGenesisBlock } from "../sim/harness.js";
 import { UTXOSet, COINBASE_MATURITY } from "../consensus/utxo.js";
 import { Wallet, formatJGC, type KeystoreFile } from "../wallet/wallet.js";
-import { scriptPubKeyFromAddress, p2pkhScript } from "../crypto/signatures.js";
+import { pqScriptPubKeyFromAddress, pqScriptPubKey } from "../crypto/pq-signatures.js";
 import { startStatusServer, type NodeStatus } from "../network/status-server.js";
 
 const VERSION = "0.1.0";
@@ -54,7 +54,7 @@ function parseArgs(argv: string[]): Args {
 /** Resolve the address to report on (watch-only flag wins; else keystore key). */
 function resolveTarget(f: Args): { address: string | null; label: string | null; scriptPubKey: string | null } {
   if (f.flags.address) {
-    return { address: f.flags.address, label: null, scriptPubKey: scriptPubKeyFromAddress(f.flags.address) };
+    return { address: f.flags.address, label: null, scriptPubKey: pqScriptPubKeyFromAddress(f.flags.address) };
   }
 
   const path = f.flags.keystore ?? process.env.JGC_KEYSTORE ?? "./wallet.keystore.json";
@@ -69,7 +69,7 @@ function resolveTarget(f: Args): { address: string | null; label: string | null;
   const wallet = Wallet.fromKeystore(JSON.parse(readFileSync(path, "utf8")) as KeystoreFile, pass);
   const label = f.flags.label ?? wallet.labels()[0];
   if (!label || !wallet.has(label)) return { address: null, label: null, scriptPubKey: null };
-  return { address: wallet.address(label), label, scriptPubKey: p2pkhScript(wallet.publicKey(label)) };
+  return { address: wallet.address(label), label, scriptPubKey: pqScriptPubKey(wallet.publicKey(label)) };
 }
 
 /** Split a script's UTXOs into mature (spendable now) and immature coinbase. */

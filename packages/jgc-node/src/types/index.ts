@@ -134,13 +134,13 @@ export interface ComputeProof {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * BlockHeader — serializable, 160-byte fixed-size header.
+ * BlockHeader — serializable, 192-byte fixed-size header.
  *
  * BITCOIN COMPARISON (80-byte header):
  *   nVersion(4) | hashPrevBlock(32) | hashMerkleRoot(32) | nTime(4) | nBits(4) | nNonce(4)
  *
- * JGC HEADER (160 bytes):
- *   version(4) | prevHash(32) | merkleRoot(32) | computeRoot(32) | epochRoot(32)
+ * JGC HEADER (192 bytes):
+ *   version(4) | prevHash(32) | merkleRoot(32) | computeRoot(32) | epochRoot(32) | auditRoot(32)
  *   | timestamp(8) | difficultyBits(4) | nonce(4) | height(8) | reserved(4)
  *
  * The nNonce is retained for minor entropy/anti-spam but the primary
@@ -148,7 +148,7 @@ export interface ComputeProof {
  * submitted by miners in this block slot.
  */
 export interface BlockHeader {
-  /** Protocol version.  JGC v1 = 0x01000000. */
+  /** Protocol version. JGC v2 (audit-root header) = 0x02000000. */
   version: number;
 
   /** Hash of the previous block header (same semantics as Bitcoin's hashPrevBlock). */
@@ -164,6 +164,10 @@ export interface BlockHeader {
   /** Merkle root of the epoch accumulator state (running tally of per-miner
    *  TFLOPS contributions since last epoch boundary). */
   epochRoot: Hash256;
+
+  /** Merkle root of finalized historical-compute audit verdicts and their
+   *  signed evidence included in this block. */
+  auditRoot: Hash256;
 
   /** UNIX timestamp in seconds — same semantic as Bitcoin's nTime.
    *  Nodes reject headers with timestamps > median(last 11) + 7200 seconds. */
@@ -204,10 +208,10 @@ export interface MinerComputeContribution {
  * Full Block — analogous to Bitcoin's CBlock.
  *
  * Bitcoin CBlock = CBlockHeader + vector<CTransaction>
- * JGC Block      = BlockHeader  + transactions + computeProofs + epochState
+ * JGC Block      = BlockHeader + transactions + computeProofs + auditVerdicts + epochState
  */
 export interface Block {
-  /** The 160-byte serializable header. */
+  /** The 192-byte serializable header. */
   header: BlockHeader;
 
   /** Ordered list of JGC transactions (UTXO model, same as Bitcoin). */
@@ -217,6 +221,9 @@ export interface Block {
    *  Unlike Bitcoin's single miner, JGC supports multi-party PoUC
    *  — all provers contributing in the 10-minute window are included. */
   computeProofs: MinerComputeContribution[];
+
+  /** Finalized historical-compute audits committed by header.auditRoot. */
+  auditVerdicts: import("../broker/audit-protocol.js").AuditVerdictRecord[];
 
   /** Snapshot of epoch accumulator at this block boundary. */
   epochState: EpochState;
@@ -403,6 +410,9 @@ export enum MessageType {
   COMPUTE_PROOF = "COMPUTE_PROOF",   // JGC-specific: propagate new proof
   EPOCH_SETTLE  = "EPOCH_SETTLE",    // JGC-specific: epoch settlement tx
   BROKER_BID    = "BROKER_BID",      // JGC-specific: new compute bid
+  AUDIT_REQUEST = "AUDIT_REQUEST",   // deterministic historical-compute assignment
+  AUDIT_VOTE    = "AUDIT_VOTE",      // ML-DSA-signed validator observation
+  AUDIT_VERDICT = "AUDIT_VERDICT",   // quorum evidence record (not a slash itself)
   GETADDR       = "GETADDR",         // request known peer addresses
   ADDR          = "ADDR",            // advertise known peer addresses (gossip)
 }

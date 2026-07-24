@@ -33,9 +33,9 @@ simple = { limit = 20, period = 60 }
 [triggers]
 crons = ["0 0 * * *"]
 
-# Lets the worker send the digest email. Requires Email Routing enabled on
-# junctiongenerator.net and james_gordon@junctiongenerator.net verified as a
-# destination address (Cloudflare dashboard > Email > Email Routing).
+# Lets the worker send immediate lead/signup notifications and the midnight
+# digest fallback. The destination address is verified in Cloudflare Email
+# Routing; the live binding was end-to-end tested on 2026-07-24.
 [[send_email]]
 name = "EMAIL_SENDER"
 destination_address = "james_gordon@junctiongenerator.net"
