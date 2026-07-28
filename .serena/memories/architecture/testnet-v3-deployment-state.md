@@ -29,11 +29,15 @@ be archived or deleted before starting this identity.
 - 30 Jest suites / 280 tests passed.
 - A compiled `--produce` launcher booted on loopback and returned healthy status
   for `jgc-testnet-v3`, waiting for 1000 TFLOPS as expected.
-- Docker could not be executed locally because Docker is not installed; CI owns
-  the clean-machine build check.
+- GitHub Actions passed Node 20 on Linux/Windows/macOS, Node 22 on Linux, and the
+  pinned Rust/WASM verifier build and tests after correcting the package-local
+  Jest path used by clean installs.
+- Docker could not be executed locally because Docker is not installed. The
+  Dockerfile and Compose topology remain reviewable but not runtime-verified in
+  this session.
 - The previously completed strict Rust/WASM six-proof demo remains the bounded
-  sound-proof evidence. A repeat `cargo test` under the newly pinned toolchain
-  was blocked by the local rustup cache permission/timeout, not a test failure.
+  sound-proof evidence. A local repeat under the newly pinned toolchain was
+  blocked by rustup cache permissions, while the clean GitHub Rust job passed.
 
 ## Remaining public deployment gates
 1. Deploy at least two public seeds behind TLS/WSS and monitored firewalls.
