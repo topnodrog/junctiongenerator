@@ -15,7 +15,7 @@
     "testnet": "node dist/scripts/testnet-node.js",
     "testnet:producer": "node dist/scripts/testnet-node.js --produce",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-vm-modules --max-old-space-size=1536 ../../node_modules/jest/bin/jest.js --runInBand",
+    "test": "node --experimental-vm-modules --max-old-space-size=1536 ./node_modules/jest/bin/jest.js --runInBand",
     "sync-demo": "node dist/scripts/sync-demo.js",
     "epoch-verify": "node dist/scripts/epoch-verify.js",
     "prove-verify-demo": "node dist/scripts/prove-verify-demo.js",
