@@ -48,6 +48,10 @@ be archived or deleted before starting this identity.
   guard, and pinned Node 20.15 below the cryptography dependency floor. The image
   now declares testnet mode and pins Node 20.20.2; supported installs require
   Node 20.19+ or Node 22.
+- The corrected hosted Docker Compose run passed end to end: all images built,
+  services became healthy, signed simulation contributions produced height 1,
+  the independent back-checker reached the same height, and teardown removed the
+  test volumes. Docker deployment is now runtime-verified in CI.
 - The previously completed strict Rust/WASM six-proof demo remains the bounded
   sound-proof evidence. A local repeat under the newly pinned toolchain was
   blocked by rustup cache permissions, while the clean GitHub Rust job passed.

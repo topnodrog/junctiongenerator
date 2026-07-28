@@ -95,6 +95,8 @@ The override starts a guarded, testnet-only contributor that submits signed
 simulation receipts for one block. It requires `JGC_ENABLE_SMOKE_CONTRIBUTOR=1`,
 exits after the target height, and is not evidence of useful computation. Never
 include `compose.smoke.yml` in a valuable or public network deployment.
+GitHub Actions runs this topology for every node-package change and requires the
+producer and back-checker to report the same non-zero chain height.
 
 ## Network exposure
 
