@@ -1,8 +1,15 @@
 /**
  * @file src/crypto/pq-zkp.ts
- * @description Post-quantum, privacy-preserving compute proofs for JGC
- * Proof-of-Useful-Compute — a hash-based, transparent (no trusted setup)
- * scheme that replaces the Groth16/BN254 verifier (src/crypto/zkp.ts).
+ * @description Research-only hash/Merkle receipts for JGC simulations.
+ *
+ * SECURITY BOUNDARY
+ * ─────────────────
+ * This module does NOT prove an AI computation. It commits to prover-chosen
+ * witness values and verifies Merkle openings, but it has no arithmetic
+ * constraints tying those values to an inference, training run, or FLOP count.
+ * It is useful for exercising proof transport and tamper detection on simnet.
+ * Strict consensus MUST reject it until it is replaced by a sound transparent
+ * proof system whose constraints encode the claimed computation.
  *
  * WHY GROTH16/BN254 HAD TO GO
  * ───────────────────────────
@@ -72,6 +79,25 @@ const PQ_NUM_QUERIES = 16;
  * PQ_NUM_QUERIES DISTINCT openings, which the verifier strictly requires.
  */
 const PQ_DOMAIN_SIZE = 32;
+
+/**
+ * `simnet` enables the research receipt solely for local protocol exercises.
+ * `strict` is the default and fails closed because this construction does not
+ * establish computational soundness.
+ */
+export type PQVerifierMode = "strict" | "simnet";
+let pqVerifierMode: PQVerifierMode = "strict";
+
+export function setPQVerifierMode(mode: PQVerifierMode): void {
+  if (mode === "simnet" && process.env["NODE_ENV"] === "production") {
+    throw new Error("PQ verifier mode 'simnet' is forbidden when NODE_ENV=production");
+  }
+  pqVerifierMode = mode;
+}
+
+export function getPQVerifierMode(): PQVerifierMode {
+  return pqVerifierMode;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Minimal Merkle tree (quantum-safe; self-contained so this layer has no deps)
@@ -208,6 +234,9 @@ export function pqProveCompute(
   outputCommitment: string,
   witness: PQWitness
 ): PQComputeProof {
+  if (process.env["NODE_ENV"] === "production") {
+    throw new Error("PQ-HASH-IOP-v1 is a research receipt and cannot prove production compute");
+  }
   const params = PQ_CIRCUIT_REGISTRY.get(circuitId);
   if (!params) throw new Error(`unknown PQ circuit: ${circuitId}`);
   if (witness.tflopsWeight < params.minTFLOPSPerProof || witness.tflopsWeight > params.maxTFLOPSPerProof) {
@@ -260,6 +289,12 @@ export interface PQVerifyResult {
 export function pqVerifyComputeProof(proof: PQComputeProof, blockHeight: number): PQVerifyResult {
   try {
     if (!proof || proof.scheme !== "PQ-HASH-IOP-v1") return { valid: false, reason: "bad scheme" };
+    if (pqVerifierMode !== "simnet") {
+      return {
+        valid: false,
+        reason: "PQ-HASH-IOP-v1 is a research receipt, not a sound proof of computation; strict verification rejects it",
+      };
+    }
     const params = PQ_CIRCUIT_REGISTRY.get(proof.circuitId);
     if (!params) return { valid: false, reason: `unknown circuit ${proof.circuitId}` };
     if (blockHeight < params.activeSinceHeight) return { valid: false, reason: "circuit not yet active" };
@@ -372,16 +407,6 @@ export function pqVerifyComputeProofFromConsensus(cp: ComputeProof, blockHeight:
 // Verifier mode + per-proof verification (consensus-facing)
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * Verifier mode. In "simnet" the signature check is relaxed (placeholder sigs);
- * proof verification is ALWAYS enforced — there is no mode that accepts an
- * invalid proof. Default is strict.
- */
-export type PQVerifierMode = "strict" | "simnet";
-let pqVerifierMode: PQVerifierMode = "strict";
-export function setPQVerifierMode(m: PQVerifierMode): void { pqVerifierMode = m; }
-export function getPQVerifierMode(): PQVerifierMode { return pqVerifierMode; }
-
 export interface PQProofVerification {
   valid: boolean;
   error?: string;
@@ -400,7 +425,7 @@ export function pqVerifyProofForConsensus(
   perProofMinTFLOPS: number
 ): PQProofVerification {
   const p = pqFromComputeProof(cp);
-  if (!p) return { valid: false, error: "not a post-quantum proof (expected PQ-HASH-IOP-v1)", verifiedTFLOPS: 0 };
+  if (!p) return { valid: false, error: "not a PQ-HASH-IOP-v1 simulation receipt", verifiedTFLOPS: 0 };
   const r = pqVerifyComputeProof(p, blockHeight);
   if (!r.valid) return { valid: false, error: r.reason ?? "invalid", verifiedTFLOPS: 0 };
   const tf = r.tflopsWeight ?? 0;

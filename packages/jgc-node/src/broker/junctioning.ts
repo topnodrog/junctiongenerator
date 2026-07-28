@@ -33,6 +33,7 @@
  * that exists, treat tflopsSeconds as an estimate, not a settled quantity.
  */
 
+import { createHash } from "crypto";
 import type { JGClusterTask } from "./compute-broker.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -70,6 +71,11 @@ export interface InferenceBackend {
   readonly name: string;
   run(req: InferenceRequest): Promise<InferenceResult>;
   /**
+   * Exact-replay compatibility boundary. Two machines may compare byte-exact
+   * outputs only when every field in this profile matches.
+   */
+  executionProfile?(model: string): Promise<ExecutionProfile | undefined>;
+  /**
    * Optional honest compute basis: FLOPs per token processed for `model`,
    * ≈ 2 × parameter count (one multiply-add per parameter per token in a
    * transformer forward pass). Returns undefined if undeterminable.
@@ -89,6 +95,10 @@ export interface InferenceBackend {
 export class FakeInferenceBackend implements InferenceBackend {
   readonly name = "fake";
 
+  async executionProfile(model: string): Promise<ExecutionProfile> {
+    return fakeExecutionProfile(model);
+  }
+
   async run(req: InferenceRequest): Promise<InferenceResult> {
     const promptTokens = approxTokens(req.prompt);
     const text         = `[fake:${req.model}] processed ${promptTokens} prompt token(s)`;
@@ -99,9 +109,15 @@ export class FakeInferenceBackend implements InferenceBackend {
 
 /** Subset of Ollama's POST /api/show response we rely on. */
 interface OllamaShowResponse {
-  details?:    { parameter_size?: string };       // human, e.g. "5.1B"
+  details?:    { parameter_size?: string; quantization_level?: string }; // e.g. "5.1B", "Q4_K_M"
   model_info?: Record<string, unknown>;           // has "general.parameter_count"
 }
+
+interface OllamaTagsResponse {
+  models?: Array<{ name?: string; model?: string; digest?: string }>;
+}
+
+interface OllamaVersionResponse { version?: string }
 
 /** Subset of Ollama's POST /api/chat response we rely on. */
 interface OllamaChatResponse {
@@ -128,9 +144,46 @@ export class OllamaInferenceBackend implements InferenceBackend {
   private readonly endpoint: string;
   /** model → FLOPs/token, cached (one /api/show per model). */
   private readonly flopsCache = new Map<string, number>();
+  private readonly profileCache = new Map<string, ExecutionProfile>();
 
   constructor(endpoint?: string) {
     this.endpoint = endpoint ?? process.env.OLLAMA_ENDPOINT ?? "http://127.0.0.1:11434";
+  }
+
+  async executionProfile(model: string): Promise<ExecutionProfile | undefined> {
+    const cached = this.profileCache.get(model);
+    if (cached) return cached;
+
+    const [tagsRes, versionRes, showRes] = await Promise.all([
+      fetch(`${this.endpoint}/api/tags`),
+      fetch(`${this.endpoint}/api/version`),
+      fetch(`${this.endpoint}/api/show`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ model }),
+      }),
+    ]);
+    if (!tagsRes.ok || !versionRes.ok || !showRes.ok) return undefined;
+
+    const tags = (await tagsRes.json()) as OllamaTagsResponse;
+    const version = (await versionRes.json()) as OllamaVersionResponse;
+    const show = (await showRes.json()) as OllamaShowResponse;
+    const installed = tags.models?.find((entry) => entry.name === model || entry.model === model);
+    const digest = installed?.digest?.toLowerCase();
+    const numericBackend = process.env.JGC_NUMERIC_BACKEND?.trim();
+    if (!digest || !/^[0-9a-f]{64}$/.test(digest) || !version.version || !numericBackend) return undefined;
+
+    const profile: ExecutionProfile = {
+      protocol: "jgc-exact-replay-v1",
+      runtime: "ollama",
+      runtimeVersion: version.version,
+      modelDigest: digest,
+      tokenizerDigest: digest,
+      quantization: show.details?.quantization_level ?? "unknown",
+      numericBackend,
+    };
+    this.profileCache.set(model, profile);
+    return profile;
   }
 
   /** Honest FLOPs/token ≈ 2 × parameter count, read from /api/show (cached). */
@@ -212,6 +265,18 @@ export interface VerifiableTask {
   maxTokens:   number;
   temperature: number;
   seed:        number;
+  /** Required before publishing a slashable exact-replay claim. */
+  executionProfile?: ExecutionProfile;
+}
+
+export interface ExecutionProfile {
+  protocol: "jgc-exact-replay-v1";
+  runtime: string;
+  runtimeVersion: string;
+  modelDigest: string;
+  tokenizerDigest: string;
+  quantization: string;
+  numericBackend: string;
 }
 
 /** Result of running one JG-cluster task through local inference. */
@@ -274,6 +339,7 @@ export async function runJunctioning(
   const temperature = opts.temperature ?? 0;
   const seed        = opts.seed ?? DEFAULT_SEED;
   const prompt      = task.prompt ?? task.description;
+  const executionProfile = await backend.executionProfile?.(model);
 
   // Honest compute basis: explicit override → backend's measured value
   // (2 × param count) → documented fallback constant.
@@ -300,7 +366,20 @@ export async function runJunctioning(
     tflopsSeconds,
     backend:       inf.backend,
     model:         inf.model,
-    spec:          { prompt, model, maxTokens, temperature, seed },
+    spec:          { prompt, model, maxTokens, temperature, seed, executionProfile },
+  };
+}
+
+export function fakeExecutionProfile(model: string): ExecutionProfile {
+  const digest = createHash("sha256").update(`jgc-fake-model-v1\0${model}`).digest("hex");
+  return {
+    protocol: "jgc-exact-replay-v1",
+    runtime: "jgc-fake",
+    runtimeVersion: "1",
+    modelDigest: digest,
+    tokenizerDigest: digest,
+    quantization: "integer-fixture",
+    numericBackend: "portable",
   };
 }
 

@@ -21,6 +21,7 @@ import type { Transaction, JGCSatoshis, Hash256 } from "../types/index.js";
 import { serializeTransaction } from "./block.js";
 import { hashTransaction } from "../crypto/merkle.js";
 import { pqVerifySpend, JGC_PQ_NETWORK_ID } from "../crypto/pq-signatures.js";
+import { parseValidatorBondScript } from "./validator-bonds.js";
 
 /** Coinbase outputs (epoch settlement payouts) can't be spent for this many blocks. */
 export const COINBASE_MATURITY = 100;
@@ -160,7 +161,11 @@ export function validateSpend(
     if (requireSignatures) {
       // QUANTUM-READY: spends are authorized by an ML-DSA signature (pqVerifySpend),
       // not secp256k1/ECDSA — see src/crypto/pq-signatures.ts.
-      const sig = pqVerifySpend(input.scriptSig, entry.scriptPubKey, sigHash);
+      // Bond outputs remain controlled by their ordinary owner script. Spending
+      // one is the consensus transition that removes that stake from the roster.
+      const spendScript = parseValidatorBondScript(entry.scriptPubKey)?.ownerScriptPubKey
+        ?? entry.scriptPubKey;
+      const sig = pqVerifySpend(input.scriptSig, spendScript, sigHash);
       if (!sig.ok) return { ok: false, error: `input ${key}: ${sig.error}` };
     }
 

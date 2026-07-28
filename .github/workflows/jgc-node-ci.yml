@@ -1,0 +1,81 @@
+name: JGC node consensus
+
+on:
+  push:
+    paths:
+      - "packages/jgc-node/**"
+      - ".github/workflows/jgc-node-ci.yml"
+  pull_request:
+    paths:
+      - "packages/jgc-node/**"
+      - ".github/workflows/jgc-node-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  node-consensus:
+    name: Node ${{ matrix.node }} / ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        node: [20]
+        include:
+          - os: ubuntu-latest
+            node: 22
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: packages/jgc-node
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+          cache-dependency-path: packages/jgc-node/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test -- --ci
+      - run: npm run build
+      - name: Consensus and genesis vectors
+        run: npm test -- --ci --runTestsByPath src/tests/canonical.test.ts src/tests/network-identity.test.ts
+
+  rust-verifier:
+    name: Rust/WASM verifier
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/jgc-node
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.96.0 --profile minimal --target wasm32-unknown-unknown
+      - run: cargo test --locked --manifest-path rust/Cargo.toml
+      - name: Install pinned wasm-pack
+        run: cargo install wasm-pack --version 0.15.0 --locked
+      - run: wasm-pack build rust --target nodejs --out-dir pkg --release
+
+  docker-compose-smoke:
+    name: Docker Compose testnet smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: packages/jgc-node
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Build and launch the smoke testnet
+        run: docker compose -f compose.testnet.yml -f compose.smoke.yml up -d --build
+      - name: Verify block production and two-node synchronization
+        run: node scripts/compose-smoke.mjs
+      - name: Show container diagnostics
+        if: failure()
+        run: docker compose -f compose.testnet.yml -f compose.smoke.yml logs --no-color
+      - name: Stop the smoke testnet
+        if: always()
+        run: docker compose -f compose.testnet.yml -f compose.smoke.yml down -v

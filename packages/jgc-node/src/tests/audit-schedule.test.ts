@@ -19,11 +19,11 @@ function claim(claimantId: string, n: number, blockHeight: number): AuditableCom
 }
 
 const validators: AuditValidator[] = [
-  { validatorId: "miner-a", bondedStake: 100, active: true },
-  { validatorId: "miner-b", bondedStake: 100, active: true },
-  { validatorId: "validator-c", bondedStake: 100, active: true },
-  { validatorId: "validator-d", bondedStake: 100, active: true },
-  { validatorId: "validator-e", bondedStake: 100, active: true },
+  { validatorId: "miner-a", bondedStake: 100n, active: true },
+  { validatorId: "miner-b", bondedStake: 100n, active: true },
+  { validatorId: "validator-c", bondedStake: 100n, active: true },
+  { validatorId: "validator-d", bondedStake: 100n, active: true },
+  { validatorId: "validator-e", bondedStake: 100n, active: true },
 ];
 
 describe("historical compute audit scheduling", () => {
@@ -66,15 +66,15 @@ describe("historical compute audit scheduling", () => {
   test("selects independent bonded committees and excludes the claimant", () => {
     const roster = [
       ...validators,
-      { validatorId: "inactive", bondedStake: 100, active: false },
-      { validatorId: "unbonded", bondedStake: 0, active: true },
+      { validatorId: "inactive", bondedStake: 100n, active: false },
+      { validatorId: "unbonded", bondedStake: 0n, active: true },
     ];
     const schedule = buildAuditSchedule(
       auditWindow(0),
       { height: 12, hash: BEACON_A },
       [claim("miner-a", 1, 5)],
       roster,
-      { ...DEFAULT_AUDIT_POLICY, minimumBond: 10 },
+      { ...DEFAULT_AUDIT_POLICY, minimumBond: 10n },
     );
     const committee = schedule.assignments[0]!.committee;
 
@@ -120,8 +120,8 @@ describe("historical compute audit scheduling", () => {
       { height: 12, hash: BEACON_A },
       [claim("miner-a", 1, 2)],
       [
-        { validatorId: "miner-a", bondedStake: 100, active: true },
-        { validatorId: "only-one-other", bondedStake: 100, active: true },
+        { validatorId: "miner-a", bondedStake: 100n, active: true },
+        { validatorId: "only-one-other", bondedStake: 100n, active: true },
       ],
     );
 

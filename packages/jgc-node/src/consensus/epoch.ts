@@ -42,6 +42,7 @@ import type {
 import { getBlockReward, BLOCKS_PER_EPOCH } from "./emission.js";
 import { buildMerkleTree, hashComputeProof } from "../crypto/merkle.js";
 import type { Hash256 } from "../types/index.js";
+import { CanonicalWriter, compareCanonicalBytes, consensusUInt } from "../protocol/canonical.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -132,6 +133,11 @@ export function applyBlockToEpoch(
     const addr  = contrib.minerAddress;
     const tflops = contrib.proof.tflopsWeight;
 
+    consensusUInt(tflops, "tflopsWeight");
+    if (!Number.isSafeInteger(epochState.totalEpochTFLOPS + tflops)) {
+      throw new RangeError("totalEpochTFLOPS exceeds the portable integer range");
+    }
+
     epochState.totalEpochTFLOPS += tflops;
 
     const existing = epochState.minerContributions.get(addr) ?? 0;
@@ -202,7 +208,8 @@ export function computeEpochSettlement(
   // Sort miners descending by TFLOPS; the last (lowest-TFLOPS) entry absorbs the
   // floor residual so payouts sum to the pool exactly.
   const sorted = Array.from(epochState.minerContributions.entries())
-    .sort(([, a], [, b]) => b - a);
+    .sort(([addressA, a], [addressB, b]) =>
+      b - a || compareCanonicalBytes(addressA, addressB));
 
   // TFLOPS contributions are integer counts; convert once for exact BigInt math.
   const totalT = BigInt(totalTFLOPS);
@@ -277,21 +284,19 @@ export function computeContributionsMerkleRoot(
 export function computeEpochRoot(epochState: EpochState): Hash256 {
   // Serialize the contribution map into a canonical sorted byte string.
   const entries = Array.from(epochState.minerContributions.entries())
-    .sort(([a], [b]) => a.localeCompare(b));
+    .sort(([a], [b]) => compareCanonicalBytes(a, b));
 
-  const hasher = createHash("sha256");
-  hasher.update(
-    Buffer.from(
-      JSON.stringify({
-        epochStartHeight: epochState.epochStartHeight,
-        epochBlockIndex:  epochState.epochBlockIndex,
-        totalTFLOPS:      epochState.totalEpochTFLOPS,
-        pool:             epochState.pendingRewardPool.toString(),
-        contributions:    entries,
-      })
-    )
-  );
-  const first = hasher.digest();
+  const writer = new CanonicalWriter()
+    .domain("JGC/EPOCH-STATE/V1")
+    .u64(epochState.epochStartHeight, "epochStartHeight")
+    .u32(epochState.epochBlockIndex, "epochBlockIndex")
+    .u64(epochState.totalEpochTFLOPS, "totalEpochTFLOPS")
+    .u128(epochState.pendingRewardPool, "pendingRewardPool")
+    .u32(entries.length, "contribution count");
+  for (const [address, tflops] of entries) {
+    writer.string(address).u64(tflops, "miner contribution");
+  }
+  const first = createHash("sha256").update(writer.build()).digest();
   return createHash("sha256").update(first).digest("hex");
 }
 
@@ -306,17 +311,16 @@ function hashEpochSettlement(
   pool:         JGCSatoshis,
   payouts:      EpochPayoutEntry[],
 ): Hash256 {
-  const data = Buffer.from(
-    JSON.stringify({
-      epochIndex,
-      epochStart,
-      pool: pool.toString(),
-      payouts: payouts.map(p => ({
-        addr: p.minerAddress,
-        sats: p.satoshis.toString(),
-      })),
-    })
-  );
+  const writer = new CanonicalWriter()
+    .domain("JGC/EPOCH-SETTLEMENT/V1")
+    .u64(epochIndex, "epochIndex")
+    .u64(epochStart, "epochStart")
+    .u128(pool, "reward pool")
+    .u32(payouts.length, "payout count");
+  for (const payout of payouts) {
+    writer.string(payout.minerAddress).u128(payout.satoshis, "payout");
+  }
+  const data = writer.build();
   const first = createHash("sha256").update(data).digest();
   return createHash("sha256").update(first).digest("hex");
 }
@@ -338,7 +342,7 @@ export function serializeEpochState(state: EpochState): Record<string, unknown> 
 
 /** Deserialize EpochState from JSON (reverses serializeEpochState). */
 export function deserializeEpochState(raw: Record<string, unknown>): EpochState {
-  return {
+  const state = {
     epochStartHeight:   raw["epochStartHeight"] as number,
     epochBlockIndex:    raw["epochBlockIndex"]  as number,
     totalEpochTFLOPS:   raw["totalEpochTFLOPS"] as number,
@@ -348,4 +352,9 @@ export function deserializeEpochState(raw: Record<string, unknown>): EpochState 
       Object.entries(raw["minerContributions"] as Record<string, number>)
     ),
   };
+  consensusUInt(state.totalEpochTFLOPS, "totalEpochTFLOPS");
+  for (const [address, tflops] of state.minerContributions) {
+    consensusUInt(tflops, `miner contribution for ${address}`);
+  }
+  return state;
 }

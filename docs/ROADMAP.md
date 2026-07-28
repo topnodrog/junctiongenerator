@@ -1,12 +1,12 @@
 # Junction Generator — Completion Roadmap
 
-**Updated:** 2026-07-24 · **Owner:** James Gordon
+**Updated:** 2026-07-28 · **Owner:** James Gordon
 
 Three components, one repo. Keep them distinct:
 
 | Component | What it is | Status |
 |---|---|---|
-| **JGC coin** (`packages/jgc-node`) | Sovereign PoUC Layer-1 — the actual product | Local/private testnet validated; consensus v2; 244 tests green |
+| **JGC coin** (`packages/jgc-node`) | Sovereign PoUC Layer-1 — the actual product | Consensus V3 local/private testnet validated; 30 suites / 280 tests green |
 | **JGT token** (`contracts/`) | ERC-20 on Base (legacy) | Deployed; held, not promoted (no-sale stance) |
 | **junctiongenerator.net** (`src/` + `api/`) | Public site + Cloudflare Worker backend | Worker live and verified; community-first site refresh pushed to `junctioning` |
 
@@ -68,15 +68,37 @@ Gate: do not open the P2P port to the internet before the first three items.
 - [x] **Binary wire envelope + message checksums** — versioned frames now bind
   network magic, payload length, and SHA3-256 checksum while preserving
   BigInt-safe payload encoding.
-- **Peer misbehavior scoring**: per-peer message rate limits, ban scores,
-  connection caps (frame size is already bounded at 8 MiB).
-- [x] **Safe local testnet preset**: `npm run testnet` starts strict
-  post-quantum verification, persistent state, loopback P2P, and read-only
-  status with no default seed peers.
-- **Public node packaging**: one-command install (npm bin or single binary),
-  public seed nodes, and a consensus-pinned model registry
-  (model ID → params/digest) so FLOP attestation cannot be gamed.
-- **Faucet + explorer-lite**: even a static page over the status server
+- [x] **Peer misbehavior scoring**: per-peer message rate limits, host-stable
+  ban scores, temporary bans, total connection caps, and per-host inbound caps
+  now complement the existing 8 MiB frame bound. Real-network adversarial soak
+  testing remains outstanding.
+- [x] **Safe local testnet preset**: `npm run testnet` starts persistent state,
+  loopback P2P, read-only status, and no default seed peers. Its receipt proof
+  verifier is explicitly a **simnet-only** boundary; strict nodes fail closed
+  instead of accepting those receipts.
+- [x] **Consensus V3 portability foundation**: canonical byte ordering,
+  integer work weights, versioned commitments, execution profiles, fail-safe
+  replay, and heterogeneous back-checker roles are implemented and tested.
+- [x] **Bounded strict-proof demonstration**: the real Rust/WASM Groth16 path
+  completed a three-block, six-proof Conv1D run with ML-DSA identities. This is
+  evidence that the strict path works, not yet a production-scale proving claim.
+- [x] **Freeze the public-testnet identity**: canonical self-consistent genesis,
+  chain ID, network magic, consensus version, and declared proof mode. Peers must
+  reject every compatibility mismatch before exchanging chain data.
+- [x] **Persistent block producer**: a designated producer assembles and
+  broadcasts blocks continuously, survives restart, and exposes health state.
+- [x] **Network-aware wallet + faucet**: mainnet-magic assumptions are removed,
+  test accounts can be funded from the testnet-only genesis allocation before
+  the first epoch payout matures, with safe testnet send/receive commands.
+- [x] **Public node packaging and CI foundation**: a two-node container preset,
+  pinned Node/Rust/WASM toolchains, Windows/Linux/macOS builds, Node 20/22, and
+  deterministic consensus-vector checks. Native ARM execution remains an
+  expansion of the matrix, not a completed claim.
+- [ ] **Seed and transport deployment**: public seed nodes, TLS/WSS ingress,
+  firewall guidance, monitoring, backups, and documented upgrade/reset steps.
+- [ ] **Storage hardening**: versioned data format, atomic/fsynced writes,
+  migration rules, corrupt-tail recovery, and explicit V2-to-V3 refusal.
+- [ ] **Faucet + explorer-lite**: even a static page over the status server
   format is enough for runners to see their coins.
 - [x] **Initial node-runner guide**: `packages/jgc-node/README.md` documents
   the safe preset, loopback defaults, seeds, and verification commands.
@@ -88,26 +110,33 @@ Gate: do not open the P2P port to the internet before the first three items.
   Slashing is deliberately out of scope until bonded validator state is
   consensus-owned.
 
+- [x] **Consensus-owned validator-bond foundation**: tagged, spendable bond
+  outputs derive the roster and stake snapshot from active-chain UTXOs; when a
+  snapshot is non-empty, verdict validation reconstructs committee sortition
+  from the beacon-height chain rather than trusting supplied identities.
+  Mandatory activation and reward/slash state transitions remain separate work.
+
 ## Phase 3 — Verification depth (L5) — ongoing research track
 
 Current stack: deterministic replay + delayed-beacon sampling +
 multi-validator signed quorum, with full verdict evidence committed through
-the consensus-v2 `auditRoot`. The older `StakeLedger`/slashing coordinator is
+the Consensus V3 `auditRoot`. The older `StakeLedger`/slashing coordinator is
 an economic prototype, not an active consensus funds transition. Known open
 problems, in priority order:
 
-1. **Cross-hardware determinism** — replay verification assumes bit-identical
-   inference across verifier hardware. Different GPUs/drivers/quantizations
-   break this. Options to evaluate: pinned quantized CPU reference path for
-   challenged blocks, tolerance bands over logits, or vendor-pinned verifier
-   pools. This is the single biggest threat to the verification model —
-   resolve before mainnet talk.
+1. **Cross-hardware verification** — Consensus V3 now separates producer,
+   full verifier, deterministic reference replay, and receipt-only observer
+   roles. Incompatible/slow machines can provide useful back-checking, but a
+   result only becomes consensus evidence through a pinned execution profile
+   and fail-closed proof verifier. Continue expanding cross-architecture test
+   vectors and reference-runtime coverage before mainnet talk.
 2. **Verifier economics** — challenge frequency vs. reward budget; make
    griefing (mass frivolous challenges) strictly unprofitable.
 3. **Post-quantum proof scaling / ZKML watch** — extend the current
    hash-based transparent proof path toward production-scale inference
-   proving as practical primitives mature. Keep the Groth16/WASM code as
-   legacy research only; do not reintroduce it into live consensus.
+   proving as practical primitives mature. The Groth16/WASM implementation is
+   retained as a bounded strict-proof research path; simnet receipts must never
+   be accepted by a strict public network.
 4. Keep the L5 design notes private until solved (standing decision);
    publish the parts that recruit collaborators without handing over the
    attack map.
@@ -135,13 +164,13 @@ public testnet, which is Phase 2's deliverable.
 - Junctioning Layer-1 working locally: Ollama-backed inference mining, honest
   FLOP measurement, deterministic replay, delayed-beacon audit scheduling,
   signed quorum evidence, UTXO + reorg + persistence, encrypted wallet, and
-  consensus-v2 audit commitments.
+  Consensus V3 audit commitments.
 - Post-quantum node path: ML-DSA identities/signatures, SHA3-256 wire
   checksums, PQ wallet integration, strict proof verification, and documented
   quantum-readiness boundaries.
 - Audit evidence survives mining, peer sync, restart, and reorg; forged votes
-  and replayed verdicts are rejected. Full suite: 24 suites / 244 tests, plus
-  a passing 31-block two-node sync demo.
+  and replayed verdicts are rejected. Full suite: 30 suites / 280 tests, plus
+  a passing 31-block two-node sync demo and a real six-proof strict WASM demo.
 - JGT rescued to a clean wallet after the 2026-06 key compromise; no rogue
   minters on-chain; no-sale stance adopted.
 - Worker API hardened (2026-07-07): server-authoritative rewards, auth-gated

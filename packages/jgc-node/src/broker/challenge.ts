@@ -154,7 +154,7 @@ export interface ChallengeParams {
   challengerRewardBps?: number;
 }
 
-export type ChallengeOutcome = "not-challenged" | "passed" | "slashed";
+export type ChallengeOutcome = "not-challenged" | "passed" | "slashed" | "inconclusive";
 
 export interface ChallengeResolution {
   challenged:       boolean;
@@ -203,7 +203,13 @@ export class ChallengeCoordinator {
       return { challenged: false, outcome: "not-challenged", slashed: 0, challengerReward: 0 };
     }
 
-    const { verified, reason } = await verifyReplay(claim, this.backend);
+    const { verified, compatible, reason } = await verifyReplay(claim, this.backend);
+    if (!compatible) {
+      return {
+        challenged: true, verified: false, outcome: "inconclusive",
+        slashed: 0, challengerReward: 0, reason,
+      };
+    }
     if (verified) {
       return { challenged: true, verified: true, outcome: "passed", slashed: 0, challengerReward: 0 };
     }

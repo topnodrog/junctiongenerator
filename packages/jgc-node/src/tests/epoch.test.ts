@@ -237,4 +237,32 @@ describe("computeEpochRoot", () => {
     const root = computeEpochRoot(state);
     expect(root).toMatch(/^[0-9a-f]{64}$/);
   });
+
+  test("matches the protocol-v1 golden vector across runtimes", () => {
+    const state = initEpochState(0, 1_749_600_000);
+    applyBlockToEpoch(state, [makeContrib("z-miner", 200), makeContrib("a-miner", 100)], 0, 123n);
+    expect(computeEpochRoot(state)).toBe(
+      "d66587cfc6c4666cd173348b0b638a18fcb5b741647715bb1d3cb3a9093de79b",
+    );
+  });
+
+  test("does not depend on contribution-map insertion order", () => {
+    const a = initEpochState(0, 0);
+    const b = initEpochState(0, 0);
+    a.epochBlockIndex = b.epochBlockIndex = 1;
+    a.totalEpochTFLOPS = b.totalEpochTFLOPS = 300;
+    a.pendingRewardPool = b.pendingRewardPool = 123n;
+    a.minerContributions.set("z-miner", 200);
+    a.minerContributions.set("a-miner", 100);
+    b.minerContributions.set("a-miner", 100);
+    b.minerContributions.set("z-miner", 200);
+    expect(computeEpochRoot(a)).toBe(computeEpochRoot(b));
+  });
+
+  test("rejects work values outside the portable safe-integer range", () => {
+    const state = initEpochState(0, 0);
+    expect(() => applyBlockToEpoch(
+      state, [makeContrib("miner", Number.MAX_SAFE_INTEGER + 1)], 0, 0n,
+    )).toThrow(/safe integer/i);
+  });
 });

@@ -111,12 +111,13 @@ export async function collectVotes(
   claim:       JunctioningClaim,
   challengers: Challenger[],
 ): Promise<ChallengerVote[]> {
-  return Promise.all(
+  const votes = await Promise.all(
     challengers.map(async (c) => {
-      const { actualCommitment } = await verifyReplay(claim, c.backend);
-      return { id: c.id, commitment: actualCommitment };
+      const { actualCommitment, compatible } = await verifyReplay(claim, c.backend);
+      return compatible ? { id: c.id, commitment: actualCommitment } : undefined;
     }),
   );
+  return votes.filter((vote): vote is ChallengerVote => vote !== undefined);
 }
 
 /**

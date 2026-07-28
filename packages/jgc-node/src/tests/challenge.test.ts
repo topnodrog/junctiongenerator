@@ -16,10 +16,12 @@ import {
   ChallengeCoordinator,
 } from "../broker/challenge.js";
 import { makeClaim } from "../broker/verification.js";
-import { FakeInferenceBackend, type VerifiableTask } from "../broker/junctioning.js";
+import { FakeInferenceBackend, fakeExecutionProfile, type InferenceBackend, type VerifiableTask } from "../broker/junctioning.js";
 
 function task(overrides: Partial<VerifiableTask> = {}): VerifiableTask {
-  return { prompt: "what is PoUC?", model: "gemma2:2b", maxTokens: 1024, temperature: 0, seed: 0, ...overrides };
+  const model = overrides.model ?? "gemma2:2b";
+  return { prompt: "what is PoUC?", model, maxTokens: 1024, temperature: 0, seed: 0,
+    executionProfile: fakeExecutionProfile(model), ...overrides };
 }
 
 describe("deterrence math", () => {
@@ -156,5 +158,26 @@ describe("ChallengeCoordinator", () => {
     const coord = new ChallengeCoordinator({ ...params, challengeProbability: 0.1 }, ledger, backend);
     expect(coord.deters(50, "n")).toBe(true);   // 0.1*1000=100 > 50
     expect(coord.deters(150, "n")).toBe(false); // 100 < 150
+  });
+
+  it("does not slash when the challenger runtime is incompatible", async () => {
+    const t = task();
+    const produced = await new FakeInferenceBackend().run(t);
+    const claim = makeClaim(t, produced.text);
+    const incompatible: InferenceBackend = {
+      name: "other-kernel",
+      async executionProfile(model) {
+        return { ...fakeExecutionProfile(model), numericBackend: "other-kernel" };
+      },
+      async run() { throw new Error("must not replay"); },
+    };
+    const ledger = new StakeLedger();
+    ledger.bond("n", 1000);
+    const coord = new ChallengeCoordinator(params, ledger, incompatible);
+
+    const res = await coord.resolve(claim, "n", "beacon");
+    expect(res.outcome).toBe("inconclusive");
+    expect(res.slashed).toBe(0);
+    expect(ledger.stakeOf("n")).toBe(1000);
   });
 });

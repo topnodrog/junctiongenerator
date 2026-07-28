@@ -122,6 +122,7 @@ async function main(): Promise<void> {
       startedAt,
       uptimeSec: Math.floor((Date.now() - startedAt) / 1000),
       height,
+      peerCount: node?.peerCount() ?? null,
       chain,
       address: target.address,
       label: target.label,

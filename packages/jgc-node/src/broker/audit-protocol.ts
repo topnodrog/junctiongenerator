@@ -18,6 +18,7 @@ import {
   pqSignHash,
   pqVerifyHashSignature,
 } from "../crypto/pq-signatures.js";
+import { compareCanonicalBytes } from "../protocol/canonical.js";
 
 export interface AuditRequest {
   auditId: string;
@@ -112,7 +113,7 @@ function deriveVerdictSummary(
 
   const top = [...counts.entries()].sort(
     ([aCommitment, aCount], [bCommitment, bCount]) =>
-      bCount - aCount || aCommitment.localeCompare(bCommitment),
+      bCount - aCount || compareCanonicalBytes(aCommitment, bCommitment),
   )[0];
   const topCommitment = top?.[0];
   const topCount = top?.[1] ?? 0;
@@ -205,7 +206,7 @@ export function verifyAuditVote(vote: AuditVote): boolean {
 export function auditVerdictCommitment(record: AuditVerdictRecord): string {
   const assignment = record.request.assignment;
   const evidence = [...record.evidence].sort((a, b) =>
-    a.validatorId.localeCompare(b.validatorId)
+    compareCanonicalBytes(a.validatorId, b.validatorId)
   );
   const fields: Array<string | number> = [
     record.auditId,
@@ -281,7 +282,7 @@ export function validateAuditVerdictRecord(
     if (vote.auditId !== record.auditId) return "vote belongs to a different audit";
     if (!assignment.committee.includes(vote.validatorId)) return "vote is from an unassigned validator";
     if (validators.has(vote.validatorId)) return "validator voted more than once";
-    if (previousValidator && previousValidator.localeCompare(vote.validatorId) >= 0) {
+    if (previousValidator && compareCanonicalBytes(previousValidator, vote.validatorId) >= 0) {
       return "audit evidence is not in canonical validator order";
     }
     if (vote.submittedAtHeight < assignment.beaconHeight ||
@@ -389,7 +390,7 @@ export class AuditLifecycle {
     if (currentHeight <= audit.request.responseDeadlineHeight && audit.votes.size < committeeSize) return null;
 
     const evidence = [...audit.votes.values()]
-      .sort((a, b) => a.validatorId.localeCompare(b.validatorId));
+      .sort((a, b) => compareCanonicalBytes(a.validatorId, b.validatorId));
     const summary = deriveVerdictSummary(audit.request, evidence);
 
     const record: AuditVerdictRecord = {
@@ -461,11 +462,11 @@ export class AuditLifecycle {
 
   snapshotState(): AuditLifecycleState {
     return {
-      requests: [...this.requests.values()].sort((a, b) => a.auditId.localeCompare(b.auditId)),
+      requests: [...this.requests.values()].sort((a, b) => compareCanonicalBytes(a.auditId, b.auditId)),
       openVotes: [...this.open.values()]
         .flatMap((audit) => [...audit.votes.values()])
-        .sort((a, b) => a.auditId.localeCompare(b.auditId) || a.validatorId.localeCompare(b.validatorId)),
-      verdicts: [...this.verdicts.values()].sort((a, b) => a.auditId.localeCompare(b.auditId)),
+        .sort((a, b) => compareCanonicalBytes(a.auditId, b.auditId) || compareCanonicalBytes(a.validatorId, b.validatorId)),
+      verdicts: [...this.verdicts.values()].sort((a, b) => compareCanonicalBytes(a.auditId, b.auditId)),
     };
   }
 

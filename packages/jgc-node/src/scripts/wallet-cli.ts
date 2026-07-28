@@ -18,6 +18,7 @@
  * Options:  --keystore <path> (or $JGC_KEYSTORE, default ./wallet.keystore.json)
  *           --pass <phrase>   (or $JGC_WALLET_PASS)   required for keystore access
  *           --datadir <dir>   block store for chain commands
+ *           --network <name>  testnet (default) or mainnet
  *
  * Run:  npm run wallet -- <command> [...]      (after npm run build)
  */
@@ -25,7 +26,12 @@
 import { existsSync, readFileSync, writeFileSync } from "fs";
 import type { NodeConfig } from "../types/index.js";
 import { JGCNode } from "../network/node.js";
-import { makeGenesisBlock } from "../sim/harness.js";
+import {
+  createNetworkGenesis,
+  networkByName,
+  TESTNET_FAUCET_ADDRESS,
+  testnetFaucetKeyPair,
+} from "../config/networks.js";
 import { serializeTransaction } from "../consensus/block.js";
 import { connectToPeers } from "../network/transport.js";
 import { Wallet, formatJGC, parseJGC, type KeystoreFile } from "../wallet/wallet.js";
@@ -45,11 +51,13 @@ CHAIN (need --datadir <block-store>)
   balance <label>             spendable balance
   utxos   <label>             list spendable outputs
   send    <label> <toAddr> <amount> [--fee <amt>] [--broadcast ws://host:port]
+  faucet  <toAddr> <amount>   testnet-only funding [--broadcast ws://host:port]
 
 OPTIONS
   --keystore <path>   keystore file (or $JGC_KEYSTORE, default ./wallet.keystore.json)
   --pass <phrase>     passphrase   (or $JGC_WALLET_PASS)
   --datadir <dir>     block store directory (chain commands)
+  --network <name>    testnet (default) or mainnet
 
 Run via:  npm run wallet -- <command> [...]`;
 
@@ -92,11 +100,16 @@ function saveWallet(wallet: Wallet, path: string, pass: string): void {
 function bootNode(f: Args): JGCNode {
   const datadir = f.flags.datadir;
   if (!datadir) throw new Error("--datadir <dir> required for chain commands");
+  const network = networkByName(f.flags.network ?? "testnet");
   const cfg: NodeConfig = {
-    listenPort: 0, rpcPort: 0, networkMagic: 0xD9B4BEF9, maxPeers: 8,
+    listenPort: 0, rpcPort: 0, networkMagic: network.networkMagic, maxPeers: 8,
     enableBroker: false, junctionGeneratorMode: false, dataDir: datadir,
+    chainId: network.chainId,
+    consensusVersion: network.consensusVersion,
+    proofMode: network.proofMode,
+    requireNetworkIdentity: true,
   };
-  return new JGCNode(cfg, makeGenesisBlock()); // constructor replays the store
+  return new JGCNode(cfg, createNetworkGenesis(network)); // constructor replays the store
 }
 
 const sleep = (ms: number): Promise<void> => new Promise(r => setTimeout(r, ms));
@@ -184,6 +197,45 @@ async function run(f: Args): Promise<number> {
         await sleep(300);
         links.close();
         if (!res.ok) { console.error(`broadcast rejected: ${res.error}`); return 1; }
+        console.log(`  broadcast to ${f.flags.broadcast} ✓`);
+      } else {
+        console.log(`  raw: ${serializeTransaction(tx).toString("hex")}`);
+        console.log("  (not broadcast — pass --broadcast ws://host:port to relay)");
+      }
+      return 0;
+    }
+    case "faucet": {
+      const [toAddress, amountStr] = f.pos;
+      if (!toAddress || !amountStr) {
+        throw new Error("usage: faucet <toAddr> <amount> --datadir <dir> [--broadcast ws://host:port]");
+      }
+      if ((f.flags.network ?? "testnet") !== "testnet") {
+        throw new Error("the built-in faucet exists only on testnet");
+      }
+      const node = bootNode(f);
+      const wallet = Wallet.create();
+      const faucetKey = testnetFaucetKeyPair();
+      wallet.importKey("testnet-faucet", faucetKey.privateKey, faucetKey.publicKey);
+      const { tx, txid, fee } = wallet.buildSpend({
+        fromLabel: "testnet-faucet",
+        toAddress,
+        amount: parseJGC(amountStr),
+        fee: parseJGC(f.flags.fee ?? DEFAULT_FEE),
+        utxo: node.getUTXOSet(),
+        currentHeight: node.getChainInfo().tipHeight + 1,
+      });
+      console.log(`built testnet faucet spend ${txid}`);
+      console.log(`  faucet: ${TESTNET_FAUCET_ADDRESS}`);
+      console.log(`  to:     ${toAddress}  ${amountStr} JGC`);
+      console.log(`  fee:    ${formatJGC(fee)} JGC`);
+
+      if (f.flags.broadcast) {
+        const links = connectToPeers(node, [f.flags.broadcast], { retryMs: 500 });
+        await sleep(700);
+        const result = await node.broadcastTransaction(tx);
+        await sleep(300);
+        links.close();
+        if (!result.ok) { console.error(`broadcast rejected: ${result.error}`); return 1; }
         console.log(`  broadcast to ${f.flags.broadcast} ✓`);
       } else {
         console.log(`  raw: ${serializeTransaction(tx).toString("hex")}`);

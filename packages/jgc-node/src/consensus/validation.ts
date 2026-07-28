@@ -21,7 +21,7 @@
  *      - prevHash chain linkage
  *
  * 2. Proof-of-Useful-Compute verification (most expensive step):
- *      - Post-quantum hash-based proof check for each ComputeProof (via pq.ts)
+ *      - Portable cryptographic proof check for each ComputeProof
  *      - Merkle root reconstruction from verified proofs
  *      - Total TFLOPS ≥ difficulty target
  *
@@ -41,7 +41,7 @@
  *
  * SECURITY NOTE:
  *   Steps 1 and 3 are cheap and run first to reject obviously invalid blocks
- *   before paying the post-quantum proof verification cost (Step 2).
+ *   before paying the portable proof verification cost (Step 2).
  *   This matches Bitcoin's design where CheckBlock's header check rejects
  *   malformed blocks before the expensive script validation in CheckTxInputs.
  */
@@ -59,15 +59,16 @@ import {
 import { computeContributionsMerkleRoot, computeEpochRoot, computeEpochSettlement, applyBlockToEpoch } from "./epoch.js";
 import { decodeDifficultyBits, BLOCKS_PER_EPOCH, HARD_CAP_SATOSHIS } from "./emission.js";
 import {
-  getQuantumVerifierMode,
   quantumVerifyContributionSignature,
-  quantumVerifyProofForConsensus,
   quantumScriptPubKeyFromAddress,
 } from "../crypto/pq.js";
+import { verifyPortableComputeProof } from "../crypto/compute-proof.js";
 import { UTXOSet, validateSpend } from "./utxo.js";
 import { verifyMerkleProof, getMerkleProof, buildMerkleTree, hashComputeProof } from "../crypto/merkle.js";
 import { validateAuditVerdictRecord } from "../broker/audit-protocol.js";
-import { auditWindow, computeAuditClaimId } from "../broker/audit-schedule.js";
+import { auditWindow, buildAuditSchedule, computeAuditClaimId } from "../broker/audit-schedule.js";
+import { auditValidatorsFromSnapshot, validatorStakeSnapshot } from "./validator-bonds.js";
+import { compareCanonicalBytes } from "../protocol/canonical.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Validation Result Types
@@ -113,7 +114,7 @@ export interface ValidationResult {
   valid: boolean;
   errors: ValidationError[];
   warnings: string[];
-  /** Milliseconds spent on post-quantum proof verification (profiling). */
+  /** Milliseconds spent on portable proof verification (profiling). */
   zkVerifyMs?: number;
 }
 
@@ -158,7 +159,7 @@ export function validateBlockHeader(
   nowUnix:          number,
   medianPastTime:   number,
 ): ValidationResult {
-  // Version check — v2 commits signed historical-audit evidence.
+  // Version check — v3 commits portable consensus encodings and signed audit evidence.
   // BITCOIN: nVersion must not be negative; BIP 34/65/66/CSV version bits enforced.
   if (header.version !== GENESIS_BLOCK_VERSION) {
     return fail(ValidationError.INVALID_VERSION, `Got 0x${header.version.toString(16)}`);
@@ -255,7 +256,7 @@ export function validateBlockHeader(
 export async function validateComputeProofs(
   contributions:  MinerComputeContribution[],
   header:         BlockHeader,
-  _epochBlockIndex: number,  // unused: PQ verification is height-gated, not epoch-indexed
+  epochBlockIndex: number,
   currentHeight:   BlockHeight,
 ): Promise<ValidationResult> {
   const difficultyTarget = decodeDifficultyBits(header.difficultyBits);
@@ -289,31 +290,34 @@ export async function validateComputeProofs(
     seenTasks.add(c.proof.taskCommitment);
   }
 
-  // ── Signature verification (strict mode) ─────────────────────────────────
+  // ── Signature verification (always enforced) ─────────────────────────────
   // Each contribution must be signed by the key controlling its payout address,
   // over a sighash binding the proven work and this height. Cheap — runs before
-  // the expensive pairing checks. Skipped in "simnet" mode (placeholder sigs).
-  if (getQuantumVerifierMode() === "strict") {
-    for (let i = 0; i < contributions.length; i++) {
-      const sigOk = quantumVerifyContributionSignature(contributions[i]!, currentHeight);
-      if (!sigOk) {
-        return {
-          valid: false,
-          errors: [ValidationError.INVALID_SIGNATURE],
-          warnings: [`Contribution ${i} (miner ${contributions[i]!.minerAddress}): ML-DSA signature invalid`],
-        };
-      }
+  // the expensive proof checks. Simnet relaxes only proof soundness; it does
+  // not disable miner identity or payout authorization.
+  for (let i = 0; i < contributions.length; i++) {
+    const sigOk = quantumVerifyContributionSignature(contributions[i]!, currentHeight);
+    if (!sigOk) {
+      return {
+        valid: false,
+        errors: [ValidationError.INVALID_SIGNATURE],
+        warnings: [`Contribution ${i} (miner ${contributions[i]!.minerAddress}): ML-DSA signature invalid`],
+      };
     }
   }
 
-  // ── Post-quantum proof verification (replaces Groth16 pairing checks) ────
+  // ── Portable compute-proof verification ─────────────────────────────────
   const zkStart = Date.now();
 
   // Per-proof minimum: 10% of block target (prevents thousands of tiny proofs).
   const perProofMin = difficultyTarget * 0.1;
 
-  const verificationResults = contributions.map(c =>
-    quantumVerifyProofForConsensus(c.proof, currentHeight, perProofMin)
+  const verificationResults = contributions.map((contribution) =>
+    verifyPortableComputeProof(contribution.proof, {
+      blockHeight: currentHeight,
+      epochBlockIndex,
+      minimumWork: perProofMin,
+    })
   );
 
   const zkMs = Date.now() - zkStart;
@@ -581,7 +585,7 @@ export function validateAuditVerdicts(
   let previousAuditId = "";
   for (const record of block.auditVerdicts) {
     if (seen.has(record.auditId) ||
-        (previousAuditId && previousAuditId.localeCompare(record.auditId) >= 0)) {
+        (previousAuditId && compareCanonicalBytes(previousAuditId, record.auditId) >= 0)) {
       return fail(
         ValidationError.INVALID_AUDIT_VERDICT,
         "Audit verdicts must be unique and in canonical audit-id order",
@@ -650,6 +654,55 @@ export function validateAuditVerdicts(
         ValidationError.INVALID_AUDIT_VERDICT,
         `Audit ${record.auditId} claim is not on the active chain`,
       );
+    }
+
+    // The verdict cannot nominate its own authorities. Reconstruct the UTXO
+    // state at the beacon and reproduce deterministic sortition from its bonds.
+    const beaconUtxos = new UTXOSet();
+    for (let height = 0; height <= assignment.beaconHeight; height++) {
+      const historical = context.getActiveBlock(height);
+      if (!historical) {
+        return fail(ValidationError.INVALID_AUDIT_VERDICT, `Audit ${record.auditId} stake snapshot is unavailable`);
+      }
+      historical.transactions.forEach((tx, index) => beaconUtxos.applyTransaction(tx, height, index === 0));
+    }
+    const roster = auditValidatorsFromSnapshot(
+      validatorStakeSnapshot(beaconUtxos, assignment.beaconHeight),
+    );
+    const windowClaims: Array<{
+      claimId: string; claimantId: string; commitment: string; blockHeight: number;
+    }> = [];
+    for (let height = window.startHeight; height <= window.endHeight; height++) {
+      const historical = context.getActiveBlock(height);
+      if (!historical) continue;
+      const historicalHash = hashBlockHeader(historical.header);
+      historical.computeProofs.forEach((contribution, index) => windowClaims.push({
+        claimId: computeAuditClaimId(historicalHash, index),
+        claimantId: contribution.minerAddress,
+        commitment: contribution.proof.taskCommitment,
+        blockHeight: height,
+      }));
+    }
+    // Transitional local-testnet rule: legacy chains with no bond outputs keep
+    // accepting their existing audit fixtures. The first bonded snapshot turns
+    // on roster enforcement; a future network-version activation can make
+    // non-empty bonding mandatory without silently rewriting the V3 transition.
+    if (roster.length > 0) {
+      const expected = buildAuditSchedule(
+        window,
+        { height: assignment.beaconHeight, hash: assignment.beaconHash },
+        windowClaims,
+        roster,
+      ).assignments.find((item) => item.claimId === assignment.claimId);
+      if (!expected ||
+          expected.reason !== assignment.reason ||
+          expected.committee.length !== assignment.committee.length ||
+          expected.committee.some((validator, index) => validator !== assignment.committee[index])) {
+        return fail(
+          ValidationError.INVALID_AUDIT_VERDICT,
+          `Audit ${record.auditId} committee does not match the bonded stake snapshot`,
+        );
+      }
     }
 
     seen.add(record.auditId);

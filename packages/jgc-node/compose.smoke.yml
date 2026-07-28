@@ -1,0 +1,31 @@
+services:
+  producer:
+    command:
+      - --host
+      - 0.0.0.0
+      - --status-host
+      - 0.0.0.0
+      - --datadir
+      - /data
+      - --advertise
+      - ws://producer:19444
+      - --produce
+      - --block-interval
+      - "1"
+
+  contributor:
+    build: .
+    entrypoint:
+      - node
+      - dist/scripts/testnet-smoke-contributor.js
+    command: []
+    environment:
+      JGC_ENABLE_SMOKE_CONTRIBUTOR: "1"
+      JGC_SMOKE_SEED: ws://producer:19444
+      JGC_SMOKE_STATUS: http://producer:7777/status
+      JGC_SMOKE_TARGET_HEIGHT: "1"
+      JGC_SMOKE_TIMEOUT_SEC: "90"
+    depends_on:
+      producer:
+        condition: service_healthy
+    restart: "no"

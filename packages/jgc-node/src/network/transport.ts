@@ -88,6 +88,7 @@ function attachSocket(
         const msg = decodePeerMessage(frame, node.config.networkMagic);
         if (msg === null) {
           console.warn(`[Transport] ${peerId}: dropping malformed message`);
+          node.reportPeerViolation(peerId, "malformed-frame");
           return;
         }
         await node.processMessage(peerId, msg);

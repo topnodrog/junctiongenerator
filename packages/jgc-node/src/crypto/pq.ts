@@ -11,7 +11,7 @@
  * WHAT'S QUANTUM-SAFE HERE
  * ────────────────────────
  *   signatures   → ML-DSA-65 (FIPS 204)        via pq-signatures.ts
- *   compute proofs→ hash-based transparent IOP  via pq-zkp.ts  (replaces Groth16)
+ *   compute receipts → simulation-only hash/Merkle transport via pq-zkp.ts
  *   privacy      → one-time stealth addresses   via pq-stealth.ts
  *   hashing      → SHA3-256 everywhere          (Grover-resistant)
  *
@@ -67,7 +67,7 @@ export function quantumVerifyContributionSignature(c: MinerComputeContribution, 
 export const quantumSignContribution = pqSignContribution;
 
 // ── Compute proofs (PoUC) ────────────────────────────────────────────────────
-/** PQ replacement for verifyComputeProof on a consensus ComputeProof. */
+/** Verify a simulation receipt; strict mode rejects it as non-sound. */
 export function quantumVerifyComputeProof(cp: ComputeProof, blockHeight: number): boolean {
   return pqVerifyComputeProofFromConsensus(cp, blockHeight);
 }
@@ -77,7 +77,7 @@ export function quantumBatchVerifyComputeProofs(proofs: ComputeProof[], blockHei
   return proofs.every((p) => quantumVerifyComputeProof(p, blockHeight));
 }
 
-/** True iff a consensus ComputeProof carries a post-quantum proof. */
+/** True iff a consensus ComputeProof carries the simulation receipt format. */
 export function isQuantumProof(cp: ComputeProof): boolean {
   return pqFromComputeProof(cp) !== null;
 }

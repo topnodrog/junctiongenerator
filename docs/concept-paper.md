@@ -2,13 +2,15 @@
 
 **A Protocol for Redirecting Mining Compute to Real AI Workloads**
 
-*Version 0.2 — Implementation-aligned draft, 2026-07-23*
+*Version 0.3 — Implementation-aligned draft, 2026-07-28*
 
 > **Implementation status:** JGC currently runs as local/private testnet
-> software. Consensus v2 commits delayed-beacon, ML-DSA-signed historical-audit
-> evidence through `auditRoot`; 24 suites / 244 tests and a 31-block two-node
-> sync demo pass. The public validator network, consensus-owned bonds,
-> rewards/slashing, marketplace, and mainnet are proposed—not deployed.
+> software. Consensus V3 commits delayed-beacon, ML-DSA-signed historical-audit
+> evidence through `auditRoot`, uses portable canonical encodings and integer
+> work weights, and separates heterogeneous verification roles. Thirty suites /
+> 280 tests, a 31-block two-node sync demo, and a bounded six-proof strict WASM
+> run pass. Public seeds, mandatory bonded-validator activation, economic
+> rewards/slashing, the marketplace, and mainnet are not deployed.
 
 ---
 
@@ -88,7 +90,7 @@ additional protocol, reproducibility, scheduling, and security work.
 
 The critical challenge of Proof-of-Useful-Compute is verification: how do you prove that a miner actually ran the workload correctly, rather than returning garbage data?
 
-Consensus v2 currently implements:
+Consensus V3 currently implements:
 
 1. **Contribution commitments**: blocks bind useful-work records to model, input,
    output, and execution metadata.
@@ -100,10 +102,12 @@ Consensus v2 currently implements:
 4. **Consensus commitment**: complete verdict evidence is summarized by
    `auditRoot`, then reverified during block validation, sync, restart, and reorg.
 
-This provides tamper-evident, independently replayable evidence under the tested
-local conditions. It does not yet prove cross-hardware determinism, committee
-Sybil resistance, or economic security. Automatic slashing is deliberately
-disabled until validator bonds and stake snapshots are consensus-owned.
+This provides tamper-evident evidence under the tested local conditions.
+Execution profiles make incompatible replay hardware abstain instead of making
+false fraud accusations, while portable proof verifiers can run independently
+of the producer architecture. It does not yet provide a general post-quantum
+proof for arbitrary AI inference, mandatory bonded-validator activation, or
+economic security. Automatic slashing remains deliberately disabled.
 
 ---
 
@@ -211,8 +215,8 @@ as issued equity or a guaranteed claim before those questions are settled.
 |---|---|---|
 | **1. Concept & architecture** | ✅ Complete | Core PoUC direction and sovereign-node architecture established. |
 | **2. Local node foundation** | ✅ Complete | UTXO ledger, wallets, PoUC records, local inference seam, and safe loopback testnet. |
-| **3. Audit consensus v2** | ✅ Complete | Delayed historical sampling, ML-DSA signed quorum evidence, `auditRoot`, persistence, sync, and adversarial validation. |
-| **4. Public-testnet preconditions** | 🔄 Next | Consensus-owned validator identities/bonds, deterministic committee selection, P2P hardening, cross-machine validation, and external review. |
+| **3. Consensus V3 portability and audit foundation** | ✅ Complete | Canonical encodings, integer work, execution profiles, delayed sampling, ML-DSA quorum evidence, `auditRoot`, bond-derived rosters, persistence, sync, and adversarial validation. |
+| **4. Public-testnet deployment** | 🔄 In progress | Frozen testnet identity, compatibility handshake, designated producer, faucet path, container and CI are implemented; public TLS/WSS seeds, storage crash hardening, native ARM CI, explorer service, and multi-day soak remain. |
 | **5. Marketplace and pilots** | ⬜ Planned | Buyer/provider scheduling, pricing, privacy, SLA design, and measured research pilots. |
 | **6. Mainnet** | ⬜ Not scheduled | Requires successful public soak tests, audited economics, operations, governance, and security review. |
 

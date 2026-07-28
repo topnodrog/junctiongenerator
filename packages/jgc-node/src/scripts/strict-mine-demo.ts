@@ -30,7 +30,11 @@ import {
 import {
   makeGenesisBlock, makePeer, BlockProducer, mineBlocks, type SimMinerSpec,
 } from "../sim/harness.js";
-import { generateKeyPair, addressFromPublicKey, signContribution } from "../crypto/signatures.js";
+import {
+  pqAddressFromPublicKey,
+  pqGenerateKeyPair,
+  pqSignContribution,
+} from "../crypto/pq-signatures.js";
 
 const SEED          = 4242;
 const CIRCUIT_ID    = "CIRCUIT_CONV1D_V1";
@@ -46,17 +50,14 @@ function makeConfig(): NodeConfig {
   };
 }
 
-// Real keypairs per miner: address → private key (hex). Each miner signs its
-// contributions; the node verifies the signature in strict mode.
+// Real ML-DSA keypairs per miner. Proof soundness and miner authorization are
+// deliberately independent so heterogeneous verifiers can check both.
 const keyByAddr = new Map<string, string>();
 
-/** Make a miner with a fresh keypair and a key-derived address.
- *  TODO(quantum): this demo builds REAL Conv1D Groth16 proofs via the legacy
- *  pairing verifier — it is superseded by the PQ proof path and needs a rewrite
- *  against pq-zkp.ts. Kept compiling for now. */
+/** Make a miner with a fresh ML-DSA keypair and key-derived address. */
 function makeMiner(tflops: number): SimMinerSpec {
-  const kp = generateKeyPair();
-  const address = addressFromPublicKey(kp.publicKey);
+  const kp = pqGenerateKeyPair();
+  const address = pqAddressFromPublicKey(kp.publicKey);
   keyByAddr.set(address, kp.privateKey);
   return { address, pubKey: kp.publicKey, secretKey: kp.privateKey, tflops };
 }
@@ -97,7 +98,7 @@ function makeRealContribution(miner: SimMinerSpec, height: number): MinerCompute
     publicKey:    miner.pubKey,
   };
   // Sign over the canonical contribution sighash (binds payee, work, height).
-  contribution.signature = signContribution(keyByAddr.get(miner.address)!, contribution, height);
+  contribution.signature = pqSignContribution(keyByAddr.get(miner.address)!, contribution, height);
   return contribution;
 }
 
@@ -131,7 +132,7 @@ async function main(): Promise<void> {
   console.log(`[StrictMine] Strict mode, ${CIRCUIT_ID} VK registered; genesis target ≈${TARGET_TFLOPS} TFLOPS`);
   console.log("──────────────────────────────────────────────────────────────");
 
-  // Two miners with real secp256k1 keypairs (addresses derived from their keys).
+  // Two miners with real ML-DSA keypairs (addresses derived from their keys).
   const miners: SimMinerSpec[] = [makeMiner(104), makeMiner(104)];
 
   const onBlock = (b: { header: { height: number; hash?: string }; computeProofs: unknown[] }): void => {

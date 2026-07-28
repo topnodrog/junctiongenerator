@@ -298,6 +298,7 @@ export function getVerifierMode(): VerifierMode {
 
 // Lazily loaded WASM module — will be populated on first use.
 let _wasmModule: JGCVerifierWasm | null = null;
+let _wasmModuleKind: "unloaded" | "real" | "stub" | "mock" = "unloaded";
 
 /**
  * Load the Rust WASM verifier module.
@@ -308,8 +309,9 @@ export async function loadVerifierWasm(
 ): Promise<void> {
   const { mode = "strict", wasmPath } = opts;
 
-  // SAFETY: "simnet" skips the real pairing AND contribution-signature checks —
-  // it must never run on a production node (fails closed).
+  // SAFETY: "simnet" skips the real pairing check, so it must never run on a
+  // production node (fails closed). PQ contribution signatures are enforced by
+  // consensus independently of this mode.
   if (mode === "simnet" && process.env["NODE_ENV"] === "production") {
     throw new Error(
       "verifierMode 'simnet' is forbidden when NODE_ENV=production " +
@@ -323,7 +325,12 @@ export async function loadVerifierWasm(
 
   // In production, dynamically import the compiled WASM package.
   // During development/testing, a mock verifier is injected via setMockVerifier().
-  if (_wasmModule !== null) return;
+  if (_wasmModule !== null) {
+    if (mode === "strict" && _wasmModuleKind === "stub") {
+      throw new Error("strict Groth16 verification cannot use the development accept-all stub");
+    }
+    return;
+  }
 
   try {
     // Path is relative to the compiled module (dist/crypto/zkp.js) — the
@@ -341,22 +348,33 @@ export async function loadVerifierWasm(
     }
 
     _wasmModule = candidate;
+    _wasmModuleKind = "real";
     console.log(
       `[JGC zkp.ts] Rust WASM verifier loaded (v${candidate.jgc_verifier_version?.() ?? "unknown"})`
     );
   } catch (err) {
-    // Fallback: pure-JS reference implementation for development only.
-    // NEVER use in production — it accepts all proofs.
+    if (mode === "strict") {
+      _wasmModule = null;
+      _wasmModuleKind = "unloaded";
+      throw new Error(`strict Groth16 verifier unavailable; refusing unsafe fallback: ${String(err)}`);
+    }
+
+    // Fallback: pure-JS transport stub for explicit simnet use only.
     console.warn(
-      `[JGC zkp.ts] WASM verifier not loaded — using JS stub (UNSAFE for production): ${String(err)}`
+      `[JGC zkp.ts] WASM verifier not loaded — using simnet-only JS stub: ${String(err)}`
     );
     _wasmModule = createJSStubVerifier();
+    _wasmModuleKind = "stub";
   }
 }
 
 /** Inject a mock verifier (for unit tests). */
 export function setMockVerifier(mock: JGCVerifierWasm): void {
+  if (process.env["NODE_ENV"] === "production") {
+    throw new Error("mock Groth16 verifiers are forbidden when NODE_ENV=production");
+  }
   _wasmModule = mock;
+  _wasmModuleKind = "mock";
 }
 
 function getVerifier(): JGCVerifierWasm {
@@ -567,10 +585,10 @@ export function verifyComputeProof(
   // Must be a non-negative integer: epoch settlement converts the accumulated
   // TFLOPS to BigInt (pool × tflops / total), which throws on a fractional sum —
   // a single fractional weight would otherwise halt settlement at the boundary.
-  if (!Number.isInteger(proof.tflopsWeight) || proof.tflopsWeight < 0) {
+  if (!Number.isSafeInteger(proof.tflopsWeight) || proof.tflopsWeight < 0) {
     return {
       valid: false,
-      error: `tflopsWeight ${proof.tflopsWeight} must be a non-negative integer`,
+      error: `tflopsWeight ${proof.tflopsWeight} must be a non-negative safe integer`,
       verifiedTFLOPS: 0,
     };
   }

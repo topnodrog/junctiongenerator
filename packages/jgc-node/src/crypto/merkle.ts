@@ -258,13 +258,16 @@ export function hashComputeProof(proof: {
   circuitId: string;
   tflopsWeight: number;
 }): Hash256 {
+  if (!Number.isSafeInteger(proof.tflopsWeight) || proof.tflopsWeight < 0) {
+    throw new RangeError("tflopsWeight must be a non-negative safe integer");
+  }
   const raw = Buffer.concat([
     Buffer.from(proof.taskCommitment, "hex"),
     Buffer.from(proof.proofBytes,    "base64"),
     Buffer.from(proof.circuitId,     "utf8"),
-    Buffer.alloc(8).fill(0),   // tflopsWeight as 8-byte little-endian float64
+    Buffer.alloc(8),
   ]);
-  // Write tflopsWeight as float64 LE into the last 8 bytes.
-  raw.writeDoubleBE(proof.tflopsWeight, raw.length - 8);
+  // Protocol v1: exact uint64 big-endian, never host floating point.
+  raw.writeBigUInt64BE(BigInt(proof.tflopsWeight), raw.length - 8);
   return sha256d(raw).toString("hex");
 }
