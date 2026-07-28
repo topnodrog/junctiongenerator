@@ -6,7 +6,7 @@ local testnet tools.
 
 ## Requirements
 
-- Node.js 20 or 22
+- Node.js 20.19+ or 22
 - npm
 
 ## Verify the node

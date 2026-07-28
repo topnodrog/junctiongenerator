@@ -43,6 +43,11 @@ be archived or deleted before starting this identity.
   container runtime check: build the image, launch the Compose topology, produce
   one simulation-only block, assert peer connectivity and equal heights, and
   tear down volumes on every run.
+- The first container run correctly exposed two stale runtime assumptions: the
+  testnet image claimed `NODE_ENV=production`, activating the simnet fail-closed
+  guard, and pinned Node 20.15 below the cryptography dependency floor. The image
+  now declares testnet mode and pins Node 20.20.2; supported installs require
+  Node 20.19+ or Node 22.
 - The previously completed strict Rust/WASM six-proof demo remains the bounded
   sound-proof evidence. A local repeat under the newly pinned toolchain was
   blocked by rustup cache permissions, while the clean GitHub Rust job passed.

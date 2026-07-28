@@ -1,4 +1,4 @@
-FROM node:20.15.1-bookworm-slim AS build
+FROM node:20.20.2-bookworm-slim AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
@@ -6,8 +6,10 @@ COPY tsconfig.json ./
 COPY src ./src
 RUN npm run build
 
-FROM node:20.15.1-bookworm-slim AS runtime
-ENV NODE_ENV=production
+FROM node:20.20.2-bookworm-slim AS runtime
+# This image's entrypoint is the simulation-receipt testnet launcher. Labeling
+# it as production would correctly activate the fail-closed simnet guard.
+ENV NODE_ENV=testnet
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "Junction Generator Coin — Proof-of-Useful-Compute node",
   "engines": {
-    "node": ">=20 <23"
+    "node": ">=20.19.0 <23"
   },
   "type": "module",
   "main": "dist/index.js",
