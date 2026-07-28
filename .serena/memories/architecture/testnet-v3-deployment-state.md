@@ -21,7 +21,11 @@ be archived or deleted before starting this identity.
   creates a signed spend from the testnet-only allocation.
 - `docker compose -f compose.testnet.yml up --build` defines a loopback-exposed
   producer and independent back-checker with separate persistent volumes.
+- `compose.smoke.yml` adds an explicitly guarded CI-only contributor; the smoke
+  verifier requires the producer to create a block and the back-checker to reach
+  the same height over a live P2P connection.
 - `/status` reports producer health, last height/error, and remaining TFLOPS.
+  It also reports live peer count for deployment health assertions.
 
 ## Verification at capture
 - Node typecheck passed.
@@ -29,12 +33,16 @@ be archived or deleted before starting this identity.
 - 30 Jest suites / 280 tests passed.
 - A compiled `--produce` launcher booted on loopback and returned healthy status
   for `jgc-testnet-v3`, waiting for 1000 TFLOPS as expected.
+- The complete three-process path passed locally without Docker: the guarded
+  contributor supplied 1050 signed simulation TFLOPS, the producer accepted a
+  height-1 block, and the separate back-checker synchronized the identical block.
 - GitHub Actions passed Node 20 on Linux/Windows/macOS, Node 22 on Linux, and the
   pinned Rust/WASM verifier build and tests after correcting the package-local
   Jest path used by clean installs.
-- Docker could not be executed locally because Docker is not installed. The
-  Dockerfile and Compose topology remain reviewable but not runtime-verified in
-  this session.
+- Docker cannot be executed on the development machine. GitHub now owns the
+  container runtime check: build the image, launch the Compose topology, produce
+  one simulation-only block, assert peer connectivity and equal heights, and
+  tear down volumes on every run.
 - The previously completed strict Rust/WASM six-proof demo remains the bounded
   sound-proof evidence. A local repeat under the newly pinned toolchain was
   blocked by rustup cache permissions, while the clean GitHub Rust job passed.

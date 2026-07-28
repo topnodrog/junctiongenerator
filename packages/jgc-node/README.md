@@ -82,6 +82,20 @@ This starts one designated producer and one separate back-checker with distinct
 persistent volumes. The producer still waits for signed compute receipts; the
 container does not fabricate mining work.
 
+To exercise the complete container path in CI or local development, add the
+smoke-only override:
+
+```text
+docker compose -f compose.testnet.yml -f compose.smoke.yml up -d --build
+npm run test:compose
+docker compose -f compose.testnet.yml -f compose.smoke.yml down -v
+```
+
+The override starts a guarded, testnet-only contributor that submits signed
+simulation receipts for one block. It requires `JGC_ENABLE_SMOKE_CONTRIBUTOR=1`,
+exits after the target height, and is not evidence of useful computation. Never
+include `compose.smoke.yml` in a valuable or public network deployment.
+
 ## Network exposure
 
 Inbound P2P stays on loopback unless `--host 0.0.0.0` is explicitly supplied.

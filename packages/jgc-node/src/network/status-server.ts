@@ -41,6 +41,8 @@ export interface NodeStatus {
   uptimeSec: number;
   /** chain tip height, or null when no chain store is loaded. */
   height: number | null;
+  /** Connected P2P peers, or null when this status process has no live node. */
+  peerCount: number | null;
   /** whether real chain state backs the balance figures below. */
   chain: boolean;
   /** the watched/owned address, or null if none configured. */

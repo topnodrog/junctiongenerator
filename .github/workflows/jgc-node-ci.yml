@@ -56,3 +56,26 @@ jobs:
       - name: Install pinned wasm-pack
         run: cargo install wasm-pack --version 0.15.0 --locked
       - run: wasm-pack build rust --target nodejs --out-dir pkg --release
+
+  docker-compose-smoke:
+    name: Docker Compose testnet smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: packages/jgc-node
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Build and launch the smoke testnet
+        run: docker compose -f compose.testnet.yml -f compose.smoke.yml up -d --build
+      - name: Verify block production and two-node synchronization
+        run: node scripts/compose-smoke.mjs
+      - name: Show container diagnostics
+        if: failure()
+        run: docker compose -f compose.testnet.yml -f compose.smoke.yml logs --no-color
+      - name: Stop the smoke testnet
+        if: always()
+        run: docker compose -f compose.testnet.yml -f compose.smoke.yml down -v
