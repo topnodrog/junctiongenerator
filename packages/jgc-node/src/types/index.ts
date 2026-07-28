@@ -449,4 +449,16 @@ export interface NodeConfig {
   /** Write a chainstate snapshot every N connected blocks (requires dataDir), so
    *  restart replays only the tail above it. Default BLOCKS_PER_EPOCH; 0 disables. */
   snapshotIntervalBlocks?: number;
+  /** Defensive P2P limits. Defaults are suitable for the public-testnet preset. */
+  maxInboundPerHost?: number;
+  peerMessagesPerWindow?: number;
+  peerMessageWindowMs?: number;
+  peerBanScore?: number;
+  peerBanDurationMs?: number;
+  /** Compatibility identity committed in VERSION. Public networks should set
+   *  all fields and require them before any chain data is exchanged. */
+  chainId?: string;
+  consensusVersion?: number;
+  proofMode?: string;
+  requireNetworkIdentity?: boolean;
 }

@@ -11,16 +11,13 @@
  *
  * JGC's miner flow (this module):
  *   1. Perform useful compute (AI inference/training, folding, …)
- *   2. generateContribution() — wrap the work in a Groth16 ComputeProof
+ *   2. generateContribution() — wrap the claim in a simnet research receipt
  *   3. buildBlockCandidate()  — assemble header committing computeRoot/epochRoot
  *   4. Submit via P2P BLOCK message → full validateBlock() pipeline
  *
- * Step 2's "useful compute → proof" is the part Bitcoin replaces with nNonce
- * grinding. In DEV/REGTEST MODE (no compiled WASM verifier), proofBytes are
- * 256 random bytes — the canonical uncompressed Groth16 size (A:64 ‖ B:128 ‖
- * C:64) — accepted by the JS stub verifier. The surrounding consensus logic
- * (public input construction, Merkle commitments, difficulty, epoch
- * accounting) is exercised exactly as it would be on mainnet.
+ * Step 2 is simulation plumbing only: the current hash/Merkle receipt does not
+ * constrain useful computation. Strict consensus rejects it. A production
+ * miner must instead generate a proof for a registered sound circuit/zkVM.
  */
 
 import { createHash, randomBytes } from "crypto";
@@ -48,7 +45,7 @@ export interface MinerIdentity {
   publicKey: PublicKey;
   /** ML-DSA secret key (hex) used to sign contributions (quantum-ready). */
   secretKey: string;
-  /** Circuit the miner generates proofs for (must exist in PQ_CIRCUIT_REGISTRY). */
+  /** Simnet receipt family (production requires a registered sound circuit). */
   circuitId: string;
   /** Task category — must match the circuit family. */
   taskType: ComputeTaskType;
@@ -103,8 +100,8 @@ export function generateContribution(
   // Regtest: random 32 bytes; mainnet: SHA3-256 of the actual task bundle.
   const taskCommitment = createHash("sha3-256").update(randomBytes(32)).digest("hex");
 
-  // QUANTUM-READY: build a real hash-based PQ proof (transparent, no trusted
-  // setup). The circuit id must be a PQ_* circuit present in PQ_CIRCUIT_REGISTRY.
+  // SIMNET ONLY: build a research receipt to exercise transport and accounting.
+  // It is not evidence that the claimed work occurred and strict mode rejects it.
   const pqProof = pqProveCompute(identity.circuitId, taskCommitment, {
     taskCommitment,
     tflopsWeight,

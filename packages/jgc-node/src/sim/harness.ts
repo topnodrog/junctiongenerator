@@ -22,7 +22,7 @@ import type {
 } from "../types/index.js";
 import { ComputeTaskType, MessageType as MT } from "../types/index.js";
 import {
-  createGenesisHeader, GENESIS_TIMESTAMP, assembleBlock,
+  createGenesisBlock, assembleBlock,
 } from "../consensus/block.js";
 import { initEpochState, applyBlockToEpoch, computeEpochSettlement } from "../consensus/epoch.js";
 import { BLOCKS_PER_EPOCH } from "../consensus/emission.js";
@@ -64,8 +64,8 @@ export function sha256d(data: Buffer): Hash256 {
   return createHash("sha256").update(first).digest("hex");
 }
 
-/** Build a QUANTUM-READY compute contribution: a real hash-based PQ proof plus
- *  a real ML-DSA signature binding the work to this miner and height. */
+/** Build a simulation contribution: a research receipt plus a real ML-DSA
+ *  signature binding the claimed work to this miner and height. */
 export function makeContribution(miner: SimMinerSpec, height: number): MinerComputeContribution {
   const outputCommitment = sha256d(Buffer.from(`${miner.address}:task:${height}`));
   const pqProof = pqProveCompute("PQ_CIRCUIT_AI_INFERENCE_V1", outputCommitment, {
@@ -158,13 +158,7 @@ export function makeMessage(type: MT, payload: unknown): PeerMessage {
  *   of real Conv1D proofs (104 FLOPs each) can clear the per-block target.
  */
 export function makeGenesisBlock(difficultyBits?: number): Block {
-  return {
-    header:        createGenesisHeader(difficultyBits),
-    transactions:  [],
-    computeProofs: [],
-    auditVerdicts: [],
-    epochState:    initEpochState(0, GENESIS_TIMESTAMP),
-  };
+  return createGenesisBlock(difficultyBits);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -39,7 +39,12 @@ import type {
   MinerComputeContribution, Hash256,
 } from "../types/index.js";
 import { buildMerkleTree, hashTransaction } from "../crypto/merkle.js";
-import { computeContributionsMerkleRoot, computeEpochRoot } from "./epoch.js";
+import {
+  computeContributionsMerkleRoot,
+  computeEpochRoot,
+  initEpochState,
+} from "./epoch.js";
+import { compareCanonicalBytes } from "../protocol/canonical.js";
 import {
   auditVerdictCommitment,
   type AuditVerdictRecord,
@@ -338,7 +343,7 @@ export function computeAuditVerdictsMerkleRoot(
   verdicts: AuditVerdictRecord[],
 ): Hash256 {
   const leaves = [...verdicts]
-    .sort((a, b) => a.auditId.localeCompare(b.auditId))
+    .sort((a, b) => compareCanonicalBytes(a.auditId, b.auditId))
     .map(auditVerdictCommitment);
   return buildMerkleTree(leaves).root;
 }
@@ -375,43 +380,64 @@ export function computeAuditVerdictsMerkleRoot(
  *   which decoded to 1000 × 256^27 / 10^6 ≈ 1.05×10^62 TFLOPS — an unmineable
  *   target. Same class of bug as misusing Bitcoin's nBits exponent field.)
  */
-export const GENESIS_TIMESTAMP = 1749600000; // 2026-06-11 00:00:00 UTC
+export const GENESIS_TIMESTAMP = 1781136000; // 2026-06-11 00:00:00 UTC
 export const GENESIS_DIFFICULTY_BITS = 0x043B9ACA;
 export const GENESIS_PREV_HASH = "0".repeat(64);
-/** Consensus v2 adds auditRoot and the audit-verdict block body. */
-export const GENESIS_BLOCK_VERSION = 0x02000000;
-
+export const GENESIS_MESSAGE = "JGC 2026: Compute for Civilization";
 /**
- * Construct the JGC genesis block header.
- * NOTE: In production, genesis is hardcoded after trusted setup ceremony.
+ * Consensus v3 adds portable byte ordering, uint64 compute weights, and
+ * versioned binary epoch commitments. V2 chain data must not be mixed with V3.
  */
+export const CONSENSUS_BLOCK_VERSION = 0x03000000;
+/** Backward-compatible name retained for callers; it always means current consensus. */
+export const GENESIS_BLOCK_VERSION = CONSENSUS_BLOCK_VERSION;
+
+/** Build the zero-value OP_RETURN-style transaction carrying the genesis message. */
+export function createGenesisTransaction(): Transaction {
+  const message = Buffer.from(GENESIS_MESSAGE, "utf8");
+  if (message.length > 75) {
+    throw new RangeError("Genesis message exceeds direct-push script limit");
+  }
+  const scriptPubKey = Buffer.concat([
+    Buffer.from([0x6a, message.length]),
+    message,
+  ]).toString("hex");
+
+  return {
+    version: 1,
+    inputs: [],
+    outputs: [{ value: 0n, scriptPubKey }],
+    locktime: 0,
+  };
+}
+
+/** Construct the canonical JGC genesis header from its actual block body. */
 export function createGenesisHeader(difficultyBits: number = GENESIS_DIFFICULTY_BITS): BlockHeader {
-  const genesisComputeRoot = "0".repeat(64);  // No proofs in genesis block
-  const genesisEpochRoot   = "0".repeat(64);  // Empty epoch state at genesis
-  const genesisAuditRoot   = "0".repeat(64);  // No audit verdicts in genesis
-
-  // Genesis coinbase tx: "JGC 2026: Compute for Civilization"
-  const genesisCoinbase = Buffer.from(
-    "4a47432032303236 3a20436f6d707574 6520666f7220436976696c697a6174696f6e",
-    "hex"
-  );
-  const genesisTxid = createHash("sha256")
-    .update(createHash("sha256").update(genesisCoinbase).digest())
-    .digest("hex");
-
-  const genesisMerkleRoot = buildMerkleTree([genesisTxid]).root;
+  const transactions = [createGenesisTransaction()];
+  const epochState = initEpochState(0, GENESIS_TIMESTAMP);
 
   return {
     version:        GENESIS_BLOCK_VERSION,
     prevHash:       GENESIS_PREV_HASH,
-    merkleRoot:     genesisMerkleRoot,
-    computeRoot:    genesisComputeRoot,
-    epochRoot:      genesisEpochRoot,
-    auditRoot:      genesisAuditRoot,
+    merkleRoot:     computeTransactionMerkleRoot(transactions),
+    computeRoot:    computeContributionsMerkleRoot([]),
+    epochRoot:      computeEpochRoot(epochState),
+    auditRoot:      computeAuditVerdictsMerkleRoot([]),
     timestamp:      GENESIS_TIMESTAMP,
     difficultyBits,
     nonce:          0,
     height:         0,
+  };
+}
+
+/** Construct the one canonical genesis block used by nodes, demos, and tests. */
+export function createGenesisBlock(difficultyBits: number = GENESIS_DIFFICULTY_BITS): Block {
+  return {
+    header: createGenesisHeader(difficultyBits),
+    transactions: [createGenesisTransaction()],
+    computeProofs: [],
+    auditVerdicts: [],
+    epochState: initEpochState(0, GENESIS_TIMESTAMP),
   };
 }
 
@@ -452,7 +478,7 @@ export function assembleBlock(
 ): Block {
   const height = prevHeader.height + 1;
   const canonicalAuditVerdicts = [...auditVerdicts]
-    .sort((a, b) => a.auditId.localeCompare(b.auditId));
+    .sort((a, b) => compareCanonicalBytes(a.auditId, b.auditId));
 
   const merkleRoot  = computeTransactionMerkleRoot(transactions);
   const computeRoot = computeContributionsMerkleRoot(contributions);

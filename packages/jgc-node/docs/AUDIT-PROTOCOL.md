@@ -32,7 +32,7 @@ The peer protocol now carries:
 - `AUDIT_VERDICT`: evidence that a node accepts only when it can reproduce the
   same result from its locally held signed votes.
 
-Consensus v2 also carries finalized verdicts in the block body. The 192-byte
+Consensus V3 also carries finalized verdicts in the block body. The 192-byte
 header's `auditRoot` commits the complete request, assignment, deadline,
 derived result, and every ML-DSA-signed vote. Verdicts are ordered by audit id,
 votes are ordered by validator id, and commitment ties use a lexical

@@ -13,6 +13,7 @@ import {
   verifyMerkleProof,
   combinePair,
   sha256d,
+  hashComputeProof,
 } from "../crypto/merkle.js";
 
 // Known test vectors — 32-byte hex strings for deterministic testing.
@@ -32,6 +33,25 @@ describe("sha256d", () => {
     const a = sha256d(input);
     const b = sha256d(input);
     expect(a.toString("hex")).toBe(b.toString("hex"));
+  });
+});
+
+describe("hashComputeProof", () => {
+  test("matches the protocol-v1 uint64 work-weight golden vector", () => {
+    expect(hashComputeProof({
+      taskCommitment: "ab".repeat(32),
+      proofBytes: Buffer.from("proof").toString("base64"),
+      circuitId: "CIRCUIT_V1",
+      tflopsWeight: 42,
+    })).toBe("5854032600b7b9b2d4fa6b260837ba0bed29b4e4ffe298c8e5ecbbe6febcfd11");
+  });
+
+  test("rejects fractional and unsafe work weights", () => {
+    const base = {
+      taskCommitment: "ab".repeat(32), proofBytes: "", circuitId: "CIRCUIT_V1",
+    };
+    expect(() => hashComputeProof({ ...base, tflopsWeight: 1.5 })).toThrow(/safe integer/i);
+    expect(() => hashComputeProof({ ...base, tflopsWeight: Number.MAX_SAFE_INTEGER + 1 })).toThrow(/safe integer/i);
   });
 });
 

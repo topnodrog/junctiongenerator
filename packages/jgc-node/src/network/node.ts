@@ -37,12 +37,20 @@ import {
   computeAuditVerdictsMerkleRoot,
   computeTransactionMerkleRoot,
   serializeTransaction,
+  assembleBlock,
 } from "../consensus/block.js";
-import { applyBlockToEpoch, initEpochState, computeContributionsMerkleRoot, computeEpochRoot } from "../consensus/epoch.js";
+import {
+  applyBlockToEpoch,
+  initEpochState,
+  computeContributionsMerkleRoot,
+  computeEpochRoot,
+  computeEpochSettlement,
+} from "../consensus/epoch.js";
 import { UTXOSet, validateSpend, txid } from "../consensus/utxo.js";
 import { BlockStore, SnapshotStore, type ChainSnapshot } from "../storage/persistence.js";
 import { calculateNextDifficultyTarget, BLOCKS_PER_EPOCH, RETARGET_WINDOW_BLOCKS, encodeDifficultyBits, decodeDifficultyBits } from "../consensus/emission.js";
 import { globalBroker } from "../broker/compute-broker.js";
+import { compareCanonicalBytes } from "../protocol/canonical.js";
 import type { Hash256, EpochState } from "../types/index.js";
 import {
   AuditLifecycle,
@@ -52,6 +60,9 @@ import {
 } from "../broker/audit-protocol.js";
 import { computeAuditClaimId } from "../broker/audit-schedule.js";
 import { AuditStore } from "../storage/audit-store.js";
+import { PeerGuard, DEFAULT_PEER_GUARD_POLICY, type PeerViolation } from "./peer-guard.js";
+import { validatorStakeSnapshot } from "../consensus/validator-bonds.js";
+import { quantumScriptPubKeyFromAddress } from "../crypto/pq.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Peer Connection Types
@@ -73,6 +84,8 @@ export interface PeerInfo {
   /** The peer's self-advertised dialable URL from its VERSION (for discovery).
    *  Reliable even for inbound peers, whose `address` is an ephemeral socket. */
   advertisedUrl?: string;
+  /** True only after a required public-network VERSION identity matched. */
+  networkIdentityVerified?: boolean;
 }
 
 /** Simulated peer connection — in production: replace with TCP/WebSocket. */
@@ -80,6 +93,13 @@ export interface PeerConnection {
   info: PeerInfo;
   send: (msg: PeerMessage) => Promise<void>;
   disconnect: () => void;
+}
+
+interface NetworkIdentityPayload {
+  chainId?: string;
+  genesisHash?: Hash256;
+  consensusVersion?: number;
+  proofMode?: string;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -188,6 +208,7 @@ export class JGCNode extends EventEmitter {
   /** Historical audit requests, signed votes, and non-punitive verdict evidence. */
   private readonly audits = new AuditLifecycle();
   private auditStore?: AuditStore;
+  private readonly peerGuard: PeerGuard;
 
   constructor(config: NodeConfig, genesisBlock: Block) {
     super();
@@ -196,6 +217,13 @@ export class JGCNode extends EventEmitter {
     this.maxMempoolTxs    = config.maxMempoolTxs   ?? DEFAULT_MAX_MEMPOOL_TXS;
     this.minRelayFeeRate  = config.minRelayFeeRate ?? DEFAULT_MIN_RELAY_FEERATE;
     this.snapshotInterval = config.snapshotIntervalBlocks ?? BLOCKS_PER_EPOCH;
+    this.peerGuard = new PeerGuard({
+      maxInboundPerHost: config.maxInboundPerHost ?? DEFAULT_PEER_GUARD_POLICY.maxInboundPerHost,
+      messagesPerWindow: config.peerMessagesPerWindow ?? DEFAULT_PEER_GUARD_POLICY.messagesPerWindow,
+      messageWindowMs: config.peerMessageWindowMs ?? DEFAULT_PEER_GUARD_POLICY.messageWindowMs,
+      banScore: config.peerBanScore ?? DEFAULT_PEER_GUARD_POLICY.banScore,
+      banDurationMs: config.peerBanDurationMs ?? DEFAULT_PEER_GUARD_POLICY.banDurationMs,
+    });
 
     // Initialize chain state from genesis.
     const genesisHash = hashBlockHeader(genesisBlock.header);
@@ -384,26 +412,42 @@ export class JGCNode extends EventEmitter {
   // BITCOIN ANALOG: CConnman::OpenNetworkConnection() + AddNode()
   // ─────────────────────────────────────────────────────────────────────────
 
-  connectPeer(peer: PeerConnection): void {
+  connectPeer(peer: PeerConnection): boolean {
     if (this.peers.size >= this.config.maxPeers) {
       console.warn(`[Node] Max peers (${this.config.maxPeers}) reached — rejecting ${peer.info.address}`);
       peer.disconnect();
-      return;
+      return false;
+    }
+    if (!this.peerGuard.admit(peer.info.address, peer.info.inbound)) {
+      console.warn(`[Node] Peer guard rejected ${peer.info.address}`);
+      peer.disconnect();
+      return false;
     }
 
     this.peers.set(peer.info.peerId, peer);
+    peer.info.networkIdentityVerified = !this.config.requireNetworkIdentity;
     this.emit("peer:connect", peer.info);
 
     // Send VERSION message — same handshake pattern as Bitcoin.
     void peer.send(this.buildVersionMessage());
+    return true;
   }
 
   disconnectPeer(peerId: string): void {
     const peer = this.peers.get(peerId);
     if (!peer) return;
-    peer.disconnect();
     this.peers.delete(peerId);
+    this.peerGuard.release(peer.info.address, peer.info.inbound);
+    this.peerGuard.forgetPeer(peerId);
+    peer.disconnect();
     this.emit("peer:disconnect", peerId);
+  }
+
+  /** Called by the transport when decoding fails before a PeerMessage exists. */
+  reportPeerViolation(peerId: string, violation: PeerViolation): void {
+    const peer = this.peers.get(peerId);
+    if (!peer) return;
+    if (this.peerGuard.penalize(peer.info.address, violation)) this.disconnectPeer(peerId);
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -428,8 +472,19 @@ export class JGCNode extends EventEmitter {
   async processMessage(peerId: string, msg: PeerMessage): Promise<void> {
     const peer = this.peers.get(peerId);
     if (!peer) return;
+    if (!this.peerGuard.allowMessage(peerId, peer.info.address)) {
+      this.disconnectPeer(peerId);
+      return;
+    }
 
     peer.info.lastSeen   = Math.floor(Date.now() / 1000);
+
+    if (this.config.requireNetworkIdentity &&
+        !peer.info.networkIdentityVerified && msg.type !== MT.VERSION) {
+      console.warn(`[Node] Disconnecting ${peerId}: chain data received before network identity`);
+      this.disconnectPeer(peerId);
+      return;
+    }
 
     switch (msg.type as MT) {
       case MT.VERSION:
@@ -510,11 +565,37 @@ export class JGCNode extends EventEmitter {
   // Message Handlers
   // ─────────────────────────────────────────────────────────────────────────
 
-  private async handleVersion(peer: PeerConnection, payload: Partial<PeerInfo> & { listenUrl?: string }): Promise<void> {
+  private async handleVersion(
+    peer: PeerConnection,
+    payload: Partial<PeerInfo> & NetworkIdentityPayload & { listenUrl?: string },
+  ): Promise<void> {
+    const expected: Required<NetworkIdentityPayload> = {
+      chainId: this.config.chainId ?? "jgc-development",
+      genesisHash: hashBlockHeader(this.genesis.header),
+      consensusVersion: this.config.consensusVersion ?? this.genesis.header.version,
+      proofMode: this.config.proofMode ?? "unspecified",
+    };
+    const identityKeys = Object.keys(expected) as Array<keyof NetworkIdentityPayload>;
+    const mismatches = identityKeys
+      .filter(key => payload[key] !== undefined && payload[key] !== expected[key]);
+    const missing = this.config.requireNetworkIdentity
+      ? identityKeys.filter(key => payload[key] === undefined)
+      : [];
+    if (mismatches.length > 0 || missing.length > 0) {
+      const reason = mismatches.length > 0
+        ? `incompatible network identity (${mismatches.join(", ")})`
+        : `missing network identity (${missing.join(", ")})`;
+      console.warn(`[Node] Disconnecting ${peer.info.peerId}: ${reason}`);
+      this.disconnectPeer(peer.info.peerId);
+      this.emit("peer:incompatible", { peerId: peer.info.peerId, reason });
+      return;
+    }
+
     peer.info.version     = payload.version     ?? 0;
     peer.info.bestBlock   = payload.bestBlock   ?? "0".repeat(64);
     peer.info.startHeight = payload.startHeight ?? 0;
     peer.info.userAgent   = payload.userAgent   ?? "unknown";
+    peer.info.networkIdentityVerified = true;
 
     // Discovery: record the peer's self-advertised dialable URL and ask it for the
     // addresses it knows, so the network can form without a central seed.
@@ -1275,6 +1356,10 @@ export class JGCNode extends EventEmitter {
       startHeight: this.chain.tipHeight,
       bestBlock:   this.chain.tipHash,
       listenUrl:   this.config.advertiseUrl,  // self-advertise for peer discovery
+      chainId:     this.config.chainId ?? "jgc-development",
+      genesisHash: hashBlockHeader(this.genesis.header),
+      consensusVersion: this.config.consensusVersion ?? this.genesis.header.version,
+      proofMode:   this.config.proofMode ?? "unspecified",
     });
   }
 
@@ -1353,10 +1438,18 @@ export class JGCNode extends EventEmitter {
    * txs' fees, and never throw.
    */
   private calculateBlockFees(block: Block, utxo: UTXOSet = this.chain.utxos): bigint {
+    return this.calculateTransactionFees(block.transactions.slice(1), block.header.height, utxo);
+  }
+
+  /** Sum ordinary transaction fees in block order against a scratch UTXO view. */
+  private calculateTransactionFees(
+    transactions: Transaction[],
+    height: number,
+    utxo: UTXOSet = this.chain.utxos,
+  ): bigint {
     const view = utxo.clone();
     let fees = 0n;
-    for (let i = 1; i < block.transactions.length; i++) {
-      const tx = block.transactions[i]!;
+    for (const tx of transactions) {
       let inSum = 0n;
       let resolved = true;
       for (const input of tx.inputs) {
@@ -1364,7 +1457,7 @@ export class JGCNode extends EventEmitter {
         if (!entry) { resolved = false; break; }  // invalid block; skip this tx's fee
         inSum += entry.value;
       }
-      view.applyTransaction(tx, block.header.height, false);  // expose outputs to later txs
+      view.applyTransaction(tx, height, false);  // expose outputs to later txs
       if (!resolved) continue;
       const outSum = tx.outputs.reduce((s, o) => s + o.value, 0n);
       fees += inSum - outSum;
@@ -1464,8 +1557,84 @@ export class JGCNode extends EventEmitter {
         record.finalizedAtHeight < this.chain.tipHeight + 1 &&
         !this.chainHasAudit(this.chain, record.auditId)
       )
-      .sort((a, b) => a.auditId.localeCompare(b.auditId))
+      .sort((a, b) => compareCanonicalBytes(a.auditId, b.auditId))
       .slice(0, 64);
+  }
+
+  /**
+   * Build a candidate directly from live chainstate. Unlike the simulation
+   * producer, this remains correct after restart, sync, reorg, and retarget.
+   */
+  buildBlockCandidate(timestamp: number = Math.floor(Date.now() / 1000)): Block {
+    const tip = this.getTipHeader();
+    const height = tip.height + 1;
+    const contributions = this.getPendingProofs();
+    const ordinaryTransactions = this.getMempool();
+    const blockFees = this.calculateTransactionFees(ordinaryTransactions, height);
+    const epochState: EpochState = {
+      ...this.chain.epochState,
+      minerContributions: new Map(this.chain.epochState.minerContributions),
+    };
+
+    let coinbase: Transaction;
+    if (height % BLOCKS_PER_EPOCH === BLOCKS_PER_EPOCH - 1) {
+      const settled: EpochState = {
+        ...epochState,
+        minerContributions: new Map(epochState.minerContributions),
+      };
+      applyBlockToEpoch(settled, contributions, height, blockFees);
+      const settlement = computeEpochSettlement(settled, Math.floor(height / BLOCKS_PER_EPOCH));
+      coinbase = {
+        version: 1,
+        inputs: [],
+        outputs: settlement.payouts.map(payout => ({
+          value: payout.satoshis,
+          scriptPubKey: quantumScriptPubKeyFromAddress(payout.minerAddress),
+        })),
+        locktime: 0,
+      };
+    } else {
+      coinbase = {
+        version: 1,
+        inputs: [{
+          prevOut: { txid: height.toString(16).padStart(64, "0"), vout: 0 },
+          scriptSig: Buffer.from(`JGC block ${height}`, "utf8").toString("hex"),
+          sequence: 0xffffffff,
+        }],
+        outputs: [{ value: 0n, scriptPubKey: "6a" }],
+        locktime: 0,
+      };
+    }
+
+    return assembleBlock(
+      tip,
+      [coinbase, ...ordinaryTransactions],
+      contributions,
+      epochState,
+      this.chain.currentDifficultyBits,
+      0,
+      Math.max(timestamp, this.chain.medianPastTime + 1),
+      this.getPendingAuditVerdicts(),
+    );
+  }
+
+  /** Fully validate, persist, announce, and relay a locally produced block. */
+  async submitBlock(block: Block): Promise<{ ok: boolean; error?: string }> {
+    const blockHash = hashBlockHeader(block.header);
+    if (this.chain.blocks.has(blockHash)) return { ok: false, error: "block already known" };
+    if (block.header.prevHash !== this.chain.tipHash) {
+      return { ok: false, error: "block does not extend the active tip" };
+    }
+    const connected = await this.ingestBlock(
+      block,
+      blockHash,
+      (chain, candidate) => this.validateAgainst(chain, candidate),
+    );
+    if (!connected) return { ok: false, error: "block failed consensus validation" };
+    await this.relayBlock(block, "");
+    this.emit("block", block);
+    await this.drainOrphans(blockHash);
+    return { ok: true };
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -1497,6 +1666,11 @@ export class JGCNode extends EventEmitter {
    *  funding in tests/demos; the node maintains it as blocks are accepted. */
   getUTXOSet(): UTXOSet {
     return this.chain.utxos;
+  }
+
+  /** Consensus-owned validator roster at the current active-chain tip. */
+  getValidatorStakeSnapshot() {
+    return validatorStakeSnapshot(this.chain.utxos, this.chain.tipHeight);
   }
 
   /** Compact difficulty bits the next block header must carry. */

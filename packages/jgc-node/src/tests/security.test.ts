@@ -14,13 +14,17 @@ import {
   type BlockValidationContext,
 } from "../consensus/validation.js";
 import { loadVerifierWasm, verifyComputeProof } from "../crypto/zkp.js";
+import { setQuantumVerifierMode } from "../crypto/pq.js";
 import { makeGenesisBlock, makeContribution, DEFAULT_MINERS } from "../sim/harness.js";
 import { assembleBlock, createGenesisHeader, hashBlockHeader, GENESIS_DIFFICULTY_BITS } from "../consensus/block.js";
 import { initEpochState, applyBlockToEpoch } from "../consensus/epoch.js";
 import { UTXOSet } from "../consensus/utxo.js";
 import { BASE_UNITS_PER_JGC } from "../consensus/emission.js";
 
-beforeAll(async () => { await loadVerifierWasm({ mode: "simnet" }); });
+beforeAll(async () => {
+  setQuantumVerifierMode("simnet");
+  await loadVerifierWasm({ mode: "simnet" });
+});
 
 /** Build a height-1 block (with a coinbase of `coinbaseValue`) + a context that
  *  is valid for everything EXCEPT the coinbase-value rule under test. */
@@ -90,5 +94,26 @@ describe("security regressions", () => {
       process.env["NODE_ENV"] = prev;
       await loadVerifierWasm({ mode: "simnet" }); // restore for any later tests
     }
+  });
+
+  test("#5 strict consensus rejects the research compute receipt", async () => {
+    const contribution = makeContribution(DEFAULT_MINERS[0]!, 1);
+    setQuantumVerifierMode("strict");
+    try {
+      const result = await validateComputeProofs([contribution], createGenesisHeader(), 1, 1);
+      expect(result.valid).toBe(false);
+      expect(result.errors).toContain(ValidationError.PROOF_VERIFICATION_FAILED);
+      expect(result.warnings.join(" ")).toMatch(/research receipt|not a sound proof/i);
+    } finally {
+      setQuantumVerifierMode("simnet");
+    }
+  });
+
+  test("#6 simnet still enforces ML-DSA contribution signatures", async () => {
+    const contribution = makeContribution(DEFAULT_MINERS[0]!, 1);
+    contribution.signature = "00";
+    const result = await validateComputeProofs([contribution], createGenesisHeader(), 1, 1);
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContain(ValidationError.INVALID_SIGNATURE);
   });
 });

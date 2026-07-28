@@ -1,8 +1,8 @@
 /**
  * @file src/tests/pq-zkp.test.ts
- * @description Tests for the post-quantum hash-based compute proof layer.
+ * @description Tests for the simnet-only hash/Merkle receipt layer.
  */
-import { describe, it, expect } from "@jest/globals";
+import { afterEach, describe, it, expect } from "@jest/globals";
 import {
   pqProveCompute,
   pqVerifyComputeProof,
@@ -11,6 +11,7 @@ import {
   pqToComputeProof,
   pqFromComputeProof,
   pqVerifyComputeProofFromConsensus,
+  setPQVerifierMode,
   PQ_CIRCUIT_REGISTRY,
   type PQWitness,
 } from "../crypto/pq-zkp.js";
@@ -22,12 +23,32 @@ function witness(overrides: Partial<PQWitness> = {}): PQWitness {
   return { taskCommitment: "ee".repeat(32), tflopsWeight: 500, nonce: pqNewNonce(), ...overrides };
 }
 
-describe("pq-zkp (hash-based, transparent, PQ)", () => {
-  it("proves + verifies a valid computation", () => {
+describe("pq-zkp research receipt", () => {
+  afterEach(() => setPQVerifierMode("simnet"));
+
+  it("round-trips a research receipt in simnet", () => {
     const p = pqProveCompute(CID, outCommit, witness());
     const r = pqVerifyComputeProof(p, 100);
     expect(r.valid).toBe(true);
     expect(r.tflopsWeight).toBe(500);
+  });
+
+  it("fails closed in strict mode because it does not prove computation", () => {
+    const p = pqProveCompute(CID, outCommit, witness());
+    setPQVerifierMode("strict");
+    const result = pqVerifyComputeProof(p, 100);
+    expect(result.valid).toBe(false);
+    expect(result.reason).toMatch(/research receipt|not a sound proof/i);
+  });
+
+  it("cannot enable simnet verification in production", () => {
+    const previous = process.env["NODE_ENV"];
+    process.env["NODE_ENV"] = "production";
+    try {
+      expect(() => setPQVerifierMode("simnet")).toThrow(/forbidden/i);
+    } finally {
+      process.env["NODE_ENV"] = previous;
+    }
   });
 
   it("keeps the witness private (no taskCommitment/nonce in the proof)", () => {

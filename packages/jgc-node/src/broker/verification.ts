@@ -34,7 +34,7 @@
  */
 
 import { createHash } from "crypto";
-import type { InferenceBackend, VerifiableTask } from "./junctioning.js";
+import type { ExecutionProfile, InferenceBackend, VerifiableTask } from "./junctioning.js";
 
 /** A node's published claim: a task, the output it produced, and the binding. */
 export interface JunctioningClaim {
@@ -47,6 +47,8 @@ export interface JunctioningClaim {
 /** Outcome of replaying a claim. */
 export interface VerificationResult {
   verified:           boolean;
+  /** False means this verifier must abstain; incompatibility is not fraud. */
+  compatible:         boolean;
   expectedCommitment: string;   // the claim's commitment
   actualCommitment:   string;   // recomputed from the replay
   reason?:            string;
@@ -56,28 +58,73 @@ export interface VerificationResult {
  * Canonical, order-fixed serialization of the determining inputs. Hashing a
  * hand-ordered string (not JSON) avoids any dependence on key-ordering quirks.
  */
-function canonicalTask(t: VerifiableTask): string {
-  return [
-    `model=${t.model}`,
-    `temperature=${t.temperature}`,
-    `seed=${t.seed}`,
-    `maxTokens=${t.maxTokens}`,
-    `prompt=${t.prompt}`,
-  ].join("\n");
+function canonicalProfile(p: ExecutionProfile): string[] {
+  return [p.protocol, p.runtime, p.runtimeVersion, p.modelDigest,
+    p.tokenizerDigest, p.quantization, p.numericBackend];
+}
+
+function validateProfile(profile: ExecutionProfile): void {
+  if (profile.protocol !== "jgc-exact-replay-v1") throw new Error("unsupported execution profile protocol");
+  for (const [name, digest] of [["modelDigest", profile.modelDigest], ["tokenizerDigest", profile.tokenizerDigest]]) {
+    if (!/^[0-9a-f]{64}$/.test(digest)) throw new Error(`${name} must be lowercase SHA-256 hex`);
+  }
+  for (const [name, value] of Object.entries(profile)) {
+    if (typeof value !== "string" || value.length === 0) throw new Error(`${name} must be a non-empty string`);
+  }
+}
+
+function validateTask(task: VerifiableTask): void {
+  if (!Number.isSafeInteger(task.maxTokens) || task.maxTokens <= 0) throw new Error("maxTokens must be a positive safe integer");
+  if (!Number.isSafeInteger(task.seed)) throw new Error("seed must be a safe integer");
+  if (!Number.isFinite(task.temperature) || task.temperature < 0) throw new Error("temperature must be finite and non-negative");
+  if (task.executionProfile) validateProfile(task.executionProfile);
+}
+
+function canonicalTask(t: VerifiableTask): Buffer {
+  const profile = t.executionProfile;
+  const fields = [
+    "JGC/JUNCTIONING/CLAIM/V1",
+    t.model,
+    String(t.maxTokens),
+    String(t.temperature),
+    String(t.seed),
+    t.prompt,
+    ...(profile ? canonicalProfile(profile) : ["UNSCOPED-LEGACY"]),
+  ];
+  const chunks: Buffer[] = [];
+  for (const field of fields) {
+    const value = Buffer.from(field, "utf8");
+    const length = Buffer.allocUnsafe(4);
+    length.writeUInt32BE(value.length);
+    chunks.push(length, value);
+  }
+  return Buffer.concat(chunks);
 }
 
 /** Commitment binding a task spec to an output: sha256(canonical || output). */
 export function commitJunctioning(task: VerifiableTask, outputText: string): string {
+  validateTask(task);
+  const output = Buffer.from(outputText, "utf8");
+  const outputLength = Buffer.allocUnsafe(4);
+  outputLength.writeUInt32BE(output.length);
   return createHash("sha256")
     .update(canonicalTask(task))
-    .update("\n--output--\n")
-    .update(outputText)
+    .update(outputLength)
+    .update(output)
     .digest("hex");
 }
 
 /** Build a publishable claim from a task spec and the output a node produced. */
 export function makeClaim(task: VerifiableTask, outputText: string): JunctioningClaim {
+  if (!task.executionProfile) {
+    throw new Error("Cannot publish a slashable claim without an execution profile");
+  }
+  validateProfile(task.executionProfile);
   return { task, outputText, commitment: commitJunctioning(task, outputText) };
+}
+
+function sameProfile(a: ExecutionProfile, b: ExecutionProfile): boolean {
+  return canonicalProfile(a).every((value, index) => value === canonicalProfile(b)[index]);
 }
 
 /**
@@ -90,6 +137,30 @@ export async function verifyReplay(
   backend: InferenceBackend,
 ): Promise<VerificationResult> {
   const { task } = claim;
+  if (!task.executionProfile) {
+    return {
+      verified: false, compatible: false,
+      expectedCommitment: claim.commitment, actualCommitment: "",
+      reason: "claim has no versioned execution profile",
+    };
+  }
+  const verifierProfile = await backend.executionProfile?.(task.model);
+  try {
+    if (verifierProfile) validateProfile(verifierProfile);
+  } catch {
+    return {
+      verified: false, compatible: false,
+      expectedCommitment: claim.commitment, actualCommitment: "",
+      reason: "verifier returned an invalid execution profile",
+    };
+  }
+  if (!verifierProfile || !sameProfile(task.executionProfile, verifierProfile)) {
+    return {
+      verified: false, compatible: false,
+      expectedCommitment: claim.commitment, actualCommitment: "",
+      reason: "verifier execution profile is incompatible with the claim",
+    };
+  }
   const inf = await backend.run({
     prompt:      task.prompt,
     model:       task.model,
@@ -103,6 +174,7 @@ export async function verifyReplay(
 
   return {
     verified,
+    compatible: true,
     expectedCommitment: claim.commitment,
     actualCommitment,
     reason: verified ? undefined : "replayed output commitment does not match the claim",

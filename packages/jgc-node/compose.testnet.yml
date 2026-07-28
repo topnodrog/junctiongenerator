@@ -1,0 +1,44 @@
+services:
+  producer:
+    build: .
+    command:
+      - --host
+      - 0.0.0.0
+      - --status-host
+      - 0.0.0.0
+      - --datadir
+      - /data
+      - --advertise
+      - ws://producer:19444
+      - --produce
+    ports:
+      - "127.0.0.1:19444:19444"
+      - "127.0.0.1:7777:7777"
+    volumes:
+      - producer-data:/data
+    restart: unless-stopped
+
+  backchecker:
+    build: .
+    command:
+      - --host
+      - 0.0.0.0
+      - --status-host
+      - 0.0.0.0
+      - --datadir
+      - /data
+      - --seed
+      - ws://producer:19444
+    depends_on:
+      producer:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:19445:19444"
+      - "127.0.0.1:7778:7777"
+    volumes:
+      - backchecker-data:/data
+    restart: unless-stopped
+
+volumes:
+  producer-data:
+  backchecker-data:

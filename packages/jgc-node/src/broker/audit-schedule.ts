@@ -14,6 +14,7 @@
  */
 
 import { createHash } from "crypto";
+import { compareCanonicalBytes } from "../protocol/canonical.js";
 
 export interface AuditableComputeClaim {
   /** Unique claim identifier (normally its on-chain commitment or tx id). */
@@ -28,7 +29,7 @@ export interface AuditableComputeClaim {
 
 export interface AuditValidator {
   validatorId: string;
-  bondedStake: number;
+  bondedStake: bigint;
   active: boolean;
 }
 
@@ -43,7 +44,7 @@ export interface AuditPolicy {
   windowSize: number;
   beaconDelayBlocks: number;
   committeeSize: number;
-  minimumBond: number;
+  minimumBond: bigint;
   /** Probability that each non-coverage claim receives an additional audit. */
   extraClaimProbability: number;
 }
@@ -52,7 +53,7 @@ export const DEFAULT_AUDIT_POLICY: Readonly<AuditPolicy> = {
   windowSize: 10,
   beaconDelayBlocks: 2,
   committeeSize: 3,
-  minimumBond: 1,
+  minimumBond: 1n,
   extraClaimProbability: 0,
 };
 
@@ -87,7 +88,7 @@ function validatePolicy(policy: AuditPolicy): void {
     throw new Error("beaconDelayBlocks must be a positive integer");
   }
   requirePositiveInteger(policy.committeeSize, "committeeSize");
-  if (!Number.isFinite(policy.minimumBond) || policy.minimumBond < 0) {
+  if (policy.minimumBond < 0n) {
     throw new Error("minimumBond must be non-negative");
   }
   if (policy.extraClaimProbability < 0 || policy.extraClaimProbability > 1) {
@@ -140,7 +141,7 @@ function rank<T>(items: T[], key: (item: T) => string, ...seed: string[]): T[] {
   return [...items].sort((a, b) => {
     const ah = digest(...seed, key(a));
     const bh = digest(...seed, key(b));
-    return Buffer.compare(ah, bh) || key(a).localeCompare(key(b));
+    return Buffer.compare(ah, bh) || compareCanonicalBytes(key(a), key(b));
   });
 }
 
@@ -149,7 +150,7 @@ function selectCommittee(
   validators: AuditValidator[],
   beaconHash: string,
   size: number,
-  minimumBond: number,
+  minimumBond: bigint,
 ): string[] {
   const eligible = validators.filter((validator) =>
     validator.active &&
@@ -211,7 +212,7 @@ export function buildAuditSchedule(
   const selected = new Map<string, { claim: AuditableComputeClaim; reason: AuditAssignment["reason"] }>();
 
   // Coverage floor: one unpredictable claim from every claimant in the window.
-  for (const [claimantId, group] of [...byClaimant.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+  for (const [claimantId, group] of [...byClaimant.entries()].sort(([a], [b]) => compareCanonicalBytes(a, b))) {
     const coverage = rank(
       group,
       (claim) => claim.claimId,
@@ -257,7 +258,7 @@ export function buildAuditSchedule(
     });
   }
 
-  assignments.sort((a, b) => a.claimId.localeCompare(b.claimId));
+  assignments.sort((a, b) => compareCanonicalBytes(a.claimId, b.claimId));
   return {
     window,
     assignments,

@@ -23,14 +23,13 @@
 
 import { JGCNode } from "./network/node.js";
 import type { PeerConnection } from "./network/node.js";
-import { createGenesisHeader, GENESIS_TIMESTAMP, hashBlockHeader } from "./consensus/block.js";
-import { initEpochState } from "./consensus/epoch.js";
+import { createGenesisBlock, hashBlockHeader } from "./consensus/block.js";
 import { decodeDifficultyBits, BLOCKS_PER_EPOCH } from "./consensus/emission.js";
 import { loadVerifierWasm } from "./crypto/zkp.js";
 import {
   createRegtestMiner, generateContribution, buildBlockCandidate, createRegtestTx,
 } from "./miner/miner.js";
-import type { Block, PeerMessage } from "./types/index.js";
+import type { PeerMessage } from "./types/index.js";
 import { ComputeTaskType, MessageType } from "./types/index.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -87,14 +86,8 @@ async function main(): Promise<void> {
   await loadVerifierWasm({ mode: "simnet" });
 
   // 2. Construct genesis and boot the node.
-  const genesisHeader = createGenesisHeader();
-  const genesisBlock: Block = {
-    header:        genesisHeader,
-    transactions:  [],
-    computeProofs: [],
-    auditVerdicts: [],
-    epochState:    initEpochState(0, GENESIS_TIMESTAMP),
-  };
+  const genesisBlock = createGenesisBlock();
+  const genesisHeader = genesisBlock.header;
 
   const node = new JGCNode(
     {

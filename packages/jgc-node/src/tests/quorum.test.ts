@@ -20,6 +20,7 @@ import { StakeLedger } from "../broker/challenge.js";
 import { makeClaim, commitJunctioning } from "../broker/verification.js";
 import {
   FakeInferenceBackend,
+  fakeExecutionProfile,
   type InferenceBackend,
   type InferenceRequest,
   type InferenceResult,
@@ -27,7 +28,9 @@ import {
 } from "../broker/junctioning.js";
 
 function task(overrides: Partial<VerifiableTask> = {}): VerifiableTask {
-  return { prompt: "what is PoUC?", model: "gemma2:2b", maxTokens: 1024, temperature: 0, seed: 0, ...overrides };
+  const model = overrides.model ?? "gemma2:2b";
+  return { prompt: "what is PoUC?", model, maxTokens: 1024, temperature: 0, seed: 0,
+    executionProfile: fakeExecutionProfile(model), ...overrides };
 }
 
 /** A backend that always returns `text`, ignoring the prompt — models a node
@@ -35,6 +38,7 @@ function task(overrides: Partial<VerifiableTask> = {}): VerifiableTask {
 function fixedBackend(text: string): InferenceBackend {
   return {
     name: "fixed",
+    async executionProfile(model) { return fakeExecutionProfile(model); },
     async run(req: InferenceRequest): Promise<InferenceResult> {
       return { text, promptTokens: 1, outputTokens: 1, backend: "fixed", model: req.model };
     },
@@ -107,6 +111,24 @@ describe("collectVotes", () => {
     expect(votes.map((v) => v.id)).toEqual(["a", "b"]);
     // Deterministic fake ⇒ every honest challenger reproduces the claim.
     expect(votes.every((v) => v.commitment === claim.commitment)).toBe(true);
+  });
+
+  it("excludes challengers with incompatible numerical profiles", async () => {
+    const t = task();
+    const produced = await new FakeInferenceBackend().run(t);
+    const claim = makeClaim(t, produced.text);
+    const incompatible: Challenger = {
+      id: "gpu-other",
+      backend: {
+        name: "other",
+        async executionProfile(model) {
+          return { ...fakeExecutionProfile(model), numericBackend: "gpu-other" };
+        },
+        async run() { throw new Error("incompatible verifier must abstain"); },
+      },
+    };
+    const votes = await collectVotes(claim, [honest("portable"), incompatible]);
+    expect(votes.map((vote) => vote.id)).toEqual(["portable"]);
   });
 });
 

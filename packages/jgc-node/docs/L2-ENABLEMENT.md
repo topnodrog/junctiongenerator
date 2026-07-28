@@ -4,12 +4,12 @@
 design only, no L2 consensus changes
 **Audience:** JGC protocol engineering
 **Prerequisite reading:** `src/types/index.ts` (core types),
-`src/consensus/validation.ts` (validation pipeline), `src/crypto/pq-zkp.ts`
-(live post-quantum proof path), and `docs/QUANTUM-READY.md`
+`src/consensus/validation.ts` (validation pipeline), `src/crypto/compute-proof.ts`
+(portable proof dispatch), and `docs/QUANTUM-READY.md`
 
-> The Groth16/BN254 modules remain legacy reference code and are not on the
-> current consensus path. Any L2 design must preserve the node's post-quantum
-> security boundary.
+> The hash/Merkle receipt is simulation-only. Groth16 can prove limited
+> registered kernels but is not post-quantum. Any production L2 design requires
+> a sound, independently reviewed proof system.
 
 ---
 

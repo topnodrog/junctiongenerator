@@ -2,6 +2,9 @@
   "name": "@jg/jgc-node",
   "version": "0.1.0",
   "description": "Junction Generator Coin — Proof-of-Useful-Compute node",
+  "engines": {
+    "node": ">=20 <23"
+  },
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
@@ -10,6 +13,7 @@
     "build:all": "npm run build:rust && npm run build",
     "start": "node dist/index.js",
     "testnet": "node dist/scripts/testnet-node.js",
+    "testnet:producer": "node dist/scripts/testnet-node.js --produce",
     "typecheck": "tsc --noEmit",
     "test": "node --experimental-vm-modules --max-old-space-size=1536 ../../node_modules/jest/bin/jest.js --runInBand",
     "sync-demo": "node dist/scripts/sync-demo.js",
@@ -49,6 +53,9 @@
   "jest": {
     "preset": "ts-jest/presets/default-esm",
     "testEnvironment": "node",
+    "setupFilesAfterEnv": [
+      "<rootDir>/src/tests/setup.ts"
+    ],
     "testPathIgnorePatterns": [
       "/node_modules/",
       "/dist/"
