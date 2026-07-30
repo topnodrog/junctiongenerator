@@ -154,7 +154,7 @@ export default function MiningTelemetry() {
       size: number;
     }
 
-    let packets: Packet[] = [];
+    const packets: Packet[] = [];
     const maxPackets = 12;
 
     // Initialize packets
@@ -290,7 +290,7 @@ export default function MiningTelemetry() {
       const mouseX = e.clientX - rect.left;
       const mouseY = e.clientY - rect.top;
 
-      let found: any = null;
+      let found: typeof hoveredNode = null;
       for (const node of nodes) {
         const dist = Math.hypot(node.x - mouseX, node.y - mouseY);
         if (dist < 18) {

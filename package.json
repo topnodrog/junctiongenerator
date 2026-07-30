@@ -2,6 +2,7 @@
   "name": "junction-generator",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "yarn@1.22.22",
   "engines": {
     "node": ">=20.0.0"
   },
@@ -9,15 +10,13 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint src next.config.ts eslint.config.mjs"
   },
   "dependencies": {
     "@rainbow-me/rainbowkit": "^2.2.11",
-    "@tailwindcss/oxide-linux-x64-gnu": "^4.3.0",
     "@tanstack/react-query": "^5.101.0",
     "ethers": "^6.16.0",
     "lightningcss": "^1.32.0",
-    "lightningcss-linux-x64-gnu": "^1.32.0",
     "next": "16.2.6",
     "react": "19.2.4",
     "react-dom": "19.2.4",

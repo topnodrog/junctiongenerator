@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Whitepaper | Junction Generator",
@@ -8,9 +9,9 @@ export const metadata: Metadata = {
 export default function WhitepaperPage() {
   return (
     <main style={{ maxWidth: 800, margin: "0 auto", padding: "120px 24px 80px" }}>
-      <a href="/" className="footer-link" style={{ display: "inline-block", marginBottom: "32px" }}>
+      <Link href="/" className="footer-link" style={{ display: "inline-block", marginBottom: "32px" }}>
         ← Back to Home
-      </a>
+      </Link>
       <h1 className="text-gradient-cyber" style={{ fontSize: 42, marginBottom: 8 }}>
         Junction Generator
       </h1>
@@ -155,9 +156,9 @@ export default function WhitepaperPage() {
           <a href="https://github.com/topnodrog/junctiongenerator" target="_blank" rel="noopener noreferrer" className="btn-glow-purple" style={{ textDecoration: "none", fontSize: 13 }}>
             View on GitHub
           </a>
-          <a href="/" className="btn-glow-cyan" style={{ textDecoration: "none", fontSize: 13 }}>
+          <Link href="/" className="btn-glow-cyan" style={{ textDecoration: "none", fontSize: 13 }}>
             Back to Demo
-          </a>
+          </Link>
         </div>
       </div>
     </main>

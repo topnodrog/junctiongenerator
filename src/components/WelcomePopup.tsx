@@ -7,9 +7,12 @@ export default function WelcomePopup() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    if (!localStorage.getItem(STORAGE_KEY)) {
-      setVisible(true);
-    }
+    const initialCheck = setTimeout(() => {
+      if (!localStorage.getItem(STORAGE_KEY)) {
+        setVisible(true);
+      }
+    }, 0);
+    return () => clearTimeout(initialCheck);
   }, []);
 
   function close() {
