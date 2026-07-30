@@ -14,10 +14,10 @@ import {
   renameSync,
   rmSync,
   statSync,
-  writeFileSync,
 } from "fs";
 import { dirname, join } from "path";
 import type { AuditLifecycleState } from "../broker/audit-protocol.js";
+import { atomicWriteFile, syncDirectory } from "./durable-file.js";
 
 const AUDIT_STORE_VERSION = 1;
 const MAX_AUDIT_STORE_BYTES = 32 * 1024 * 1024;
@@ -30,9 +30,11 @@ interface AuditStoreFile {
 export class AuditStore {
   private readonly file: string;
   private readonly tmp: string;
+  private readonly dataDir: string;
 
   constructor(dataDir: string) {
     mkdirSync(dataDir, { recursive: true });
+    this.dataDir = dataDir;
     this.file = join(dataDir, "audits.json");
     this.tmp = join(dataDir, "audits.json.tmp");
   }
@@ -57,13 +59,13 @@ export class AuditStore {
     if (Buffer.byteLength(body, "utf8") > MAX_AUDIT_STORE_BYTES) {
       throw new Error("audit store exceeds safety limit");
     }
-    writeFileSync(this.tmp, body, "utf8");
-    renameSync(this.tmp, this.file);
+    atomicWriteFile(this.file, this.tmp, body);
   }
 
   clear(): void {
     if (existsSync(this.file)) rmSync(this.file);
     if (existsSync(this.tmp)) rmSync(this.tmp);
+    syncDirectory(this.dataDir);
   }
 
   /** Preserve a malformed file for inspection while allowing a clean restart. */
@@ -72,6 +74,7 @@ export class AuditStore {
     const target = join(dirname(this.file), `audits.corrupt.${Date.now()}.json`);
     renameSync(this.file, target);
     if (existsSync(this.tmp)) rmSync(this.tmp);
+    syncDirectory(this.dataDir);
     return target;
   }
 }

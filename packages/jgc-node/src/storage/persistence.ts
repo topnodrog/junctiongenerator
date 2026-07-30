@@ -8,8 +8,8 @@
  * structure (headers, height index, epoch accumulator, difficulty, UTXO set) — so
  * there is no separate snapshot that can diverge from the chain.
  *
- * ON-DISK FORMAT — binary (`blocks.dat`): a sequence of length-prefixed records,
- * each `u32 LE length ‖ encodeBlock(block)`. Compact and fast to scan (no JSON
+ * ON-DISK FORMAT — binary (`blocks.dat`): a versioned header followed by
+ * checksum-protected length-prefixed records. Compact and fast to scan (no JSON
  * parse, ~no quoting/tagging overhead), and it reuses the canonical header/tx
  * binary codecs so the bytes line up with the wire format. Blocks contain BigInt
  * amounts and a Map (EpochState.minerContributions); the codec encodes them
@@ -18,11 +18,25 @@
  * The tagged-JSON helpers (serializeBlock/deserializeBlock) are retained as a
  * human-readable/debug encoding and a structural deep-clone utility.
  *
- * PRODUCTION NOTE: add a UTXO snapshot (to avoid full replay on large chains) and
- * fsync/atomic writes before any real deployment.
+ * Appends are flushed before acceptance returns. A torn final frame is
+ * quarantined and truncated to the last complete record; corruption inside a
+ * complete record fails closed.
  */
 
-import { appendFileSync, readFileSync, writeFileSync, renameSync, existsSync, mkdirSync, rmSync } from "fs";
+import {
+  closeSync,
+  existsSync,
+  ftruncateSync,
+  fsyncSync,
+  mkdirSync,
+  openSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "fs";
+import { createHash } from "crypto";
 import { join } from "path";
 import type { Block, EpochState, MinerComputeContribution } from "../types/index.js";
 import { ComputeTaskType } from "../types/index.js";
@@ -31,6 +45,7 @@ import {
   serializeBlockHeader, deserializeBlockHeader, BLOCK_HEADER_SIZE,
   serializeTransaction, deserializeTransaction,
 } from "../consensus/block.js";
+import { atomicWriteFile, durableAppend, syncDirectory } from "./durable-file.js";
 
 const BIGINT_TAG = "$jgc:bigint";
 const MAP_TAG = "$jgc:map";
@@ -204,34 +219,138 @@ export function decodeBlock(buf: Buffer): Block {
  * Append-only block store backed by `<dataDir>/blocks.dat` (binary, length-
  * prefixed records). Stores accepted non-genesis blocks in height order.
  */
+const BLOCK_STORE_MAGIC = Buffer.from("JGCBLK3\0", "ascii");
+const BLOCK_STORE_VERSION = 1;
+const BLOCK_STORE_HEADER_BYTES = BLOCK_STORE_MAGIC.length + 4;
+const BLOCK_RECORD_PREFIX_BYTES = 4 + 32;
+const MAX_BLOCK_RECORD_BYTES = 32 * 1024 * 1024;
+
+export class StorageCompatibilityError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "StorageCompatibilityError";
+  }
+}
+
+function blockStoreHeader(): Buffer {
+  const header = Buffer.alloc(BLOCK_STORE_HEADER_BYTES);
+  BLOCK_STORE_MAGIC.copy(header, 0);
+  header.writeUInt32LE(BLOCK_STORE_VERSION, BLOCK_STORE_MAGIC.length);
+  return header;
+}
+
+function blockRecord(block: Block): Buffer {
+  const body = encodeBlock(block);
+  if (body.length > MAX_BLOCK_RECORD_BYTES) throw new RangeError("block record exceeds safety limit");
+  const prefix = Buffer.alloc(BLOCK_RECORD_PREFIX_BYTES);
+  prefix.writeUInt32LE(body.length, 0);
+  createHash("sha3-256").update(body).digest().copy(prefix, 4);
+  return Buffer.concat([prefix, body]);
+}
+
 export class BlockStore {
   private readonly file: string;
+  private readonly tmp: string;
+  private readonly dataDir: string;
 
   constructor(dataDir: string) {
     mkdirSync(dataDir, { recursive: true });
+    this.dataDir = dataDir;
     this.file = join(dataDir, "blocks.dat");
+    this.tmp = join(dataDir, "blocks.dat.tmp");
+  }
+
+  static hasCurrentHeader(dataDir: string): boolean {
+    const file = join(dataDir, "blocks.dat");
+    if (!existsSync(file) || statSync(file).size < BLOCK_STORE_HEADER_BYTES) return false;
+    const header = readFileSync(file).subarray(0, BLOCK_STORE_HEADER_BYTES);
+    return header.subarray(0, BLOCK_STORE_MAGIC.length).equals(BLOCK_STORE_MAGIC) &&
+      header.readUInt32LE(BLOCK_STORE_MAGIC.length) === BLOCK_STORE_VERSION;
+  }
+
+  private ensureHeader(): void {
+    if (!existsSync(this.file)) {
+      atomicWriteFile(this.file, this.tmp, blockStoreHeader());
+      return;
+    }
+    const data = readFileSync(this.file);
+    if (data.length < BLOCK_STORE_HEADER_BYTES ||
+        !data.subarray(0, BLOCK_STORE_MAGIC.length).equals(BLOCK_STORE_MAGIC)) {
+      throw new StorageCompatibilityError(
+        `Unsupported legacy block store at ${this.file}; archive or reset this data directory before using Consensus V3`,
+      );
+    }
+    const version = data.readUInt32LE(BLOCK_STORE_MAGIC.length);
+    if (version !== BLOCK_STORE_VERSION) {
+      throw new StorageCompatibilityError(
+        `Unsupported block-store version ${version} at ${this.file}; expected ${BLOCK_STORE_VERSION}`,
+      );
+    }
   }
 
   /** Append one accepted block as `u32 LE length ‖ encodeBlock(block)`. */
   append(block: Block): void {
-    const body = encodeBlock(block);
-    const len = Buffer.alloc(4); len.writeUInt32LE(body.length, 0);
-    appendFileSync(this.file, Buffer.concat([len, body]));
+    this.ensureHeader();
+    durableAppend(this.file, blockRecord(block));
+  }
+
+  /** Atomically replace the complete active-chain log after a reorg. */
+  rewrite(blocks: readonly Block[]): void {
+    atomicWriteFile(this.file, this.tmp, Buffer.concat([blockStoreHeader(), ...blocks.map(blockRecord)]));
   }
 
   /** Load all stored blocks in append (height) order. */
   loadAll(): Block[] {
     if (!existsSync(this.file)) return [];
+    this.ensureHeader();
     const data = readFileSync(this.file);
     const blocks: Block[] = [];
-    let off = 0;
+    let off = BLOCK_STORE_HEADER_BYTES;
+    let lastGood = off;
     while (off < data.length) {
-      if (off + 4 > data.length) throw new RangeError(`block store ${this.file} truncated at byte ${off}`);
-      const len = data.readUInt32LE(off); off += 4;
-      if (off + len > data.length) throw new RangeError(`block store ${this.file} truncated: record needs ${len} bytes`);
-      blocks.push(decodeBlock(data.subarray(off, off + len))); off += len;
+      const remaining = data.length - off;
+      if (remaining < BLOCK_RECORD_PREFIX_BYTES) {
+        this.recoverTornTail(data, lastGood, `incomplete ${remaining}-byte record prefix`);
+        break;
+      }
+      const len = data.readUInt32LE(off);
+      if (len === 0 || len > MAX_BLOCK_RECORD_BYTES) {
+        throw new RangeError(`block store ${this.file} has invalid record length ${len} at byte ${off}`);
+      }
+      const recordEnd = off + BLOCK_RECORD_PREFIX_BYTES + len;
+      if (recordEnd > data.length) {
+        this.recoverTornTail(data, lastGood, `record needs ${len} bytes but tail is incomplete`);
+        break;
+      }
+      const expected = data.subarray(off + 4, off + BLOCK_RECORD_PREFIX_BYTES);
+      const body = data.subarray(off + BLOCK_RECORD_PREFIX_BYTES, recordEnd);
+      const actual = createHash("sha3-256").update(body).digest();
+      if (!actual.equals(expected)) {
+        throw new Error(`block store ${this.file} checksum mismatch at byte ${off}`);
+      }
+      blocks.push(decodeBlock(body));
+      off = recordEnd;
+      lastGood = off;
     }
     return blocks;
+  }
+
+  private recoverTornTail(data: Buffer, lastGood: number, reason: string): void {
+    const tail = data.subarray(lastGood);
+    if (tail.length === 0) return;
+    const quarantine = join(this.dataDir, `blocks.torn.${Date.now()}.tail`);
+    writeFileSync(quarantine, tail);
+    const tailFd = openSync(quarantine, "r+");
+    try { fsyncSync(tailFd); } finally { closeSync(tailFd); }
+    const fd = openSync(this.file, "r+");
+    try {
+      ftruncateSync(fd, lastGood);
+      fsyncSync(fd);
+    } finally {
+      closeSync(fd);
+    }
+    syncDirectory(this.dataDir);
+    console.warn(`[Storage] Recovered torn block-store tail (${reason}); preserved ${tail.length} byte(s) at ${quarantine}`);
   }
 
   /** Number of stored blocks. */
@@ -242,6 +361,57 @@ export class BlockStore {
   /** Delete the store (fresh start). */
   clear(): void {
     if (existsSync(this.file)) rmSync(this.file);
+    if (existsSync(this.tmp)) rmSync(this.tmp);
+    syncDirectory(this.dataDir);
+  }
+}
+
+export interface StorageIdentity {
+  chainId: string;
+  genesisHash: string;
+  consensusVersion: number;
+  networkMagic: number;
+  proofMode: string;
+}
+
+interface StorageManifestFile extends StorageIdentity {
+  storageFormatVersion: number;
+}
+
+const STORAGE_FORMAT_VERSION = 1;
+
+/** Binds a data directory to one chain, consensus version, and proof mode. */
+export class StorageManifest {
+  static ensure(dataDir: string, identity: StorageIdentity): void {
+    mkdirSync(dataDir, { recursive: true });
+    const file = join(dataDir, "storage-manifest.json");
+    const tmp = join(dataDir, "storage-manifest.json.tmp");
+    if (!existsSync(file)) {
+      const stateFiles = ["blocks.dat", "chainstate.snapshot", "audits.json"]
+        .filter((name) => existsSync(join(dataDir, name)));
+      if (stateFiles.length > 0 && !BlockStore.hasCurrentHeader(dataDir)) {
+        throw new StorageCompatibilityError(
+          `Data directory ${dataDir} has unversioned state (${stateFiles.join(", ")}); archive or reset it before using Consensus V3`,
+        );
+      }
+      const manifest: StorageManifestFile = { storageFormatVersion: STORAGE_FORMAT_VERSION, ...identity };
+      atomicWriteFile(file, tmp, JSON.stringify(manifest, null, 2) + "\n");
+      return;
+    }
+
+    const parsed = JSON.parse(readFileSync(file, "utf8")) as Partial<StorageManifestFile>;
+    if (parsed.storageFormatVersion !== STORAGE_FORMAT_VERSION) {
+      throw new StorageCompatibilityError(
+        `Unsupported storage manifest version ${String(parsed.storageFormatVersion)}; expected ${STORAGE_FORMAT_VERSION}`,
+      );
+    }
+    for (const key of ["chainId", "genesisHash", "consensusVersion", "networkMagic", "proofMode"] as const) {
+      if (parsed[key] !== identity[key]) {
+        throw new StorageCompatibilityError(
+          `Data directory ${dataDir} is for ${key}=${String(parsed[key])}, not ${String(identity[key])}`,
+        );
+      }
+    }
   }
 }
 
@@ -283,9 +453,11 @@ const SNAPSHOT_VERSION = 1;
 export class SnapshotStore {
   private readonly file: string;
   private readonly tmp: string;
+  private readonly dataDir: string;
 
   constructor(dataDir: string) {
     mkdirSync(dataDir, { recursive: true });
+    this.dataDir = dataDir;
     this.file = join(dataDir, "chainstate.snapshot");
     this.tmp  = join(dataDir, "chainstate.snapshot.tmp");
   }
@@ -312,15 +484,18 @@ export class SnapshotStore {
       w.u64(u.height);
       w.raw(Buffer.from([u.isCoinbase ? 1 : 0]));
     }
-    writeFileSync(this.tmp, w.build());
-    renameSync(this.tmp, this.file);            // atomic replace
+    atomicWriteFile(this.file, this.tmp, w.build());
   }
 
   load(): ChainSnapshot | null {
     if (!existsSync(this.file)) return null;
     const r = new Reader(readFileSync(this.file));
     const version = r.u32();
-    if (version !== SNAPSHOT_VERSION) return null;  // unknown format → ignore
+    if (version !== SNAPSHOT_VERSION) {
+      throw new StorageCompatibilityError(
+        `Unsupported chainstate snapshot version ${version}; expected ${SNAPSHOT_VERSION}`,
+      );
+    }
     const tipHash = r.raw(32).toString("hex");
     const tipHeight = r.u64();
     const currentDifficultyBits = r.u32();
@@ -341,11 +516,22 @@ export class SnapshotStore {
       const isCoinbase = r.raw(1)[0] === 1;
       utxos.push({ txid, vout, value, scriptPubKey, height, isCoinbase });
     }
+    if (!r.done) throw new Error("chainstate snapshot has trailing bytes");
     return { tipHash, tipHeight, currentDifficultyBits, medianPastTime, epochFees, recentBlockTimes, epochState, utxos };
+  }
+
+  quarantine(): string | null {
+    if (!existsSync(this.file)) return null;
+    const target = join(this.dataDir, `chainstate.corrupt.${Date.now()}.snapshot`);
+    renameSync(this.file, target);
+    if (existsSync(this.tmp)) rmSync(this.tmp);
+    syncDirectory(this.dataDir);
+    return target;
   }
 
   clear(): void {
     if (existsSync(this.file)) rmSync(this.file);
     if (existsSync(this.tmp)) rmSync(this.tmp);
+    syncDirectory(this.dataDir);
   }
 }

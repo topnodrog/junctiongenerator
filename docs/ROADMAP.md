@@ -96,7 +96,7 @@ Gate: do not open the P2P port to the internet before the first three items.
   expansion of the matrix, not a completed claim.
 - [ ] **Seed and transport deployment**: public seed nodes, TLS/WSS ingress,
   firewall guidance, monitoring, backups, and documented upgrade/reset steps.
-- [ ] **Storage hardening**: versioned data format, atomic/fsynced writes,
+- [x] **Storage hardening**: versioned data format, atomic/fsynced writes,
   migration rules, corrupt-tail recovery, and explicit V2-to-V3 refusal.
 - [ ] **Faucet + explorer-lite**: even a static page over the status server
   format is enough for runners to see their coins.

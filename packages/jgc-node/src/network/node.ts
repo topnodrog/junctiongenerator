@@ -47,7 +47,7 @@ import {
   computeEpochSettlement,
 } from "../consensus/epoch.js";
 import { UTXOSet, validateSpend, txid } from "../consensus/utxo.js";
-import { BlockStore, SnapshotStore, type ChainSnapshot } from "../storage/persistence.js";
+import { BlockStore, SnapshotStore, StorageManifest, type ChainSnapshot } from "../storage/persistence.js";
 import { calculateNextDifficultyTarget, BLOCKS_PER_EPOCH, RETARGET_WINDOW_BLOCKS, encodeDifficultyBits, decodeDifficultyBits } from "../consensus/emission.js";
 import { globalBroker } from "../broker/compute-broker.js";
 import { compareCanonicalBytes } from "../protocol/canonical.js";
@@ -264,6 +264,13 @@ export class JGCNode extends EventEmitter {
     // seeding from a chainstate snapshot when one is available (skips re-applying
     // every transaction below the snapshot height).
     if (this.config.dataDir) {
+      StorageManifest.ensure(this.config.dataDir, {
+        chainId: this.config.chainId ?? `network-${this.config.networkMagic.toString(16)}`,
+        genesisHash,
+        consensusVersion: this.config.consensusVersion ?? genesisBlock.header.version,
+        networkMagic: this.config.networkMagic,
+        proofMode: this.config.proofMode ?? "unspecified",
+      });
       this.store = new BlockStore(this.config.dataDir);
       this.snapshot = new SnapshotStore(this.config.dataDir);
       this.replayFromStore();
@@ -332,7 +339,16 @@ export class JGCNode extends EventEmitter {
     // ABOVE the snapshot are re-applied; everything at/below is registered as
     // metadata so headers/blocks/heightIndex/chainWork stay complete for serving
     // and future fork choice.
-    const snap = this.snapshot?.load() ?? null;
+    let snap: ChainSnapshot | null = null;
+    try {
+      snap = this.snapshot?.load() ?? null;
+    } catch (error) {
+      const quarantined = this.snapshot?.quarantine() ?? null;
+      console.warn(
+        `[Node] Chainstate snapshot was malformed and has been quarantined` +
+        `${quarantined ? ` at ${quarantined}` : ""}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
     let applyFromHeight = 1;
     if (snap) {
       const atHeight = blocks.find(b => b.header.height === snap.tipHeight);
@@ -1312,12 +1328,13 @@ export class JGCNode extends EventEmitter {
    *  used after a reorg so the persisted log stays linear. */
   private rewriteStoreToActiveChain(): void {
     if (!this.store) return;
-    this.store.clear();
+    const blocks: Block[] = [];
     for (let h = 1; h <= this.chain.tipHeight; h++) {
       const hash = this.chain.heightIndex.get(h);
       const blk = hash ? this.chain.blocks.get(hash) : undefined;
-      if (blk) this.store.append(blk);
+      if (blk) blocks.push(blk);
     }
+    this.store.rewrite(blocks);
   }
 
   // ─────────────────────────────────────────────────────────────────────────

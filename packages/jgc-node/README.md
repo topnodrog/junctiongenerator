@@ -144,6 +144,12 @@ Consensus V3 corrected the genesis timestamp and body commitments. Delete or
 archive any older local `data/testnet` directory before first use; V2 and early
 V3 development data are intentionally incompatible with this testnet identity.
 
+Persistent storage is now versioned and bound to the network identity. Block
+records are checksum-protected and flushed; an incomplete crash tail is
+quarantined and truncated, while corruption inside a complete record fails
+closed. See [`docs/STORAGE-RECOVERY.md`](docs/STORAGE-RECOVERY.md) before backup,
+restore, upgrade, or reset operations.
+
 This is an early testnet node, not mainnet software.
 
 Architecture references:

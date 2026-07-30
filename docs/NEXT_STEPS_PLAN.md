@@ -1,6 +1,6 @@
 # Junction Generator Next-Steps Plan
 
-**Status:** Execution approved; Phase 1 complete, Phase 2 not started.
+**Status:** Execution approved; Phases 1–2 complete, Phase 3 not started.
 
 **Prepared:** 2026-07-30
 
@@ -76,6 +76,14 @@ Exit criteria:
   disposition; no sensitive material is accidentally staged.
 
 ## Phase 2 — Storage hardening
+
+**Completed 2026-07-30.** The node now uses a network-bound storage manifest,
+versioned checksum-protected block records, atomic and flushed replacement
+writes, deterministic torn-tail recovery, corrupt snapshot quarantine with
+full replay, and explicit refusal of incompatible/unversioned state. Recovery,
+reset, backup, and restore procedures are documented in
+`packages/jgc-node/docs/STORAGE-RECOVERY.md`. The full 30-suite node test run
+(286 tests), type-check, and production build pass on the implementation branch.
 
 **Purpose:** Make persistent nodes recoverable before exposing them to public
 traffic or asking external operators to keep chain state.

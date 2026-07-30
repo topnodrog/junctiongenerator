@@ -23,7 +23,7 @@
  * Run:  npm run wallet -- <command> [...]      (after npm run build)
  */
 
-import { existsSync, readFileSync, writeFileSync } from "fs";
+import { existsSync, readFileSync } from "fs";
 import type { NodeConfig } from "../types/index.js";
 import { JGCNode } from "../network/node.js";
 import {
@@ -35,6 +35,7 @@ import {
 import { serializeTransaction } from "../consensus/block.js";
 import { connectToPeers } from "../network/transport.js";
 import { Wallet, formatJGC, parseJGC, type KeystoreFile } from "../wallet/wallet.js";
+import { atomicWriteFile } from "../storage/durable-file.js";
 
 const DEFAULT_FEE = "0.0001"; // JGC
 
@@ -94,7 +95,7 @@ function loadWallet(f: Args, mustExist: boolean): { wallet: Wallet; path: string
 }
 
 function saveWallet(wallet: Wallet, path: string, pass: string): void {
-  writeFileSync(path, JSON.stringify(wallet.toKeystore(pass), null, 2));
+  atomicWriteFile(path, `${path}.tmp`, JSON.stringify(wallet.toKeystore(pass), null, 2) + "\n");
 }
 
 function bootNode(f: Args): JGCNode {
