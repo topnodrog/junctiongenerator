@@ -10,5 +10,9 @@
   "dependencies": {
     "ethers": "^6.16.0",
     "solc": "^0.8.26"
+  },
+  "overrides": {
+    "tmp": "0.2.7",
+    "ws": "8.21.0"
   }
 }

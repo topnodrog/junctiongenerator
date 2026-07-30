@@ -177,7 +177,8 @@ npm run sync-demo
 
 ## Tech Stack
 
-- **Frontend:** Next.js 16 + React 19 + TypeScript
+- **Frontend:** Next.js 16 + React 19 + TypeScript; no globally mounted EVM
+  wallet SDK
 - **Styling:** Custom CSS design system (dark cyberpunk)
 - **Deployment:** Vercel
 - **Backend:** Cloudflare Workers + Turso (SQLite)

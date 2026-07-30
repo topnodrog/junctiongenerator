@@ -1,4 +1,3 @@
-import ConnectButton from "@/components/ConnectButton";
 import VibePlayground from "@/components/VibePlayground";
 import MiningTelemetry from "@/components/MiningTelemetry";
 import AgentConsole from "@/components/AgentConsole";
@@ -93,7 +92,7 @@ export default function Home() {
           <Link href="/blog">Field notes</Link>
           <a href="#hire">Hire James</a>
         </nav>
-        <div className="jg-wallet"><ConnectButton /></div>
+        <Link href="/community" className="jg-button jg-button-primary">Join</Link>
       </header>
 
       <main id="top" className="jg-page">
