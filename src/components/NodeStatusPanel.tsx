@@ -82,9 +82,12 @@ export default function NodeStatusPanel() {
   }, []);
 
   useEffect(() => {
-    poll();
+    const initialPoll = setTimeout(() => void poll(), 0);
     const id = setInterval(poll, POLL_MS);
-    return () => clearInterval(id);
+    return () => {
+      clearTimeout(initialPoll);
+      clearInterval(id);
+    };
   }, [poll]);
 
   const copyAddress = () => {

@@ -24,8 +24,8 @@
   --text-muted: #5e648c;
 
   /* Font Families */
-  --font-display: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --font-display: var(--font-outfit), -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), 'Fira Code', monospace;
   
   /* Glow Effects */
   --glow-cyan: 0 0 20px rgba(0, 242, 254, 0.2);

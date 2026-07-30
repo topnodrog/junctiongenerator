@@ -1,0 +1,59 @@
+name: Website and Worker
+
+on:
+  push:
+    paths:
+      - "src/**"
+      - "public/**"
+      - "api/**"
+      - "package.json"
+      - "yarn.lock"
+      - "next.config.ts"
+      - "eslint.config.mjs"
+      - "tsconfig.json"
+      - "postcss.config.mjs"
+      - ".github/workflows/website-ci.yml"
+  pull_request:
+    paths:
+      - "src/**"
+      - "public/**"
+      - "api/**"
+      - "package.json"
+      - "yarn.lock"
+      - "next.config.ts"
+      - "eslint.config.mjs"
+      - "tsconfig.json"
+      - "postcss.config.mjs"
+      - ".github/workflows/website-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  website:
+    name: Website lint and build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: corepack enable
+      - run: yarn install --frozen-lockfile
+      - run: yarn lint
+      - run: yarn build
+
+  worker-api:
+    name: Worker JavaScript syntax
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Check Worker and migration scripts
+        shell: bash
+        run: |
+          for file in api/*.js; do
+            node --check "$file"
+          done

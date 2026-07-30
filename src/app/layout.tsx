@@ -1,16 +1,20 @@
 import type { Metadata } from "next";
-import { Outfit, JetBrains_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import { WalletProvider } from "@/components/WalletProvider";
 import "./globals.css";
 
-const outfit = Outfit({
+const outfit = localFont({
+  src: "./fonts/Outfit-Variable.ttf",
   variable: "--font-outfit",
-  subsets: ["latin"],
+  weight: "100 900",
+  display: "swap",
 });
 
-const jetbrainsMono = JetBrains_Mono({
+const jetbrainsMono = localFont({
+  src: "./fonts/JetBrainsMono-Variable.ttf",
   variable: "--font-jetbrains-mono",
-  subsets: ["latin"],
+  weight: "100 800",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
