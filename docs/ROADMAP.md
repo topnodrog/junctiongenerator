@@ -1,6 +1,6 @@
 # Junction Generator — Completion Roadmap
 
-**Updated:** 2026-07-28 · **Owner:** James Gordon
+**Updated:** 2026-07-30 · **Owner:** James Gordon
 
 Three components, one repo. Keep them distinct:
 
@@ -8,7 +8,7 @@ Three components, one repo. Keep them distinct:
 |---|---|---|
 | **JGC coin** (`packages/jgc-node`) | Sovereign PoUC Layer-1 — the actual product | Consensus V3 local/private testnet validated; 30 suites / 280 tests green |
 | **JGT token** (`contracts/`) | ERC-20 on Base (legacy) | Deployed; held, not promoted (no-sale stance) |
-| **junctiongenerator.net** (`src/` + `api/`) | Public site + Cloudflare Worker backend | Worker live and verified; community-first site refresh pushed to `junctioning` |
+| **junctiongenerator.net** (`src/` + `api/`) | Public site + Cloudflare Worker backend | Worker live and verified; community-first site merged to `main` |
 
 The strategy on record: fund via grants/donations, never JGT sales. JGC is
 the product; the site is its shop window and node-runner recruiting funnel.
@@ -31,16 +31,16 @@ the product; the site is its shop window and node-runner recruiting funnel.
 - [x] Live synthetic hire-lead test stored successfully and Cloudflare tail
   logged `owner notification sent`; both synthetic rows were then deleted.
 - [x] Community-first website refresh reviewed and pushed in commit `07cbe0a`.
-- [ ] Merge `junctioning` to `main` to deploy the refreshed site through
-  Vercel.
+- [x] Community-first site merged to `main` and deployed through Vercel.
 
 ## Phase 1 — Lock the doors (1–2 weeks)
 
 Security/quality debt that should land before recruiting outside node runners.
 
-- **Enable GitHub secret scanning + push protection** on the repo (free for
-  public repos; Settings → Code security). The repo history is verified
-  clean today — keep it that way mechanically.
+- [x] **GitHub secret scanning + push protection enabled** on 2026-07-30.
+  Dependabot security updates and vulnerability alerts are also enabled.
+  GitHub still reports secret validity checks as disabled; retry if that
+  control becomes available in repository settings.
 - **Decide what a public repo should contain.** The Obsidian vault
   (fundraising strategy, ops notes) and any pitch material are world-readable
   here. Either make peace with building in public, or split vault/ and
@@ -49,9 +49,9 @@ Security/quality debt that should land before recruiting outside node runners.
   `OUTREACH_EMAIL_TEMPLATES.md`, `JGC_TeamBios.md`, `VISIBLE_SETUP_GUIDE.md`,
   `WEEK1_QUICK_REFERENCE.md`, the .pptx) are untracked — do **not** commit
   them unless that decision is deliberate.
-- **CI**: GitHub Actions workflow running `next build`, `tsc --noEmit`, and
-  the jgc-node jest suite on every push. The suite runs in ~15 s; there is
-  no excuse to merge red.
+- [x] **CI**: website lint/build, Worker syntax, jgc-node tests/build,
+  Rust/WASM verification, cross-platform jobs, and the Docker smoke topology
+  run through GitHub Actions on relevant changes.
 - **Turnstile (or equivalent) on the public forms** (subscribe / hire-lead /
   airdrop). Rate limiting is live but a bot check keeps the Turso bill and
   the digest signal clean.

@@ -11,7 +11,7 @@ import PartnerLinks from "@/components/PartnerLinks";
 import Link from "next/link";
 
 const PROOF_POINTS = [
-  { value: "244", label: "node tests passing" },
+  { value: "280", label: "node tests passing" },
   { value: "31", label: "blocks synced in a two-node demo" },
   { value: "10", label: "blocks per historical audit window" },
   { value: "3", label: "validators per audit committee" },
@@ -55,7 +55,7 @@ const COMMUNITY_PATHS = [
     tag: "Early operators",
     title: "Prepare to run a node",
     body: "The public network is not open yet. Read the runner guide now and be ready for the first safe test cohort.",
-    href: "https://github.com/topnodrog/junctiongenerator/tree/junctioning/packages/jgc-node",
+    href: "https://github.com/topnodrog/junctiongenerator/tree/main/packages/jgc-node",
     cta: "Read the node guide",
     external: true,
   },
@@ -72,7 +72,7 @@ const STATUS_ITEMS = [
   { state: "working", title: "Local inference", body: "Gemma runs through Ollama on a contributor's own machine." },
   { state: "working", title: "Post-quantum node path", body: "ML-DSA signatures, SHA3-256 checksums, and transparent proof foundations are active in the private node." },
   { state: "working", title: "Historical audit consensus", body: "Signed verdict evidence survives mining, peer sync, restart, and chain reorganization." },
-  { state: "next", title: "Public testnet", body: "Waiting on peer hardening, model pinning, real-network soak tests, and safe node packaging." },
+  { state: "next", title: "Public testnet", body: "Waiting on crash-safe storage, monitored TLS/WSS seeds, runner services, and a multi-day real-network soak." },
   { state: "research", title: "Cross-hardware verification", body: "The central research problem: proving valid work across different processors, runtimes, and quantizations." },
   { state: "later", title: "Economic enforcement", body: "Rewards and slashing stay off until validator identity, bonds, and stake snapshots belong to consensus." },
 ];

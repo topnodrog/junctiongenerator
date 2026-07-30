@@ -1,7 +1,9 @@
 # Junction Generator Next-Steps Plan
 
-**Status:** Planning only — no implementation work in this plan has started.  
-**Prepared:** 2026-07-30  
+**Status:** Execution approved; Phase 1 complete, Phase 2 not started.
+
+**Prepared:** 2026-07-30
+
 **Target milestone:** A small, observable, recoverable public JGC testnet.
 
 ## Recommendation
