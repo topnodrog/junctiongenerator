@@ -1,12 +1,12 @@
 # Junction Generator — Completion Roadmap
 
-**Updated:** 2026-07-30 · **Owner:** James Gordon
+**Updated:** 2026-07-31 · **Owner:** James Gordon
 
 Three components, one repo. Keep them distinct:
 
 | Component | What it is | Status |
 |---|---|---|
-| **JGC coin** (`packages/jgc-node`) | Sovereign PoUC Layer-1 — the actual product | Consensus V3 local/private testnet validated; 30 suites / 280 tests green |
+| **JGC coin** (`packages/jgc-node`) | Sovereign PoUC Layer-1 — the actual product | Consensus V3 local/private testnet validated; storage hardened; 30 suites / 286 tests green |
 | **JGT token** (`contracts/`) | ERC-20 on Base (legacy) | Deployed; held, not promoted (no-sale stance) |
 | **junctiongenerator.net** (`src/` + `api/`) | Public site + Cloudflare Worker backend | Worker live and verified; community-first site merged to `main` |
 
@@ -96,6 +96,12 @@ Gate: do not open the P2P port to the internet before the first three items.
   expansion of the matrix, not a completed claim.
 - [ ] **Seed and transport deployment**: public seed nodes, TLS/WSS ingress,
   firewall guidance, monitoring, backups, and documented upgrade/reset steps.
+  Google Cloud is the planned first-seed provider; account/quota/billing checks
+  and the independent second provider remain pending.
+- [ ] **Local operations-model evaluation**: benchmark a repository-aware local
+  model for infrastructure drafting, review, monitoring summaries, and incident
+  assistance. It remains advisory and cannot replace public hosts or unattended
+  infrastructure controls.
 - [x] **Storage hardening**: versioned data format, atomic/fsynced writes,
   migration rules, corrupt-tail recovery, and explicit V2-to-V3 refusal.
 - [ ] **Faucet + explorer-lite**: even a static page over the status server
@@ -169,7 +175,7 @@ public testnet, which is Phase 2's deliverable.
   checksums, PQ wallet integration, strict proof verification, and documented
   quantum-readiness boundaries.
 - Audit evidence survives mining, peer sync, restart, and reorg; forged votes
-  and replayed verdicts are rejected. Full suite: 30 suites / 280 tests, plus
+  and replayed verdicts are rejected. Full suite: 30 suites / 286 tests, plus
   a passing 31-block two-node sync demo and a real six-proof strict WASM demo.
 - JGT rescued to a clean wallet after the 2026-06 key compromise; no rogue
   minters on-chain; no-sale stance adopted.

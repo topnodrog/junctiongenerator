@@ -1,8 +1,10 @@
 # Junction Generator Next-Steps Plan
 
-**Status:** Execution approved; Phases 1–2 complete, Phase 3 not started.
+**Status:** Execution approved; Phases 1–2 complete. Phase 3 is active but
+blocked on selecting and provisioning two persistent hosts in separate failure
+domains.
 
-**Prepared:** 2026-07-30
+**Prepared:** 2026-07-30 · **Last updated:** 2026-07-31
 
 **Target milestone:** A small, observable, recoverable public JGC testnet.
 
@@ -11,10 +13,10 @@
 The next project milestone should be **public-testnet readiness**, not new token,
 marketplace, or promotional features.
 
-The first substantial engineering epic should be **versioned, crash-safe node
-storage and recovery**. Before that epic begins, complete a short repository
-truth-and-security pass so contributors are working from accurate documentation
-and protected defaults.
+Repository truth/security and versioned crash-safe storage are complete. The
+active milestone is Phase 3: evaluate a local operations model, provision the
+first seed on Google Cloud, select an independent second host, and deploy the
+monitored TLS/WSS edge.
 
 ## Verified starting point
 
@@ -26,22 +28,24 @@ and protected defaults.
 - Website/Worker CI, the production website build, and the Vercel deployment
   are green.
 - The Cloudflare Worker and Turso-backed community funnel are deployed.
-- There are no open GitHub issues. Two older draft pull requests remain open.
-- GitHub secret scanning, push protection, and Dependabot security updates are
-  currently disabled.
+- The two obsolete draft pull requests are closed.
+- GitHub secret scanning, push protection, vulnerability alerts, and Dependabot
+  security updates are enabled. Secret validity checks remain unavailable.
 - Root-level fundraising and outreach drafts remain untracked and must not be
   added to the public repository without a deliberate publication review.
 
-## Known documentation drift
+## Resolved documentation drift
 
-The root README is not a reliable work queue yet. It still describes the site
-refresh as unmerged, reports the older Consensus V2 milestone, recommends
-deploying contracts that are now explicitly marked `DO NOT DEPLOY`, references
-a removed Bitmedia component, suggests ignoring files that belong under source
-control, and describes the midnight cron as though it performs on-chain reward
-dispensing. These items must be corrected before using the README for planning.
+The root README and roadmap were corrected in Phase 1. They now describe
+Consensus V3, the no-sale stance, the historical contracts, actual Worker cron
+behavior, and the public-testnet gates. Use this file as the active work order.
 
 ## Phase 1 — Repository truth and safety baseline
+
+**Completed 2026-07-30.** Repository documentation and public claims were
+aligned, obsolete pull requests were closed, supported GitHub security controls
+were enabled, and local fundraising artifacts were explicitly kept out of the
+public commit.
 
 **Purpose:** Remove ambiguity before public-testnet engineering begins.
 
@@ -112,18 +116,39 @@ Exit criteria:
 
 ## Phase 3 — Public seed and transport operations
 
+**Current decision (2026-07-31):** Evaluate a local coding/operations model as
+the first Phase 3 task. It may draft and review infrastructure configuration,
+run local checks, summarize monitoring, and assist incident response. It does
+not replace the two public hosts, persistent disks, DNS/TLS, monitoring, or
+backups. Do not expose a seed from the owner's laptop or treat a Cloudflare-only
+pair as separate failure domains without an explicit owner-approved exception.
+
+**Hosting update (2026-07-31):** The owner is creating a Google Cloud free
+account for the first seed. Confirm account readiness, billing safeguards,
+Compute Engine quota, persistent-disk availability, region, and static-IP/DNS
+requirements before provisioning. The second seed should remain on a separate
+provider or independently operated failure domain unless the owner explicitly
+approves a temporary two-zone Google Cloud pilot.
+
 **Purpose:** Deploy the minimum safe network edge after storage is trustworthy.
 
 Planned work:
 
-1. Define a two-seed topology with separate failure domains.
-2. Put TLS/WSS ingress in front of the node transport; keep status endpoints
+1. Benchmark a local model on this machine for repository-aware deployment
+   assistance. Record model, quantization, memory use, task quality, operating
+   limits, and a human-approval boundary for live infrastructure changes.
+2. Provision the first persistent seed on Google Cloud after verifying quota,
+   billing safeguards, region, static address, and persistent disk.
+3. Select and provision the second seed in a separate provider or independently
+   operated failure domain; record expected recurring cost.
+4. Define the two-seed topology and rebuild procedure.
+5. Put TLS/WSS ingress in front of the node transport; keep status endpoints
    private or authenticated.
-3. Document firewall rules, advertised addresses, peer limits, upgrades, and
+6. Document firewall rules, advertised addresses, peer limits, upgrades, and
    emergency reset procedures.
-4. Add uptime, height, peer-count, producer-health, disk, and error monitoring.
-5. Add encrypted backups and a tested restoration procedure.
-6. Run adversarial transport tests before publishing seed addresses.
+7. Add uptime, height, peer-count, producer-health, disk, and error monitoring.
+8. Add encrypted backups and a tested restoration procedure.
+9. Run adversarial transport tests before publishing seed addresses.
 
 Exit criteria:
 
@@ -210,14 +235,15 @@ Implementation should begin only after the owner approves each checkpoint:
 1. **Checkpoint A:** repository truth/security changes and disposition of the
    two stale draft PRs;
 2. **Checkpoint B:** storage format and recovery design before code changes;
-3. **Checkpoint C:** seed-provider, DNS, TLS, monitoring, and backup choices;
+3. **Checkpoint C:** local-model benchmark plus seed-provider, recurring-cost,
+   DNS, TLS, monitoring, and backup choices;
 4. **Checkpoint D:** closed-beta participants and test window;
 5. **Checkpoint E:** evidence review before any public-testnet announcement.
 
-## First task to authorize
+## Next task
 
-When implementation is approved, start with **Phase 1: Repository truth and
-safety baseline**. Its output should be one focused documentation/settings PR.
-After it merges, begin Phase 2 with a storage-format and recovery design note
-plus failing fault-injection tests; implementation follows only after that
-design checkpoint is accepted.
+Benchmark a local model that can assist with Phase 3 operations on the owner's
+Windows machine. Use a representative infrastructure drafting/review task and
+measure whether it is reliable enough to reduce routine cloud work. Then obtain
+the owner's provider/cost decision and credentials for two persistent hosts;
+deployment cannot proceed until those hosts exist.

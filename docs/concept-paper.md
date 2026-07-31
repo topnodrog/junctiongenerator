@@ -7,8 +7,9 @@
 > **Implementation status:** JGC currently runs as local/private testnet
 > software. Consensus V3 commits delayed-beacon, ML-DSA-signed historical-audit
 > evidence through `auditRoot`, uses portable canonical encodings and integer
-> work weights, and separates heterogeneous verification roles. Thirty suites /
-> 280 tests, a 31-block two-node sync demo, and a bounded six-proof strict WASM
+> work weights, separates heterogeneous verification roles, and uses versioned,
+> checksum-protected, network-bound persistent storage. Thirty suites /
+> 286 tests, a 31-block two-node sync demo, and a bounded six-proof strict WASM
 > run pass. Public seeds, mandatory bonded-validator activation, economic
 > rewards/slashing, the marketplace, and mainnet are not deployed.
 

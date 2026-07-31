@@ -11,4 +11,8 @@ When doing multi-step work, prepare a git commit after each completed unit of wo
 
 **Why:** stated 2026-06-14 ("yes always prepare a git commit then continue"). Checkpoints matter given the BSOD history (see [[machine-bsod-constraint]]).
 
-**How to apply:** after finishing and verifying a task, stage relevant source files (exclude build artifacts/secrets), commit with a descriptive message on the current branch, then continue to the next task. Pushing still requires user's GitHub auth — leave pushing to them unless explicitly asked.
+**How to apply:** after finishing and verifying a task, stage relevant source
+files (exclude build artifacts/secrets), commit with a descriptive message,
+push the current branch, and open or update the pull request without waiting for
+a separate reminder. Stop only for failed verification, missing credentials,
+ambiguous scope, or an unusually risky GitHub action.

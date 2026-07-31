@@ -25,7 +25,7 @@ development.
 The primary protocol product lives in `packages/jgc-node`; it is separate from
 the legacy JGT token on Base.
 
-Current node milestone (2026-07-30):
+Current node milestone (2026-07-31):
 
 - Consensus V3 freezes the `jgc-testnet-v3` identity and rejects incompatible
   peers before chain data is exchanged;
@@ -36,11 +36,13 @@ Current node milestone (2026-07-30):
   a bonded roster exists;
 - a persistent designated producer, network-aware wallet/faucet path, and
   two-node container topology are implemented;
-- 30 suites / 280 tests, a 31-block sync demo, a six-proof strict WASM run,
+- versioned, network-bound, checksum-protected storage now recovers torn tails,
+  quarantines bad snapshots, and refuses incompatible data;
+- 30 suites / 286 tests, a 31-block sync demo, a six-proof strict WASM run,
   cross-platform CI, and the hosted Docker smoke test pass.
 
 The node is local/private testnet software. No JGC public blockchain or mainnet
-has been deployed. Public seeds, crash-safe storage, runner-facing faucet and
+has been deployed. Public seeds, runner-facing faucet and
 explorer services, and a multi-day real-network soak remain gates. Rewards and
 slashing remain disabled until mandatory bonded-validator activation and an
 economics/security review.
@@ -112,11 +114,16 @@ material, not the current launch strategy.
 The active plan is [`docs/NEXT_STEPS_PLAN.md`](docs/NEXT_STEPS_PLAN.md). Work is
 sequenced behind explicit gates:
 
-1. keep repository status and security controls accurate;
-2. harden node storage and crash recovery;
+1. benchmark a local model as an advisory deployment/operations copilot;
+2. provision the first seed on Google Cloud and choose an independent host for
+   the second seed;
 3. deploy monitored TLS/WSS seed infrastructure;
 4. add explorer-lite, a rate-limited testnet faucet, and runner onboarding;
 5. complete a closed multi-machine soak before any public announcement.
+
+The local model can help draft configuration, run checks, summarize monitoring,
+and support incident response. It cannot replace the public hosts, persistent
+storage, DNS/TLS, backups, or human approval for live infrastructure changes.
 
 Website security continues in parallel: Turnstile on public write forms, a
 tested Content Security Policy, and error isolation. The current midnight
@@ -153,7 +160,8 @@ batch-preparation endpoint and does not submit an on-chain transaction.
 
 **Public-testnet readiness** (In Progress)
 - Consensus V3 and local/container testnet foundation complete
-- Storage hardening and public seed operations next
+- Storage hardening complete; local operations-model evaluation and public seed
+  hosting are next
 - Explorer/faucet/onboarding and multi-day soak follow
 
 ---
