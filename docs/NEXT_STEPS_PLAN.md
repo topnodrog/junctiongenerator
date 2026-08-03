@@ -1,10 +1,10 @@
 # Junction Generator Next-Steps Plan
 
-**Status:** Execution approved; Phases 1–2 complete. Phase 3 is active but
-blocked on selecting and provisioning two persistent hosts in separate failure
-domains.
+**Status:** Execution approved; Phases 1–2 complete. Phase 3 is active. The
+local-model evaluation is complete with a no-go result; cloud account readiness
+and the two-host design are next.
 
-**Prepared:** 2026-07-30 · **Last updated:** 2026-07-31
+**Prepared:** 2026-07-30 · **Last updated:** 2026-08-03
 
 **Target milestone:** A small, observable, recoverable public JGC testnet.
 
@@ -13,10 +13,11 @@ domains.
 The next project milestone should be **public-testnet readiness**, not new token,
 marketplace, or promotional features.
 
-Repository truth/security and versioned crash-safe storage are complete. The
-active milestone is Phase 3: evaluate a local operations model, provision the
-first seed on Google Cloud, select an independent second host, and deploy the
-monitored TLS/WSS edge.
+Repository truth/security, versioned crash-safe storage, and the local-model
+evaluation are complete. Neither installed model passed the operations safety
+gate. The active milestone is Phase 3: verify Google Cloud readiness, provision
+the first seed, select an independent second host, and deploy the monitored
+TLS/WSS edge.
 
 ## Verified starting point
 
@@ -116,12 +117,15 @@ Exit criteria:
 
 ## Phase 3 — Public seed and transport operations
 
-**Current decision (2026-07-31):** Evaluate a local coding/operations model as
-the first Phase 3 task. It may draft and review infrastructure configuration,
-run local checks, summarize monitoring, and assist incident response. It does
-not replace the two public hosts, persistent disks, DNS/TLS, monitoring, or
-backups. Do not expose a seed from the owner's laptop or treat a Cloudflare-only
-pair as separate failure domains without an explicit owner-approved exception.
+**Local-model decision (2026-08-03):** gemma4:e2b and gemma4:e4b were
+benchmarked through Ollama on four sanitized operations scenarios. Both ran
+CPU-only and neither passed the safety gate. They may produce non-authoritative
+drafts and summaries, but may not receive secrets or decide, approve, execute,
+or verify live infrastructure and recovery actions. See
+docs/LOCAL_MODEL_BENCHMARK.md.
+
+Do not expose a seed from the owner's laptop or treat a Cloudflare-only pair as
+separate failure domains without an explicit owner-approved exception.
 
 **Hosting update (2026-07-31):** The owner is creating a Google Cloud free
 account for the first seed. Confirm account readiness, billing safeguards,
@@ -134,9 +138,9 @@ approves a temporary two-zone Google Cloud pilot.
 
 Planned work:
 
-1. Benchmark a local model on this machine for repository-aware deployment
-   assistance. Record model, quantization, memory use, task quality, operating
-   limits, and a human-approval boundary for live infrastructure changes.
+1. [x] Benchmark the installed local models for repository-aware deployment
+   assistance and record their limits. Result: no-go for operations authority;
+   sanitized drafting only.
 2. Provision the first persistent seed on Google Cloud after verifying quota,
    billing safeguards, region, static address, and persistent disk.
 3. Select and provision the second seed in a separate provider or independently
@@ -242,8 +246,7 @@ Implementation should begin only after the owner approves each checkpoint:
 
 ## Next task
 
-Benchmark a local model that can assist with Phase 3 operations on the owner's
-Windows machine. Use a representative infrastructure drafting/review task and
-measure whether it is reliable enough to reduce routine cloud work. Then obtain
-the owner's provider/cost decision and credentials for two persistent hosts;
-deployment cannot proceed until those hosts exist.
+Verify the owner's Google Cloud account readiness without provisioning: billing
+safeguards, Compute Engine quota, candidate region, persistent disk, static IP,
+and DNS requirements. Then document the two-seed topology and expected recurring
+cost before requesting approval for any live resource creation.
