@@ -79,4 +79,3 @@ chain identity.
   correct directory. Reset only after preserving anything needed for analysis.
 - **Quarantined snapshot:** allow full replay, then confirm the resulting tip
   against an independent node before deleting the quarantined artifact.
-
