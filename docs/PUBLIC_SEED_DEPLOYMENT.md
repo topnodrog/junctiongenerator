@@ -1,8 +1,8 @@
 # Public Seed Deployment Gate
 
-**Status:** Design approved for planning; provisioning is blocked pending quota
-and permission verification. No cloud compute, disk, address, DNS, firewall, or
-API resources have been created.
+**Status:** Design approved for planning; provisioning is blocked pending
+Compute Engine API activation and quota verification. No cloud compute, disk,
+address, DNS, firewall, or API resources have been created.
 
 This runbook defines the minimum safe two-seed shape for `jgc-testnet-v3`. It
 does not authorize spending or a live deployment.
@@ -14,20 +14,31 @@ Reviewed 2026-08-03:
 - the intended project is signed in and linked to the owner's free-trial
   billing account;
 - a CA$25 monthly budget alert is active (an alert, not a spending cap);
-- Compute Engine is initialized and the project contains no VMs, instance
-  groups, disks, snapshots, images, or reservations;
+- the Compute Engine overview reports no VMs, instance groups, disks,
+  snapshots, images, or reservations;
 - the project currently reports no Compute Engine usage or cost; and
 - no VM, persistent disk, reserved address, DNS record, firewall rule, paid
   account upgrade, or additional API was created during the review.
 
-The review could not verify regional CPU quota, persistent-disk quota, static
-address quota, or the full security posture. The Console's quota view did not
-finish loading, and a Compute Engine security panel reported missing read
-permissions, including instance, region, quota, and monitoring access. Treat
-this as a hard provisioning gate rather than evidence that capacity exists.
+The signed-in operator is a project Owner and inherits Organization
+Administrator from the organization. The quota dashboard is readable, but the
+project's enabled-services list does not include the Compute Engine API, so no
+Compute Engine quota rows are available yet. The earlier Compute Engine
+security-panel warning was therefore not evidence of a missing IAM grant.
 
-Before provisioning, an operator with the appropriate read access must capture
-and review:
+Inherited organization policies do not currently restrict Google Cloud
+resource locations or external IPv4 addresses for VM instances. Service
+account key creation is blocked and Compute Engine preview features are
+disabled; the deployment must preserve those useful guardrails by using an
+attached least-privilege service account without downloadable keys and only
+generally available features.
+
+Treat the disabled Compute Engine API as a hard provisioning gate rather than
+evidence that regional capacity exists. Enabling the API is an explicit project
+change and requires owner approval even though it does not itself create a VM.
+
+Before provisioning, the owner must approve enabling the Compute Engine API.
+After its quotas have populated, the operator must capture and review:
 
 1. the proposed region and zone;
 2. regional vCPU quota for the selected machine family;
