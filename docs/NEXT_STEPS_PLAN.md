@@ -138,12 +138,17 @@ approves a temporary two-zone Google Cloud pilot.
 free-trial billing account, a CA$25 monthly budget alert is active, the Compute
 Engine API is enabled, and the VM/disk/address inventory is empty. Toronto quota
 is ample and unused, but Toronto is outside the published Always Free VM
-regions. `us-central1` is the cost-controlled candidate, pending a final
-region-specific quota spot-check and live estimate. The quota dashboard also
-shows a default-network footprint that must be inspected rather than reused by
-assumption. IAM is sufficient, and inherited policies do not restrict regions
-or VM external IPv4 addresses. The proposed two-seed shape, recovery boundary,
-verified quota, pricing caveats, and remaining approval gates are recorded in
+regions. The `us-central1` quota spot-check passed with 200 standard CPUs,
+4,096 GB standard disk, 500 GB SSD disk, and eight regional external IPv4
+addresses available at zero usage. The auto-mode default VPC has 42 subnets and
+broad public ICMP, SSH, and RDP rules, so it will remain unused; the seed design
+uses a dedicated custom VPC with public 443 only and OS Login through IAP. A
+startup producer probe used 55.8 MiB working set, supporting a monitored
+non-preemptible `e2-micro` pilot. The cloud seed coordinates remote compute and
+must not host the 6.73-9.43 GB Ollama models. IAM is sufficient, and inherited
+policies do not restrict regions or VM external IPv4 addresses. The proposed
+two-seed shape, recovery boundary, verified quota, pricing caveats, and
+remaining approval gates are recorded in
 [`PUBLIC_SEED_DEPLOYMENT.md`](PUBLIC_SEED_DEPLOYMENT.md).
 
 **Purpose:** Deploy the minimum safe network edge after storage is trustworthy.
@@ -259,7 +264,9 @@ Implementation should begin only after the owner approves each checkpoint:
 
 ## Next task
 
-Spot-check `us-central1` quota, inspect the existing default network, and capture
-the live estimate for an `e2-micro`, 30 GB standard disk, external IPv4, backup,
-DNS, and monitoring. Then request the remaining network, billing-lifecycle, and
-deployment-window approvals before creating any live resource.
+Confirm `us-central1-c` capacity and capture the console's final estimate for
+the recommended `e2-micro`, 10 GB boot disk, 20 GB data disk, seven daily data
+snapshots, low-volume monitoring, and attached address. Then request explicit
+approval for the live resources, billing lifecycle, and deployment window
+before creating the dedicated VPC, VM, disks, address, or DNS record. Select
+the independent Seed B provider/operator in parallel.

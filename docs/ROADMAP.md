@@ -98,9 +98,12 @@ Gate: do not open the P2P port to the internet before the first three items.
   firewall guidance, monitoring, backups, and documented upgrade/reset steps.
   Google Cloud is the planned first-seed provider; billing safeguards, an empty
   VM/disk/address inventory, Compute Engine API activation, and Toronto quota
-  headroom are confirmed. `us-central1` is the cost-controlled candidate,
-  pending a region-specific quota spot-check, live estimate, default-network
-  review, billing-lifecycle approval, and an independent second provider. See
+  headroom are confirmed. The `us-central1` quota check passed and a monitored
+  non-preemptible `e2-micro` is the cost-controlled pilot choice. The broad
+  auto-mode default VPC will remain unused in favor of a dedicated custom VPC
+  with public 443 only. Provisioning still requires the final console estimate,
+  billing-lifecycle and deployment-window approval, and an independent second
+  provider. See
   [`PUBLIC_SEED_DEPLOYMENT.md`](PUBLIC_SEED_DEPLOYMENT.md).
 - [x] **Local operations-model evaluation**: gemma4:e2b and gemma4:e4b were
   benchmarked on 2026-08-03. Neither passed the operations safety gate; both are

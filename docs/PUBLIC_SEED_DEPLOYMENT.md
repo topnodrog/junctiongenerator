@@ -26,11 +26,12 @@ The signed-in operator is a project Owner and inherits Organization
 Administrator from the organization. The earlier Compute Engine security-panel
 warning was not evidence of a missing IAM grant.
 
-The quota dashboard reports an existing default-network footprint: one VPC
-network, one firewall-rule unit, one static route, and two subnetwork ranges.
-Its origin and exact rule contents were not established during this review.
-Treat it as pre-existing project state, not as an approved seed network; inspect
-it and prefer a dedicated least-privilege VPC before provisioning.
+The pre-existing `default` VPC is an auto-mode network with 42 subnets, MTU
+1460, and four ingress rules. Those rules apply to all targets and allow ICMP,
+SSH (TCP 22), and RDP (TCP 3389) from `0.0.0.0/0`, plus all TCP/UDP ports and
+ICMP from `10.128.0.0/9`. It is not an approved seed network. Leave it unused
+and unchanged unless the owner separately approves cleanup; deploy the seed in
+a dedicated custom-mode VPC with one `us-central1` subnet instead.
 
 Inherited organization policies do not currently restrict Google Cloud
 resource locations or external IPv4 addresses for VM instances. Service
@@ -55,16 +56,44 @@ Compute Engine Always Free VM allowance. The cost-controlled candidate is
 `us-central1` (Iowa): one non-preemptible `e2-micro`, 30 GB-months of standard
 persistent disk, and limited outbound transfer can fall within the published
 [Free Tier limits](https://docs.cloud.google.com/free/docs/free-cloud-features).
-Before provisioning, spot-check the same allocations in `us-central1`, choose
-a zone, and capture an exact current estimate.
+
+The `us-central1` spot-check on 2026-08-03 also found zero usage and sufficient
+headroom:
+
+| Allocation | Available quota |
+| --- | ---: |
+| Standard CPUs | 200 |
+| Standard persistent disk | 4,096 GB |
+| SSD persistent disk | 500 GB |
+| In-use regional external IPv4 addresses | 8 |
+| Static regional external IPv4 addresses | 8 |
+
+The recommended pilot shape is one non-preemptible `e2-micro` in
+`us-central1-c` (fall back to another `us-central1` E2 zone only if capacity
+requires it), a 10 GB `pd-standard` boot disk, a separate 20 GB `pd-standard`
+data disk, and one regional static IPv4 allocated and attached during the
+deployment window. Do not reserve the address early. Use an existing DNS
+provider instead of Cloud DNS.
+
+This VM is a seed/producer coordinator, not an Ollama inference worker. The
+current local models load at 6.73 GB and 9.43 GB, so neither can run in the
+`e2-micro`'s 1 GB memory. A local startup probe of the producer process used
+55.8 MiB working set and 38.0 MiB private memory after eight seconds. That is
+enough evidence to start a monitored micro pilot, but not a soak result: resize
+to `e2-small` if sustained memory exceeds 70%, the process swaps, event-loop
+latency grows, or peer/height progress becomes unstable.
 
 Current Google pricing lists an in-use external IPv4 address at USD 0.005/hour
-(about USD 3.65 for a 730-hour month). Budget for that charge unless the live
-estimate shows a project-specific credit. An unused reserved address costs
-more, so do not reserve one ahead of the deployment window. See Google's
-[VPC pricing](https://cloud.google.com/vpc/network-pricing). Cloud DNS has no
-free tier; prefer an already-controlled DNS provider unless its independence
-requirements dictate otherwise.
+(about USD 3.65 for a 730-hour month). With the VM, 30 GB standard disk, and
+limited outbound transfer inside published Free Tier limits, this is the
+baseline recurring charge before snapshots, excess transfer, taxes, and
+currency conversion. Regional snapshot storage is usage-based, so keep a
+short retention window and review the first bill before expanding it. An
+unused reserved address costs more, so release it with the VM if the pilot is
+removed. See Google's [VPC pricing](https://cloud.google.com/vpc/network-pricing)
+and [disk and snapshot pricing](https://cloud.google.com/compute/disks-image-pricing).
+Cloud DNS has no free tier; prefer an already-controlled DNS provider unless
+its independence requirements dictate otherwise.
 
 The free-trial account is not a durable operations state: if the trial expires
 without a paid-account upgrade, Google stops trial resources. Any later billing
@@ -73,12 +102,14 @@ monthly Free Tier usage.
 
 Before provisioning, the operator must still capture and review:
 
-1. the final `us-central1` zone and a current quota spot-check;
-2. the exact recurring estimate, including VM, disk, snapshots, address, data
-   transfer, DNS, and monitoring;
-3. the dedicated VPC/firewall design and disposition of the default network;
-4. the IAM path for administration without opening SSH to the internet; and
-5. the free-trial expiry/paid-upgrade decision and recovery plan.
+1. capacity in `us-central1-c` and the console's current estimate immediately
+   before creation;
+2. any change to the recommended seven-daily-snapshot retention, limited
+   transfer, or low-volume monitoring/log plan;
+3. the free-trial expiry/paid-upgrade decision and recovery plan;
+4. the deployment window and owner approval for the live billable resources;
+   and
+5. the independent provider/operator for Seed B.
 
 ## Two-seed topology
 
@@ -100,8 +131,11 @@ small reverse proxy that supports WebSocket upgrades and forwards to the node
 transport on loopback or a private container network. The status service stays
 on loopback and is read through an authenticated monitoring path.
 
-The public firewall permits only TCP 443. Administration uses an identity-aware
-or source-restricted path; TCP 19444, TCP 7777, Docker control sockets, and
+The Google Cloud seed uses a custom-mode VPC with one regional subnet. Its
+public firewall permits only TCP 443 to the seed target. Administration uses
+OS Login through Identity-Aware Proxy, with SSH limited to Google's IAP
+forwarding range instead of `0.0.0.0/0`; the VM receives no downloadable
+service-account key. TCP 19444, TCP 7777, RDP, Docker control sockets, and
 cloud metadata endpoints are never public. Each host has independent DNS and
 certificates so one provider failure cannot remove both bootstrap paths.
 
@@ -112,6 +146,13 @@ Each seed uses a dedicated versioned data volume and follows
 different failure domain, and tested by restoring to a disposable replacement.
 An operator must be able to rebuild either seed without copying secrets from
 the surviving host.
+
+For the pilot, snapshot only the 20 GB data disk once per day and retain seven
+daily snapshots. Keep routine success/access logs out of Cloud Logging, retain
+application warnings and errors for 14 days, and use a five-minute public WSS
+uptime check. Review snapshot bytes, outbound transfer, logging ingestion, and
+the billing report after the first 24 hours and again before the first full
+billing month. Expand retention only after that evidence is reviewed.
 
 Monitoring must alert on:
 
