@@ -1,6 +1,6 @@
 # Junction Generator — Completion Roadmap
 
-**Updated:** 2026-07-31 · **Owner:** James Gordon
+**Updated:** 2026-08-03 · **Owner:** James Gordon
 
 Three components, one repo. Keep them distinct:
 
@@ -98,10 +98,10 @@ Gate: do not open the P2P port to the internet before the first three items.
   firewall guidance, monitoring, backups, and documented upgrade/reset steps.
   Google Cloud is the planned first-seed provider; account/quota/billing checks
   and the independent second provider remain pending.
-- [ ] **Local operations-model evaluation**: benchmark a repository-aware local
-  model for infrastructure drafting, review, monitoring summaries, and incident
-  assistance. It remains advisory and cannot replace public hosts or unattended
-  infrastructure controls.
+- [x] **Local operations-model evaluation**: gemma4:e2b and gemma4:e4b were
+  benchmarked on 2026-08-03. Neither passed the operations safety gate; both are
+  restricted to sanitized, non-authoritative drafting and summaries. See
+  docs/LOCAL_MODEL_BENCHMARK.md.
 - [x] **Storage hardening**: versioned data format, atomic/fsynced writes,
   migration rules, corrupt-tail recovery, and explicit V2-to-V3 refusal.
 - [ ] **Faucet + explorer-lite**: even a static page over the status server
