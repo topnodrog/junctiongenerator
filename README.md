@@ -12,12 +12,11 @@ network where everyday devices contribute verifiable local AI inference.
 
 ## Public Site
 
-The 2026-07-24 community-first refresh leads with the useful-compute mission,
-shows working evidence separately from open research, recruits early
-contributors, and keeps the interactive demos in a clearly labeled prototype
-lab. The hire-James flow remains prominent because client work funds
-development. The refresh is committed to `junctioning`; production remains on
-`main` until the branch is merged/deployed.
+The community-first site is deployed from `main`. It leads with the
+useful-compute mission, separates working evidence from open research, recruits
+early contributors, and keeps the interactive demos in a clearly labeled
+prototype lab. The hire-James flow remains prominent because client work funds
+development.
 
 ---
 
@@ -26,19 +25,27 @@ development. The refresh is committed to `junctioning`; production remains on
 The primary protocol product lives in `packages/jgc-node`; it is separate from
 the legacy JGT token on Base.
 
-Current node milestone (2026-07-23):
+Current node milestone (2026-07-31):
 
-- consensus v2 uses a 192-byte header with `auditRoot`;
-- historical compute is selected in 10-block windows using a delayed block-hash
-  beacon and verified by ML-DSA-signed validator committees;
-- complete audit evidence is committed to blocks and independently checked
-  during mining, peer sync, restart, and reorg;
-- post-quantum identity/signature paths and SHA3-256 wire checksums are active;
-- the suite passes 24 test suites / 244 tests and a 31-block two-node sync demo.
+- Consensus V3 freezes the `jgc-testnet-v3` identity and rejects incompatible
+  peers before chain data is exchanged;
+- canonical encodings, bounded integer work, execution profiles, and
+  fail-closed verification provide the portability foundation;
+- historical compute is selected through delayed-beacon audit windows and
+  verified by ML-DSA-signed committees derived from consensus-owned bonds when
+  a bonded roster exists;
+- a persistent designated producer, network-aware wallet/faucet path, and
+  two-node container topology are implemented;
+- versioned, network-bound, checksum-protected storage now recovers torn tails,
+  quarantines bad snapshots, and refuses incompatible data;
+- 30 suites / 286 tests, a 31-block sync demo, a six-proof strict WASM run,
+  cross-platform CI, and the hosted Docker smoke test pass.
 
 The node is local/private testnet software. No JGC public blockchain or mainnet
-has been deployed. Rewards and slashing from audit verdicts remain disabled
-until bonded validator state is consensus-owned.
+has been deployed. Public seeds, runner-facing faucet and
+explorer services, and a multi-day real-network soak remain gates. Rewards and
+slashing remain disabled until mandatory bonded-validator activation and an
+economics/security review.
 
 See [`packages/jgc-node/README.md`](packages/jgc-node/README.md) and
 [`packages/jgc-node/docs/AUDIT-PROTOCOL.md`](packages/jgc-node/docs/AUDIT-PROTOCOL.md).
@@ -51,9 +58,9 @@ See [`packages/jgc-node/README.md`](packages/jgc-node/README.md) and
 |----------|---------|--------|
 | JGT Token (ERC-20) | `0x7Fe...c587` | Deployed |
 | Dispenser | `0x6afF...f9C7` | Deployed |
-| JGTMarket (buy JGT with ETH) | _pending_ | Deployed, needs ETH funding |
-| JGTBatchDispenser | _pending_ | Contract ready, needs JGT token auth |
-| JGTStaking | _pending_ | Contract ready, needs deployment |
+| JGTMarket | reference only | **Do not deploy or fund**; no-sale stance and known funds bugs |
+| JGTBatchDispenser | legacy/reference | Not part of the JGC public-testnet path |
+| JGTStaking | reference only | **Do not deploy**; known principal-lock and reward-accounting bugs |
 
 **Deployer wallet:** `0x5f89d06E0D4dBe3C125a49FD9213624aD8a991d4`
 **Token:** 100M initial mint, 1B max supply, 18 decimals
@@ -93,38 +100,35 @@ hire_leads, digest_state
 
 ---
 
-## Revenue Model
+## Funding stance
 
-1. **Bitmedia ads** -- Users watch ads, earn JGT (diminishing returns: 2 -> 1 -> 0.5 -> 0.25)
-2. **Self-serve ad slots** -- Crypto projects pay ETH to feature campaigns
-3. **JGT Market** -- Buy JGT with ETH (1 ETH = 10,000 JGT)
-4. **Referral system** -- Users earn for bringing new miners
-5. **Staking** -- Stake JGT for platform rewards/benefits
+JGC development is funded through grants, donations, sponsorships, and paid
+client work. JGT is a legacy Base token and is not being sold or promoted.
+Marketplace, staking, ad-reward, and referral code is historical/reference
+material, not the current launch strategy.
 
 ---
 
-## TODO: What Needs Doing Now
+## What needs doing now
 
-### ACTIVE (Next Up)
-- [ ] Fund deployer wallet with ETH to deploy JGTMarket on Base
-- [ ] Set `NEXT_PUBLIC_API_URL` in Vercel env vars (point to CF Worker)
-- [ ] Get Bitmedia Publisher ID + replace placeholder in `AttentionMining.tsx`
-- [ ] Add `tsconfig.json` and `next.config.js` to `.gitignore`
-- [ ] Wire real Bitmedia JS ad rendering (replace placeholder)
+The active plan is [`docs/NEXT_STEPS_PLAN.md`](docs/NEXT_STEPS_PLAN.md). Work is
+sequenced behind explicit gates:
 
-### ALSO NEEDED
-- [ ] Cloudflare Turnstile on ad-complete endpoint (bot protection)
-- [ ] Cron job for batch dispensing (call `/api/dispense` daily)
-- [ ] Deploy JGTStaking contract on Base
-- [ ] Remove "Coming Soon" alerts on Buy JGT / Stake buttons (wallet integration real later)
-- [ ] Mobile nav overflow (8 links wraps badly on small screens)
-- [ ] Error boundary on sections (1 broken component shouldn't kill the page)
+1. benchmark a local model as an advisory deployment/operations copilot;
+2. provision the first seed on Google Cloud and choose an independent host for
+   the second seed;
+3. deploy monitored TLS/WSS seed infrastructure;
+4. add explorer-lite, a rate-limited testnet faucet, and runner onboarding;
+5. complete a closed multi-machine soak before any public announcement.
 
-### TECH DEBT
-- [ ] Remove `/home/Kali/junctiongenerator` old clone (stale, causes confusion)
-- [ ] Clean up test scripts (`test_turso*.py`, `verify_db*.py`) from repo
-- [ ] Archive deploy scripts (`deploy_*.js`) to `scripts/` folder
-- [ ] Update `schema.sql` last migrated version in sync with Turso
+The local model can help draft configuration, run checks, summarize monitoring,
+and support incident response. It cannot replace the public hosts, persistent
+storage, DNS/TLS, backups, or human approval for live infrastructure changes.
+
+Website security continues in parallel: Turnstile on public write forms, a
+tested Content Security Policy, and error isolation. The current midnight
+Worker cron sends the owner digest; `/api/dispense` is an authenticated legacy
+batch-preparation endpoint and does not submit an on-chain transaction.
 
 ---
 
@@ -142,11 +146,10 @@ hire_leads, digest_state
 - Airdrop registration + JGT purchase + donation UI
 - Staking interface + self-serve ad platform
 
-**Phase 3 -- On-Chain** (Partially Done)
+**Legacy JGT on Base** (Held; not promoted)
 - JGT Token (ERC-20) deployed on Base
-- Batch Dispenser deployed on Base
-- Market contract deployed, needs funding
-- Staking contract written, not yet deployed
+- Legacy dispenser deployed on Base
+- Market and staking sources retained as explicit do-not-deploy references
 
 **Phase 4 -- Backend** (Done)
 - Cloudflare Worker API with Turso DB
@@ -155,20 +158,20 @@ hire_leads, digest_state
 - Self-serve ad slots with ETH payments
 - Cloudflare security: Bot Fight Mode + rate limiting
 
-**Phase 5 -- Revenue** (In Progress)
-- Bitmedia pipeline ready (needs publisher ID)
-- Self-serve ads ready (needs first advertiser)
-- JGT Market ready (needs ETH funding)
-- Referral system built (needs promotion)
+**Public-testnet readiness** (In Progress)
+- Consensus V3 and local/container testnet foundation complete
+- Storage hardening complete; local operations-model evaluation and public seed
+  hosting are next
+- Explorer/faucet/onboarding and multi-day soak follow
 
 ---
 
 ## Quick Commands
 
 ```bash
-# Local dev
+# Local website development
 cd C:/dev/JunctionGenerator
-npm run dev
+corepack yarn dev
 
 # Verify the JGC node
 cd packages/jgc-node
@@ -177,14 +180,13 @@ npm test
 npm run build
 npm run sync-demo
 
-# Deploy contract (when ETH available)
-# Update .env with private key, then:
-# npx hardhat run scripts/deploy.js --network base
+# JGT market and staking contracts are reference-only. Do not deploy them.
 ```
 
 ## Tech Stack
 
-- **Frontend:** Next.js 16 + React 19 + TypeScript
+- **Frontend:** Next.js 16 + React 19 + TypeScript; no globally mounted EVM
+  wallet SDK
 - **Styling:** Custom CSS design system (dark cyberpunk)
 - **Deployment:** Vercel
 - **Backend:** Cloudflare Workers + Turso (SQLite)
@@ -198,4 +200,5 @@ npm run sync-demo
 - **Canonical local clone:** `C:\dev\JunctionGenerator`
 - **Do not store access tokens or private keys in the repository.** Use the
   authenticated Git credential manager and environment/secret stores.
-- **Vercel env:** needs `NEXT_PUBLIC_API_URL` set to Worker URL
+- Public components use the deployed Worker URL as their fallback. Deployment
+  variables should still be audited in Vercel without copying values into git.

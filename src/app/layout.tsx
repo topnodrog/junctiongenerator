@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
-import { WalletProvider } from "@/components/WalletProvider";
 import "./globals.css";
 
 const outfit = localFont({
@@ -59,9 +58,7 @@ export default function RootLayout({
         )}
       </head>
       <body style={{ margin: 0, padding: 0, backgroundColor: "var(--bg-space)", color: "var(--text-primary)" }}>
-        <WalletProvider>
-          {children}
-        </WalletProvider>
+        {children}
       </body>
     </html>
   );

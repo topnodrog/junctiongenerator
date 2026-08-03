@@ -6,11 +6,11 @@
 
 import { tmpdir } from "os";
 import { join } from "path";
-import { rmSync, existsSync } from "fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "fs";
 import type { Block } from "../types/index.js";
 import {
   serializeBlock, deserializeBlock, encodeBlock, decodeBlock, BlockStore,
-  SnapshotStore, type ChainSnapshot,
+  SnapshotStore, StorageCompatibilityError, StorageManifest, type ChainSnapshot,
 } from "../storage/persistence.js";
 import { createGenesisHeader } from "../consensus/block.js";
 import { initEpochState, applyBlockToEpoch } from "../consensus/epoch.js";
@@ -123,6 +123,87 @@ describe("BlockStore", () => {
     store.clear();
     expect(store.loadAll()).toHaveLength(0);
   });
+
+  test("recovers an incomplete final record and preserves its bytes", () => {
+    const recoveryDir = join(tmpdir(), `jgc-blockstore-torn-${process.pid}`);
+    rmSync(recoveryDir, { recursive: true, force: true });
+    const store = new BlockStore(recoveryDir);
+    store.append(sampleBlock());
+    const file = join(recoveryDir, "blocks.dat");
+    const goodSize = readFileSync(file).length;
+    appendFileSync(file, Buffer.from([0x20, 0, 0, 0, 1, 2, 3]));
+
+    expect(store.loadAll()).toHaveLength(1);
+    expect(readFileSync(file)).toHaveLength(goodSize);
+    expect(readdirSync(recoveryDir).some((name) => name.startsWith("blocks.torn."))).toBe(true);
+    rmSync(recoveryDir, { recursive: true, force: true });
+  });
+
+  test("fails closed when a complete record checksum is corrupted", () => {
+    const corruptDir = join(tmpdir(), `jgc-blockstore-corrupt-${process.pid}`);
+    rmSync(corruptDir, { recursive: true, force: true });
+    const store = new BlockStore(corruptDir);
+    store.append(sampleBlock());
+    const file = join(corruptDir, "blocks.dat");
+    const bytes = readFileSync(file);
+    bytes[bytes.length - 1] = bytes[bytes.length - 1]! ^ 0xff;
+    writeFileSync(file, bytes);
+    expect(() => store.loadAll()).toThrow(/checksum mismatch/);
+    rmSync(corruptDir, { recursive: true, force: true });
+  });
+
+  test("refuses an unversioned legacy block store", () => {
+    const legacyDir = join(tmpdir(), `jgc-blockstore-legacy-${process.pid}`);
+    rmSync(legacyDir, { recursive: true, force: true });
+    mkdirSync(legacyDir, { recursive: true });
+    writeFileSync(join(legacyDir, "blocks.dat"), Buffer.from([0, 0, 0, 0]), { flag: "w" });
+    expect(() => new BlockStore(legacyDir).loadAll()).toThrow(StorageCompatibilityError);
+    rmSync(legacyDir, { recursive: true, force: true });
+  });
+
+  test("atomically rewrites the active chain", () => {
+    const rewriteDir = join(tmpdir(), `jgc-blockstore-rewrite-${process.pid}`);
+    rmSync(rewriteDir, { recursive: true, force: true });
+    const store = new BlockStore(rewriteDir);
+    const first = sampleBlock();
+    const second = sampleBlock();
+    second.transactions[0]!.outputs[0]!.value = 9n;
+    store.rewrite([first, second]);
+    expect(store.loadAll().map((b) => b.transactions[0]!.outputs[0]!.value)).toEqual([
+      123n * BASE_UNITS_PER_JGC,
+      9n,
+    ]);
+    expect(existsSync(join(rewriteDir, "blocks.dat.tmp"))).toBe(false);
+    rmSync(rewriteDir, { recursive: true, force: true });
+  });
+});
+
+describe("storage manifest", () => {
+  const identity = {
+    chainId: "jgc-testnet-v3",
+    genesisHash: "ab".repeat(32),
+    consensusVersion: 3,
+    networkMagic: 0x4a474354,
+    proofMode: "simnet-receipts-v1",
+  };
+
+  test("binds a data directory to one network identity", () => {
+    const dir = join(tmpdir(), `jgc-manifest-${process.pid}`);
+    rmSync(dir, { recursive: true, force: true });
+    StorageManifest.ensure(dir, identity);
+    StorageManifest.ensure(dir, identity);
+    expect(() => StorageManifest.ensure(dir, { ...identity, chainId: "other" })).toThrow(StorageCompatibilityError);
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  test("refuses unversioned existing state", () => {
+    const dir = join(tmpdir(), `jgc-manifest-legacy-${process.pid}`);
+    rmSync(dir, { recursive: true, force: true });
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, "blocks.dat"), Buffer.from([1, 2, 3, 4]), { flag: "w" });
+    expect(() => StorageManifest.ensure(dir, identity)).toThrow(/archive or reset/);
+    rmSync(dir, { recursive: true, force: true });
+  });
 });
 
 describe("replay integrity (re-validation on restart)", () => {
@@ -216,6 +297,14 @@ describe("chainstate snapshot", () => {
     expect(restarted.getChainInfo().tipHeight).toBe(5);
     expect(restarted.getChainInfo().tipHash).toBe(liveTip);
     expect(restarted.getEpochState().pendingRewardPool).toBe(livePool);
+
+    // A complete but malformed snapshot is quarantined; the checksummed block
+    // log remains authoritative and rebuilds identical state.
+    appendFileSync(join(dir, "chainstate.snapshot"), Buffer.from([0xff]));
+    const recovered = new JGCNode(cfg(), makeGenesisBlock());
+    expect(recovered.getChainInfo().tipHeight).toBe(5);
+    expect(recovered.getChainInfo().tipHash).toBe(liveTip);
+    expect(readdirSync(dir).some((name) => name.startsWith("chainstate.corrupt."))).toBe(true);
 
     rmSync(dir, { recursive: true, force: true });
   });

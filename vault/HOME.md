@@ -8,6 +8,7 @@ Welcome to the JunctionGenerator Obsidian vault — a searchable, linked knowled
 Understand the project founder and development approach.
 - [[user-profile]] — James Gordon, senior protocol/cryptoeconomic engineer
 - [[feedback-commit-as-you-go]] — Commit workflow preferences
+- [[local-model-operations-boundary]] — Local-model role in public-testnet operations
 
 ### 🏗️ Project Structure
 The three-part architecture and where everything lives.
@@ -55,6 +56,10 @@ Use **Ctrl+Shift+F** (Obsidian global search) to find keywords across all notes.
 
 ## Recent Updates
 
+- **2026-07-31:** Phase 2 storage hardening completed (30 suites / 286 tests).
+  Google Cloud is being set up for the first public seed. The next work also
+  includes benchmarking a local model as an advisory operations copilot and
+  choosing an independent provider/failure domain for the second seed.
 - **2026-07-24:** Community-first website refresh pushed to `junctioning`.
   Cloudflare notifications verified end to end: newsletter signups and hire
   leads are stored in Turso, trigger an immediate owner email, and remain

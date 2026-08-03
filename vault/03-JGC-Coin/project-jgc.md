@@ -38,11 +38,25 @@ post-quantum wallet/signature paths, SHA3-256 checksummed binary P2P envelopes,
 a safe loopback testnet preset, and persistent audit state. Validation:
 24 suites / 244 tests plus a passing 31-block two-node sync demo.
 
+**2026-07-31 readiness status:** Consensus V3, network identity checks,
+designated production, container packaging, and versioned crash-safe storage
+are implemented. The storage checkpoint passes 30 suites / 286 tests plus
+type-check and build. The owner is creating a Google Cloud free account for the
+first seed; quota, billing safeguards, region, static address, and persistent
+disk must be verified before provisioning. A separate provider or independently
+operated failure domain is still needed for the second seed.
+
+**Next work:** benchmark a local model as an advisory deployment/operations
+copilot, provision the Google Cloud seed, choose the second host, and then add
+TLS/WSS, private monitoring, backups, and adversarial transport tests. The local
+model cannot host a seed or replace durable infrastructure. See
+[[local-model-operations-boundary]].
+
 **Current status:** LOCAL/PRIVATE TESTNET ONLY. No JGC public chain or mainnet
 has been deployed. The delayed beacon is implemented; the remaining economic
 gate is a consensus-owned bonded validator registry/stake snapshot. Until that
 exists, verdicts are durable fraud evidence but cannot move funds, reward
 validators, or slash claimants. Cross-machine inference determinism remains
 the major verification research problem. Keep public P2P exposure disabled
-until peer rate limits/misbehavior scoring and multi-machine soak testing land.
+until public seed deployment and multi-machine soak testing land.
 For Rust build constraints see [[jgc-rust-build-env]].
