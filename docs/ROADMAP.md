@@ -96,8 +96,10 @@ Gate: do not open the P2P port to the internet before the first three items.
   expansion of the matrix, not a completed claim.
 - [ ] **Seed and transport deployment**: public seed nodes, TLS/WSS ingress,
   firewall guidance, monitoring, backups, and documented upgrade/reset steps.
-  Google Cloud is the planned first-seed provider; account/quota/billing checks
-  and the independent second provider remain pending.
+  Google Cloud is the planned first-seed provider; billing safeguards and an
+  empty resource inventory are confirmed, while quota/permission verification
+  and the independent second provider remain pending. See
+  [`PUBLIC_SEED_DEPLOYMENT.md`](PUBLIC_SEED_DEPLOYMENT.md).
 - [x] **Local operations-model evaluation**: gemma4:e2b and gemma4:e4b were
   benchmarked on 2026-08-03. Neither passed the operations safety gate; both are
   restricted to sanitized, non-authoritative drafting and summaries. See

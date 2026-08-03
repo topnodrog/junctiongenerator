@@ -134,6 +134,14 @@ requirements before provisioning. The second seed should remain on a separate
 provider or independently operated failure domain unless the owner explicitly
 approves a temporary two-zone Google Cloud pilot.
 
+**Readiness update (2026-08-03):** The project is linked to the intended
+free-trial billing account, a CA$25 monthly budget alert is active, and the
+Compute Engine inventory is empty. Provisioning remains blocked because quota,
+regional capacity, static-address availability, and the full read-only security
+view could not be verified with the current Console permissions. The proposed
+two-seed shape, recovery boundary, and remaining approval gates are recorded in
+[`PUBLIC_SEED_DEPLOYMENT.md`](PUBLIC_SEED_DEPLOYMENT.md).
+
 **Purpose:** Deploy the minimum safe network edge after storage is trustworthy.
 
 Planned work:
@@ -145,7 +153,8 @@ Planned work:
    billing safeguards, region, static address, and persistent disk.
 3. Select and provision the second seed in a separate provider or independently
    operated failure domain; record expected recurring cost.
-4. Define the two-seed topology and rebuild procedure.
+4. [x] Define the two-seed topology and rebuild procedure. Provisioning details
+   remain gated by current quota, price, provider, DNS, and owner approvals.
 5. Put TLS/WSS ingress in front of the node transport; keep status endpoints
    private or authenticated.
 6. Document firewall rules, advertised addresses, peer limits, upgrades, and
