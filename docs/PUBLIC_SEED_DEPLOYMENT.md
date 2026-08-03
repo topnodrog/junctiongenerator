@@ -1,8 +1,9 @@
 # Public Seed Deployment Gate
 
-**Status:** Design approved for planning; provisioning is blocked pending
-Compute Engine API activation and quota verification. No cloud compute, disk,
-address, DNS, firewall, or API resources have been created.
+**Status:** Design approved for planning; Compute Engine readiness is verified.
+Provisioning remains blocked pending the final region/zone, cost, network, DNS,
+and deployment approvals. No VM, disk, reserved address, DNS record, or paid
+account upgrade has been created.
 
 This runbook defines the minimum safe two-seed shape for `jgc-testnet-v3`. It
 does not authorize spending or a live deployment.
@@ -14,17 +15,22 @@ Reviewed 2026-08-03:
 - the intended project is signed in and linked to the owner's free-trial
   billing account;
 - a CA$25 monthly budget alert is active (an alert, not a spending cap);
+- the Compute Engine API is enabled and its quota catalogue has populated;
 - the Compute Engine overview reports no VMs, instance groups, disks,
   snapshots, images, or reservations;
 - the project currently reports no Compute Engine usage or cost; and
-- no VM, persistent disk, reserved address, DNS record, firewall rule, paid
-  account upgrade, or additional API was created during the review.
+- no VM, persistent disk, reserved address, DNS record, paid account upgrade,
+  or additional API was created during the review.
 
 The signed-in operator is a project Owner and inherits Organization
-Administrator from the organization. The quota dashboard is readable, but the
-project's enabled-services list does not include the Compute Engine API, so no
-Compute Engine quota rows are available yet. The earlier Compute Engine
-security-panel warning was therefore not evidence of a missing IAM grant.
+Administrator from the organization. The earlier Compute Engine security-panel
+warning was not evidence of a missing IAM grant.
+
+The quota dashboard reports an existing default-network footprint: one VPC
+network, one firewall-rule unit, one static route, and two subnetwork ranges.
+Its origin and exact rule contents were not established during this review.
+Treat it as pre-existing project state, not as an approved seed network; inspect
+it and prefer a dedicated least-privilege VPC before provisioning.
 
 Inherited organization policies do not currently restrict Google Cloud
 resource locations or external IPv4 addresses for VM instances. Service
@@ -33,20 +39,46 @@ disabled; the deployment must preserve those useful guardrails by using an
 attached least-privilege service account without downloadable keys and only
 generally available features.
 
-Treat the disabled Compute Engine API as a hard provisioning gate rather than
-evidence that regional capacity exists. Enabling the API is an explicit project
-change and requires owner approval even though it does not itself create a VM.
+Quota verification on 2026-08-03 found the following in Toronto
+(`northamerica-northeast2`), all at zero usage:
 
-Before provisioning, the owner must approve enabling the Compute Engine API.
-After its quotas have populated, the operator must capture and review:
+| Allocation | Available quota |
+| --- | ---: |
+| Standard CPUs | 100 |
+| Standard persistent disk | 4,096 GB |
+| SSD persistent disk | 500 GB |
+| In-use regional external IPv4 addresses | 8 |
+| Static regional external IPv4 addresses | 8 |
 
-1. the proposed region and zone;
-2. regional vCPU quota for the selected machine family;
-3. persistent-disk capacity and snapshot availability;
-4. regional static external IPv4 availability;
-5. the exact recurring estimate, including VM, disk, snapshots, address, data
-   transfer, DNS, and monitoring; and
-6. the IAM path for administration without opening SSH to the internet.
+Toronto has sufficient quota, but it is not eligible for Google's current
+Compute Engine Always Free VM allowance. The cost-controlled candidate is
+`us-central1` (Iowa): one non-preemptible `e2-micro`, 30 GB-months of standard
+persistent disk, and limited outbound transfer can fall within the published
+[Free Tier limits](https://docs.cloud.google.com/free/docs/free-cloud-features).
+Before provisioning, spot-check the same allocations in `us-central1`, choose
+a zone, and capture an exact current estimate.
+
+Current Google pricing lists an in-use external IPv4 address at USD 0.005/hour
+(about USD 3.65 for a 730-hour month). Budget for that charge unless the live
+estimate shows a project-specific credit. An unused reserved address costs
+more, so do not reserve one ahead of the deployment window. See Google's
+[VPC pricing](https://cloud.google.com/vpc/network-pricing). Cloud DNS has no
+free tier; prefer an already-controlled DNS provider unless its independence
+requirements dictate otherwise.
+
+The free-trial account is not a durable operations state: if the trial expires
+without a paid-account upgrade, Google stops trial resources. Any later billing
+upgrade requires separate owner approval even if the selected VM remains inside
+monthly Free Tier usage.
+
+Before provisioning, the operator must still capture and review:
+
+1. the final `us-central1` zone and a current quota spot-check;
+2. the exact recurring estimate, including VM, disk, snapshots, address, data
+   transfer, DNS, and monitoring;
+3. the dedicated VPC/firewall design and disposition of the default network;
+4. the IAM path for administration without opening SSH to the internet; and
+5. the free-trial expiry/paid-upgrade decision and recovery plan.
 
 ## Two-seed topology
 

@@ -1,8 +1,8 @@
 # Junction Generator Next-Steps Plan
 
 **Status:** Execution approved; Phases 1–2 complete. Phase 3 is active. The
-local-model evaluation is complete with a no-go result; cloud account readiness
-and the two-host design are next.
+local-model evaluation, cloud account readiness review, and two-host design are
+complete; final cost/network approvals precede provisioning.
 
 **Prepared:** 2026-07-30 · **Last updated:** 2026-08-03
 
@@ -135,13 +135,15 @@ provider or independently operated failure domain unless the owner explicitly
 approves a temporary two-zone Google Cloud pilot.
 
 **Readiness update (2026-08-03):** The project is linked to the intended
-free-trial billing account, a CA$25 monthly budget alert is active, and the
-Compute Engine inventory is empty. Provisioning remains blocked because quota,
-regional capacity, and static-address availability cannot be verified until
-the owner approves enabling the currently disabled Compute Engine API. IAM is
-sufficient, and inherited policies do not restrict regions or VM external
-IPv4 addresses. The proposed two-seed shape, recovery boundary, and remaining
-approval gates are recorded in
+free-trial billing account, a CA$25 monthly budget alert is active, the Compute
+Engine API is enabled, and the VM/disk/address inventory is empty. Toronto quota
+is ample and unused, but Toronto is outside the published Always Free VM
+regions. `us-central1` is the cost-controlled candidate, pending a final
+region-specific quota spot-check and live estimate. The quota dashboard also
+shows a default-network footprint that must be inspected rather than reused by
+assumption. IAM is sufficient, and inherited policies do not restrict regions
+or VM external IPv4 addresses. The proposed two-seed shape, recovery boundary,
+verified quota, pricing caveats, and remaining approval gates are recorded in
 [`PUBLIC_SEED_DEPLOYMENT.md`](PUBLIC_SEED_DEPLOYMENT.md).
 
 **Purpose:** Deploy the minimum safe network edge after storage is trustworthy.
@@ -257,7 +259,7 @@ Implementation should begin only after the owner approves each checkpoint:
 
 ## Next task
 
-Verify the owner's Google Cloud account readiness without provisioning: billing
-safeguards, Compute Engine quota, candidate region, persistent disk, static IP,
-and DNS requirements. Then document the two-seed topology and expected recurring
-cost before requesting approval for any live resource creation.
+Spot-check `us-central1` quota, inspect the existing default network, and capture
+the live estimate for an `e2-micro`, 30 GB standard disk, external IPv4, backup,
+DNS, and monitoring. Then request the remaining network, billing-lifecycle, and
+deployment-window approvals before creating any live resource.
