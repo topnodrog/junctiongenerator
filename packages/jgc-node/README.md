@@ -48,6 +48,11 @@ npm run testnet -- --port 19445 --status-port 7778 --datadir ./data/testnet-2 --
 
 Repeat `--seed` to configure more than one bootstrap peer.
 
+Containers may use the equivalent `JGC_P2P_HOST`, `JGC_P2P_PORT`,
+`JGC_STATUS_HOST`, `JGC_STATUS_PORT`, `JGC_DATA_DIR`, `JGC_ADVERTISE_URL`,
+comma-separated `JGC_SEEDS`, `JGC_PRODUCE`, and `JGC_BLOCK_INTERVAL_SEC`
+environment variables. Explicit command-line options take precedence.
+
 Run exactly one designated producer for a small testnet:
 
 ```text
@@ -151,6 +156,9 @@ closed. See [`docs/STORAGE-RECOVERY.md`](docs/STORAGE-RECOVERY.md) before backup
 restore, upgrade, or reset operations.
 
 This is an early testnet node, not mainnet software.
+
+For the continuously running Google Cloud + Fly.io pilot, see
+[`deploy/README.md`](deploy/README.md).
 
 Architecture references:
 

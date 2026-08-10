@@ -5,7 +5,6 @@
  * --host 0.0.0.0 before accepting inbound peers; this keeps the development
  * JSON transport off the public internet by default.
  */
-import { resolve } from "path";
 import type { NodeConfig } from "../types/index.js";
 import { JGCNode } from "../network/node.js";
 import { startP2PServer, maintainPeers, type PeerLinks, type P2PServer } from "../network/transport.js";
@@ -18,61 +17,9 @@ import {
 import { hashBlockHeader } from "../consensus/block.js";
 import { setQuantumVerifierMode } from "../crypto/pq.js";
 import { DesignatedBlockProducer } from "../network/designated-producer.js";
+import { parseTestnetOptions } from "../config/testnet-options.js";
 
 const VERSION = "0.1.0";
-
-interface Options {
-  host: string;
-  port: number;
-  statusHost: string;
-  statusPort: number;
-  dataDir: string;
-  advertiseUrl?: string;
-  seeds: string[];
-  produce: boolean;
-  blockIntervalSec: number;
-}
-
-function value(argv: string[], name: string): string | undefined {
-  const i = argv.indexOf(name);
-  return i >= 0 ? argv[i + 1] : undefined;
-}
-
-function positivePort(raw: string | undefined, fallback: number, name: string): number {
-  if (raw === undefined) return fallback;
-  const port = Number(raw);
-  if (!Number.isInteger(port) || port < 0 || port > 65535) {
-    throw new Error(`${name} must be an integer from 0 to 65535`);
-  }
-  return port;
-}
-
-function positiveSeconds(raw: string | undefined, fallback: number, name: string): number {
-  if (raw === undefined) return fallback;
-  const seconds = Number(raw);
-  if (!Number.isInteger(seconds) || seconds < 1) {
-    throw new Error(`${name} must be a positive integer number of seconds`);
-  }
-  return seconds;
-}
-
-export function parseTestnetOptions(argv: string[]): Options {
-  const seedValues = argv
-    .map((arg, i) => arg === "--seed" ? argv[i + 1] : undefined)
-    .filter((seed): seed is string => Boolean(seed));
-
-  return {
-    host: value(argv, "--host") ?? "127.0.0.1",
-    port: positivePort(value(argv, "--port"), TESTNET_NETWORK.defaultP2PPort, "--port"),
-    statusHost: value(argv, "--status-host") ?? "127.0.0.1",
-    statusPort: positivePort(value(argv, "--status-port"), TESTNET_NETWORK.defaultStatusPort, "--status-port"),
-    dataDir: resolve(value(argv, "--datadir") ?? "./data/testnet"),
-    advertiseUrl: value(argv, "--advertise"),
-    seeds: seedValues,
-    produce: argv.includes("--produce"),
-    blockIntervalSec: positiveSeconds(value(argv, "--block-interval"), 30, "--block-interval"),
-  };
-}
 
 async function main(): Promise<void> {
   const opts = parseTestnetOptions(process.argv.slice(2));
