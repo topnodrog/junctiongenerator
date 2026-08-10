@@ -3,7 +3,7 @@ param(
   [Parameter(Mandatory = $true)]
   [string]$ProjectId,
 
-  [string]$Zone = "us-central1-c",
+  [string]$Zone = "us-east1-b",
   [string]$DnsName = "seed-a.junctiongenerator.net",
   [string]$FlySeedUrl = "wss://jgc-testnet-seed-b.fly.dev",
   [string]$RepositoryUrl = "https://github.com/topnodrog/junctiongenerator.git",

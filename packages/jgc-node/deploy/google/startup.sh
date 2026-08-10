@@ -90,3 +90,14 @@ docker run --detach \
   caddy:2.10.2-alpine
 
 docker image prune --force --filter 'until=168h' >/dev/null
+
+for _ in $(seq 1 60); do
+  NODE_HEALTH="$(docker inspect --format '{{.State.Health.Status}}' jgc-node 2>/dev/null || true)"
+  test "$NODE_HEALTH" = "healthy" && break
+  sleep 2
+done
+test "$NODE_HEALTH" = "healthy"
+
+echo "JGC startup complete: data=$DATA_DIRECTORY image=$IMAGE_TAG"
+curl --fail --silent --show-error http://127.0.0.1:7777/status
+echo

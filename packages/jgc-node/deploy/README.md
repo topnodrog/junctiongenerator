@@ -5,7 +5,7 @@ failure domains:
 
 | Seed | Provider | Region | Role | Persistent data |
 | --- | --- | --- | --- | --- |
-| A | Google Compute Engine | `us-central1-c` | designated producer | 20 GB `pd-standard` |
+| A | Google Compute Engine | `us-east1-b` | designated producer | 20 GB `pd-standard` |
 | B | Fly.io | Toronto (`yyz`) | validator/back-checker | 10 GB Fly Volume |
 
 Seed A advertises `wss://seed-a.junctiongenerator.net`; Seed B advertises its
@@ -57,7 +57,7 @@ to the printed address. Caddy obtains and renews TLS after DNS resolves. Inspect
 startup output and then verify:
 
 ```powershell
-gcloud compute instances get-serial-port-output jgc-seed-a --zone us-central1-c
+gcloud compute instances get-serial-port-output jgc-seed-a --zone us-east1-b
 curl.exe --fail https://seed-a.junctiongenerator.net/healthz
 ```
 
@@ -81,7 +81,7 @@ port 7777 is neither declared nor publicly reachable.
 Read each private status endpoint through its provider administration path:
 
 ```powershell
-gcloud compute ssh jgc-seed-a --zone us-central1-c --tunnel-through-iap --command "curl -fsS http://127.0.0.1:7777/status"
+gcloud compute ssh jgc-seed-a --zone us-east1-b --tunnel-through-iap --command "curl -fsS http://127.0.0.1:7777/status"
 flyctl ssh console --app jgc-testnet-seed-b --command "wget -qO- http://127.0.0.1:7777/status"
 ```
 
