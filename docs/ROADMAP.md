@@ -1,12 +1,12 @@
 # Junction Generator — Completion Roadmap
 
-**Updated:** 2026-08-03 · **Owner:** James Gordon
+**Updated:** 2026-08-11 · **Owner:** James Gordon
 
 Three components, one repo. Keep them distinct:
 
 | Component | What it is | Status |
 |---|---|---|
-| **JGC coin** (`packages/jgc-node`) | Sovereign PoUC Layer-1 — the actual product | Consensus V3 local/private testnet validated; storage hardened; 30 suites / 286 tests green |
+| **JGC coin** (`packages/jgc-node`) | Sovereign PoUC Layer-1 — the actual product | Consensus V3 testnet; Seed A and external runner path live; Seed B and soak pending |
 | **JGT token** (`contracts/`) | ERC-20 on Base (legacy) | Deployed; held, not promoted (no-sale stance) |
 | **junctiongenerator.net** (`src/` + `api/`) | Public site + Cloudflare Worker backend | Worker live and verified; community-first site merged to `main` |
 
@@ -94,16 +94,11 @@ Gate: do not open the P2P port to the internet before the first three items.
   pinned Node/Rust/WASM toolchains, Windows/Linux/macOS builds, Node 20/22, and
   deterministic consensus-vector checks. Native ARM execution remains an
   expansion of the matrix, not a completed claim.
-- [ ] **Seed and transport deployment**: public seed nodes, TLS/WSS ingress,
-  firewall guidance, monitoring, backups, and documented upgrade/reset steps.
-  Google Cloud is the planned first-seed provider; billing safeguards, an empty
-  VM/disk/address inventory, Compute Engine API activation, and Toronto quota
-  headroom are confirmed. The `us-central1` quota check passed and a monitored
-  non-preemptible `e2-micro` is the cost-controlled pilot choice. The broad
-  auto-mode default VPC will remain unused in favor of a dedicated custom VPC
-  with public 443 only. Provisioning still requires the final console estimate,
-  billing-lifecycle and deployment-window approval, and an independent second
-  provider. See
+- [ ] **Seed and transport deployment**: Seed A is live behind TLS/WSS and a
+  fresh external validator/back-checker has connected successfully. Seed B,
+  full monitoring, recovery verification, and provider redundancy remain
+  incomplete. The Google seed uses a dedicated custom VPC with public 443 only;
+  the broad auto-mode default VPC remains unused. See
   [`PUBLIC_SEED_DEPLOYMENT.md`](PUBLIC_SEED_DEPLOYMENT.md).
 - [x] **Local operations-model evaluation**: gemma4:e2b and gemma4:e4b were
   benchmarked on 2026-08-03. Neither passed the operations safety gate; both are
@@ -113,10 +108,11 @@ Gate: do not open the P2P port to the internet before the first three items.
   migration rules, corrupt-tail recovery, and explicit V2-to-V3 refusal.
 - [ ] **Faucet + explorer-lite**: even a static page over the status server
   format is enough for runners to see their coins.
-- [x] **Initial node-runner guide**: `packages/jgc-node/README.md` documents
-  the safe preset, loopback defaults, seeds, and verification commands.
-  Expand it with Ollama/model prerequisites and upgrade/migration procedures
-  before public recruitment.
+- [x] **Node-runner guide**:
+  `packages/jgc-node/docs/RUN-A-NODE.md` provides a Node.js quick start, a
+  one-command Docker runner, live Seed A connection, status checks, updates,
+  safe network defaults, troubleshooting, and recovery links. Ollama is not a
+  prerequisite for the current validator/back-checker role.
 - **Multi-machine soak test** before announcing: two junctioning miners +
   one audit committee across real networks, left running for days, with reorgs,
   signed audit verdicts, restart recovery, and adversarial traffic observed.

@@ -52,11 +52,15 @@ TLS/WSS, private monitoring, backups, and adversarial transport tests. The local
 model cannot host a seed or replace durable infrastructure. See
 [[local-model-operations-boundary]].
 
-**Current status:** LOCAL/PRIVATE TESTNET ONLY. No JGC public chain or mainnet
-has been deployed. The delayed beacon is implemented; the remaining economic
+**Current status (2026-08-11):** EARLY, VALUELESS TESTNET. Google Seed A is
+reachable over WSS and a fresh external validator/back-checker has joined it;
+Fly.io Seed B, redundant operations, and the multi-machine soak remain
+incomplete. No JGC mainnet has been deployed. The delayed beacon is
+implemented; the remaining economic
 gate is a consensus-owned bonded validator registry/stake snapshot. Until that
 exists, verdicts are durable fraud evidence but cannot move funds, reward
 validators, or slash claimants. Cross-machine inference determinism remains
-the major verification research problem. Keep public P2P exposure disabled
-until public seed deployment and multi-machine soak testing land.
+the major verification research problem. Ordinary runners should use the
+outbound-only preset; only hardened seed infrastructure should accept public
+P2P traffic before multi-machine soak testing is complete.
 For Rust build constraints see [[jgc-rust-build-env]].

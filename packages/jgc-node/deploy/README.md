@@ -1,7 +1,13 @@
 # Continuous two-seed pilot
 
-This deployment keeps two `jgc-testnet-v3` nodes online in separate provider
-failure domains:
+> Current rollout, 2026-08-11: Google Seed A is online and accepts external JGC
+> peers at `wss://seed-a.junctiongenerator.net`. Fly Seed B is not yet
+> reachable. Ordinary node runners should use
+> [`../docs/RUN-A-NODE.md`](../docs/RUN-A-NODE.md); this document is for seed
+> operators.
+
+The target deployment keeps two `jgc-testnet-v3` nodes online in separate
+provider failure domains:
 
 | Seed | Provider | Region | Role | Persistent data |
 | --- | --- | --- | --- | --- |

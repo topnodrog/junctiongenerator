@@ -56,6 +56,10 @@ Use **Ctrl+Shift+F** (Obsidian global search) to find keywords across all notes.
 
 ## Recent Updates
 
+- **2026-08-11:** Google Seed A is reachable over WSS and a fresh external
+  validator/back-checker joined successfully. The public runner guide now has
+  Node.js and Docker quick starts. Fly.io Seed B, full monitoring, recovery
+  checks, and the multi-machine soak remain open.
 - **2026-07-31:** Phase 2 storage hardening completed (30 suites / 286 tests).
   Google Cloud is being set up for the first public seed. The next work also
   includes benchmarking a local model as an advisory operations copilot and

@@ -25,7 +25,7 @@ development.
 The primary protocol product lives in `packages/jgc-node`; it is separate from
 the legacy JGT token on Base.
 
-Current node milestone (2026-07-31):
+Current node milestone (2026-08-11):
 
 - Consensus V3 freezes the `jgc-testnet-v3` identity and rejects incompatible
   peers before chain data is exchanged;
@@ -36,18 +36,23 @@ Current node milestone (2026-07-31):
   a bonded roster exists;
 - a persistent designated producer, network-aware wallet/faucet path, and
   two-node container topology are implemented;
+- an external runner can join the live Seed A pilot with one npm command or a
+  one-command Docker Compose setup;
 - versioned, network-bound, checksum-protected storage now recovers torn tails,
   quarantines bad snapshots, and refuses incompatible data;
-- 30 suites / 286 tests, a 31-block sync demo, a six-proof strict WASM run,
+- 31 suites / 293 tests, a 31-block sync demo, a six-proof strict WASM run,
   cross-platform CI, and the hosted Docker smoke test pass.
 
-The node is local/private testnet software. No JGC public blockchain or mainnet
-has been deployed. Public seeds, runner-facing faucet and
-explorer services, and a multi-day real-network soak remain gates. Rewards and
-slashing remain disabled until mandatory bonded-validator activation and an
-economics/security review.
+The node is early, valueless testnet software. Seed A is reachable at
+`wss://seed-a.junctiongenerator.net`; Seed B is not yet online, so the pilot is
+not redundant and should not be described as a resilient public network. No
+JGC mainnet has been deployed. Runner-facing faucet and explorer services and a
+multi-day real-network soak remain gates. Rewards and slashing remain disabled
+until mandatory bonded-validator activation and an economics/security review.
 
-See [`packages/jgc-node/README.md`](packages/jgc-node/README.md) and
+To run a node, follow
+[`packages/jgc-node/docs/RUN-A-NODE.md`](packages/jgc-node/docs/RUN-A-NODE.md).
+For protocol details, see [`packages/jgc-node/README.md`](packages/jgc-node/README.md) and
 [`packages/jgc-node/docs/AUDIT-PROTOCOL.md`](packages/jgc-node/docs/AUDIT-PROTOCOL.md).
 
 ---
@@ -115,9 +120,8 @@ The active plan is [`docs/NEXT_STEPS_PLAN.md`](docs/NEXT_STEPS_PLAN.md). Work is
 sequenced behind explicit gates:
 
 1. benchmark a local model as an advisory deployment/operations copilot;
-2. provision the first seed on Google Cloud and choose an independent host for
-   the second seed;
-3. deploy monitored TLS/WSS seed infrastructure;
+2. finish monitoring and recovery checks for the live Google Cloud Seed A;
+3. bring Seed B online on the independent Fly.io failure domain;
 4. add explorer-lite, a rate-limited testnet faucet, and runner onboarding;
 5. complete a closed multi-machine soak before any public announcement.
 
@@ -160,8 +164,8 @@ batch-preparation endpoint and does not submit an on-chain transaction.
 
 **Public-testnet readiness** (In Progress)
 - Consensus V3 and local/container testnet foundation complete
-- Storage hardening complete; local operations-model evaluation and public seed
-  hosting are next
+- Storage hardening and local operations-model evaluation complete; Seed A is
+  live, while Seed B and full operations evidence remain next
 - Explorer/faucet/onboarding and multi-day soak follow
 
 ---
@@ -169,6 +173,11 @@ batch-preparation endpoint and does not submit an on-chain transaction.
 ## Quick Commands
 
 ```bash
+# Join the JGC testnet pilot (after cloning the repository)
+cd packages/jgc-node
+npm ci
+npm run testnet:public
+
 # Local website development
 cd C:/dev/JunctionGenerator
 corepack yarn dev

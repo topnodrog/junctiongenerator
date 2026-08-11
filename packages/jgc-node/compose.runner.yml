@@ -1,0 +1,13 @@
+services:
+  runner:
+    build: .
+    environment:
+      JGC_SEEDS: "${JGC_SEEDS:-wss://seed-a.junctiongenerator.net}"
+    ports:
+      - "127.0.0.1:7777:7777"
+    volumes:
+      - runner-data:/data
+    restart: unless-stopped
+
+volumes:
+  runner-data:

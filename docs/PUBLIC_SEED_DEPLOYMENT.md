@@ -1,12 +1,18 @@
 # Public Seed Deployment Gate
 
-**Status:** Design approved for planning; Compute Engine readiness is verified.
-Provisioning remains blocked pending the final region/zone, cost, network, DNS,
-and deployment approvals. No VM, disk, reserved address, DNS record, or paid
-account upgrade has been created.
+**Status (2026-08-11):** Seed A is deployed and reachable at
+`wss://seed-a.junctiongenerator.net`; its HTTPS health check answers `ok`, and a
+fresh external validator/back-checker completed the JGC compatibility handshake.
+Seed B is not yet reachable. The pilot therefore has a working public entry
+point but not the required provider redundancy.
 
-This runbook defines the minimum safe two-seed shape for `jgc-testnet-v3`. It
-does not authorize spending or a live deployment.
+This runbook records the minimum safe two-seed shape for `jgc-testnet-v3` and
+the remaining rollout controls. It does not authorize new spending or changes
+to live infrastructure.
+
+External runners should use
+[`../packages/jgc-node/docs/RUN-A-NODE.md`](../packages/jgc-node/docs/RUN-A-NODE.md),
+not this operator runbook.
 
 ## Google Cloud readiness snapshot
 
@@ -30,8 +36,8 @@ The pre-existing `default` VPC is an auto-mode network with 42 subnets, MTU
 1460, and four ingress rules. Those rules apply to all targets and allow ICMP,
 SSH (TCP 22), and RDP (TCP 3389) from `0.0.0.0/0`, plus all TCP/UDP ports and
 ICMP from `10.128.0.0/9`. It is not an approved seed network. Leave it unused
-and unchanged unless the owner separately approves cleanup; deploy the seed in
-a dedicated custom-mode VPC with one `us-central1` subnet instead.
+and unchanged unless the owner separately approves cleanup. Seed A instead
+uses a dedicated custom-mode VPC with one `us-east1` subnet.
 
 Inherited organization policies do not currently restrict Google Cloud
 resource locations or external IPv4 addresses for VM instances. Service
@@ -51,11 +57,12 @@ Quota verification on 2026-08-03 found the following in Toronto
 | In-use regional external IPv4 addresses | 8 |
 | Static regional external IPv4 addresses | 8 |
 
-Toronto has sufficient quota, but it is not eligible for Google's current
-Compute Engine Always Free VM allowance. The cost-controlled candidate is
-`us-central1` (Iowa): one non-preemptible `e2-micro`, 30 GB-months of standard
-persistent disk, and limited outbound transfer can fall within the published
-[Free Tier limits](https://docs.cloud.google.com/free/docs/free-cloud-features).
+Toronto had sufficient quota, but the readiness review did not select it for
+the cost-controlled pilot. The review initially evaluated `us-central1`; the
+final deployment selected `us-east1-b`. Operators must compare the live
+configuration with the current
+[Free Tier limits](https://docs.cloud.google.com/free/docs/free-cloud-features)
+and billing report rather than assuming the pilot has no cost.
 
 The `us-central1` spot-check on 2026-08-03 also found zero usage and sufficient
 headroom:
@@ -68,12 +75,10 @@ headroom:
 | In-use regional external IPv4 addresses | 8 |
 | Static regional external IPv4 addresses | 8 |
 
-The recommended pilot shape is one non-preemptible `e2-micro` in
-`us-central1-c` (fall back to another `us-central1` E2 zone only if capacity
-requires it), a 10 GB `pd-standard` boot disk, a separate 20 GB `pd-standard`
-data disk, and one regional static IPv4 allocated and attached during the
-deployment window. Do not reserve the address early. Use an existing DNS
-provider instead of Cloud DNS.
+The deployed pilot shape is one non-preemptible `e2-micro` in `us-east1-b`, a
+10 GB `pd-standard` boot disk, a separate 20 GB `pd-standard` data disk, and one
+regional static IPv4 allocated and attached during the deployment window. Use
+the existing DNS provider instead of Cloud DNS.
 
 This VM is a seed/producer coordinator, not an Ollama inference worker. The
 current local models load at 6.73 GB and 9.43 GB, so neither can run in the
@@ -100,10 +105,11 @@ without a paid-account upgrade, Google stops trial resources. Any later billing
 upgrade requires separate owner approval even if the selected VM remains inside
 monthly Free Tier usage.
 
-Before provisioning, the operator must still capture and review:
+Seed A's operating record should retain the evidence captured for these
+pre-deployment controls; item 5 remains open for Seed B:
 
-1. capacity in `us-central1-c` and the console's current estimate immediately
-   before creation;
+1. capacity in the selected `us-east1-b` zone and the console's current
+   estimate immediately before creation;
 2. any change to the recommended seven-daily-snapshot retention, limited
    transfer, or low-volume monitoring/log plan;
 3. the free-trial expiry/paid-upgrade decision and recovery plan;
@@ -168,10 +174,10 @@ logs and checksums, create a fresh host from pinned configuration, restore only
 a verified compatible backup or resync from the surviving seed, then validate
 network identity and height before returning the endpoint to service.
 
-## Required approvals
+## Remaining approvals and controls
 
-Provisioning may begin only after the owner approves all of the following from
-a current Console or pricing estimate:
+Before Seed B is provisioned or Seed A is materially changed, the owner must
+approve the applicable items from a current console or pricing estimate:
 
 - Google Cloud region, machine type, disk class/size, and monthly estimate;
 - independent provider, region, machine type, and monthly estimate for Seed B;

@@ -1,10 +1,10 @@
 # Junction Generator Next-Steps Plan
 
-**Status:** Execution approved; Phases 1–2 complete. Phase 3 is active. The
-local-model evaluation, cloud account readiness review, and two-host design are
-complete; final cost/network approvals precede provisioning.
+**Status:** Execution approved; Phases 1–2 complete. Phase 3 is active. Seed A
+is reachable and external runner onboarding is documented; Seed B, monitoring,
+recovery checks, and the multi-host soak remain incomplete.
 
-**Prepared:** 2026-07-30 · **Last updated:** 2026-08-03
+**Prepared:** 2026-07-30 · **Last updated:** 2026-08-11
 
 **Target milestone:** A small, observable, recoverable public JGC testnet.
 
@@ -13,11 +13,11 @@ complete; final cost/network approvals precede provisioning.
 The next project milestone should be **public-testnet readiness**, not new token,
 marketplace, or promotional features.
 
-Repository truth/security, versioned crash-safe storage, and the local-model
-evaluation are complete. Neither installed model passed the operations safety
-gate. The active milestone is Phase 3: verify Google Cloud readiness, provision
-the first seed, select an independent second host, and deploy the monitored
-TLS/WSS edge.
+Repository truth/security, versioned crash-safe storage, the local-model
+evaluation, and Google Seed A deployment are complete. Neither installed model
+passed the operations safety gate. The active milestone is Phase 3: complete
+Seed A operations checks, bring the independent Fly.io Seed B online, and prove
+the monitored two-provider TLS/WSS edge.
 
 ## Verified starting point
 
@@ -127,12 +127,10 @@ docs/LOCAL_MODEL_BENCHMARK.md.
 Do not expose a seed from the owner's laptop or treat a Cloudflare-only pair as
 separate failure domains without an explicit owner-approved exception.
 
-**Hosting update (2026-07-31):** The owner is creating a Google Cloud free
-account for the first seed. Confirm account readiness, billing safeguards,
-Compute Engine quota, persistent-disk availability, region, and static-IP/DNS
-requirements before provisioning. The second seed should remain on a separate
-provider or independently operated failure domain unless the owner explicitly
-approves a temporary two-zone Google Cloud pilot.
+**Historical hosting update (2026-07-31):** The owner began creating a Google
+Cloud account for the first seed. This planning checkpoint is superseded by the
+2026-08-11 rollout update below. The second seed still belongs on a separate
+provider or independently operated failure domain.
 
 **Readiness update (2026-08-03):** The project is linked to the intended
 free-trial billing account, a CA$25 monthly budget alert is active, the Compute
@@ -151,6 +149,12 @@ two-seed shape, recovery boundary, verified quota, pricing caveats, and
 remaining approval gates are recorded in
 [`PUBLIC_SEED_DEPLOYMENT.md`](PUBLIC_SEED_DEPLOYMENT.md).
 
+**Rollout update (2026-08-11):** Seed A is deployed in `us-east1-b` and
+reachable at `wss://seed-a.junctiongenerator.net`; its HTTPS health check
+answers and a fresh
+external validator/back-checker completed the compatibility handshake. Seed B
+does not currently resolve, so provider redundancy is not complete.
+
 **Purpose:** Deploy the minimum safe network edge after storage is trustworthy.
 
 Planned work:
@@ -158,19 +162,24 @@ Planned work:
 1. [x] Benchmark the installed local models for repository-aware deployment
    assistance and record their limits. Result: no-go for operations authority;
    sanitized drafting only.
-2. Provision the first persistent seed on Google Cloud after verifying quota,
+2. [x] Provision the first persistent seed on Google Cloud after verifying quota,
    billing safeguards, region, static address, and persistent disk.
 3. Select and provision the second seed in a separate provider or independently
    operated failure domain; record expected recurring cost.
-4. [x] Define the two-seed topology and rebuild procedure. Provisioning details
-   remain gated by current quota, price, provider, DNS, and owner approvals.
-5. Put TLS/WSS ingress in front of the node transport; keep status endpoints
-   private or authenticated.
+4. [x] Define the two-seed topology and rebuild procedure. Seed B provisioning
+   remains gated by current price, billing, and owner approval.
+5. [x] Put TLS/WSS ingress in front of Seed A's node transport; keep status
+   endpoints private or authenticated.
 6. Document firewall rules, advertised addresses, peer limits, upgrades, and
    emergency reset procedures.
 7. Add uptime, height, peer-count, producer-health, disk, and error monitoring.
 8. Add encrypted backups and a tested restoration procedure.
 9. Run adversarial transport tests before publishing seed addresses.
+
+Rollout update (2026-08-11): Seed A's health endpoint answers and a fresh
+external validator/back-checker connected successfully over WSS. Seed B does
+not currently resolve. The public runner path is documented in
+[`../packages/jgc-node/docs/RUN-A-NODE.md`](../packages/jgc-node/docs/RUN-A-NODE.md).
 
 Exit criteria:
 
@@ -189,8 +198,10 @@ Planned work:
    producer state, and peer-safe aggregate health.
 2. Add a rate-limited testnet faucet service with clear valueless-testnet
    labeling and abuse controls.
-3. Expand the node-runner guide with model/Ollama prerequisites, hardware
-   expectations, upgrades, backups, recovery, and reset instructions.
+3. [x] Publish a node-runner guide with supported platforms, hardware
+   expectations, Node.js and Docker quick starts, live-seed status checks,
+   upgrades, safe defaults, troubleshooting, and recovery links. Ollama is not
+   required for the current validator/back-checker role.
 4. Add native ARM64 CI or clearly document it as unsupported until verified.
 5. Publish a release artifact with checksums and a concise changelog.
 
@@ -264,9 +275,8 @@ Implementation should begin only after the owner approves each checkpoint:
 
 ## Next task
 
-Confirm `us-central1-c` capacity and capture the console's final estimate for
-the recommended `e2-micro`, 10 GB boot disk, 20 GB data disk, seven daily data
-snapshots, low-volume monitoring, and attached address. Then request explicit
-approval for the live resources, billing lifecycle, and deployment window
-before creating the dedicated VPC, VM, disks, address, or DNS record. Select
-the independent Seed B provider/operator in parallel.
+Verify Seed A monitoring, snapshots, billing, and recovery evidence, then bring
+the prepared Fly.io Seed B online after confirming the current estimate and
+billing approval. Confirm both private status endpoints report the same
+`jgc-testnet-v3` height and at least one peer before describing the pilot as
+redundant.
