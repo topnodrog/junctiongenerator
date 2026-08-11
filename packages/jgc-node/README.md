@@ -4,49 +4,81 @@ JGC is the Junction Generator proof-of-useful-compute Layer 1. This package
 contains its consensus engine, post-quantum wallet, miner, peer networking, and
 local testnet tools.
 
+**Want to run a node?** Follow the step-by-step
+[`docs/RUN-A-NODE.md`](docs/RUN-A-NODE.md) guide. The shortest path is:
+
+```text
+git clone https://github.com/topnodrog/junctiongenerator.git
+cd junctiongenerator/packages/jgc-node
+npm ci
+npm run testnet:public
+```
+
+This starts a safe outbound-only validator/back-checker and connects it to the
+live Seed A pilot. Running a node does not currently earn coins or rewards.
+
 ## Requirements
 
-- Node.js 20.19+ or 22
+- Node.js 20.19–20.x or Node.js 22.x (Node 23+ is not supported)
 - npm
 
 ## Verify the node
 
 ```text
-npm install
+npm ci
 npm run typecheck
 npm test
 npm run build
 ```
 
-## Run a safe testnet node
+## Node modes
+
+Join the public pilot as an outbound-only validator/back-checker:
 
 ```text
-npm run build
+npm run testnet:public
+```
+
+Seed A at `wss://seed-a.junctiongenerator.net` is reachable. Seed B is not yet
+online, so this is still a single-seed pilot rather than a resilient public
+network. The `testnet:public` command builds before starting.
+
+Run a standalone node without contacting a public seed:
+
+```text
 npm run testnet
 ```
 
-The default preset:
+Both safe presets:
 
 - uses simulation-only compute receipts while still enforcing ML-DSA
   contribution signatures and all other consensus checks;
 - stores chain data under `./data/testnet`;
 - listens for peers at `ws://127.0.0.1:19444`;
 - exposes read-only status at `http://127.0.0.1:7777/status`;
-- starts with no seed peers, so it is safe for local testing.
+- bind P2P and status to loopback, so they are not exposed to the internet;
 - identifies itself as `jgc-testnet-v3` and rejects peers with a different
   genesis hash, consensus version, or proof mode before accepting chain data.
+
+The standalone preset starts with no seed peers. The public preset makes only
+an outbound connection to Seed A. Check either node at
+`http://127.0.0.1:7777/status` and press `Ctrl+C` to stop it cleanly.
 
 Simulation receipts exercise networking and consensus plumbing but do not prove
 that useful computation occurred. Strict production verification rejects them.
 
-Connect two machines or processes by giving the second node the first node as a
-seed:
+Connect two private processes by giving the second node the first as a seed:
 
 ```text
 npm run testnet -- --port 19445 --status-port 7778 --datadir ./data/testnet-2 --seed ws://127.0.0.1:19444
 ```
 
 Repeat `--seed` to configure more than one bootstrap peer.
+
+Containers may use the equivalent `JGC_P2P_HOST`, `JGC_P2P_PORT`,
+`JGC_STATUS_HOST`, `JGC_STATUS_PORT`, `JGC_DATA_DIR`, `JGC_ADVERTISE_URL`,
+comma-separated `JGC_SEEDS`, `JGC_PRODUCE`, and `JGC_BLOCK_INTERVAL_SEC`
+environment variables. Explicit command-line options take precedence.
 
 Run exactly one designated producer for a small testnet:
 
@@ -73,6 +105,19 @@ npm run wallet -- faucet <1QGC-address> 100 --datadir ./data/testnet --broadcast
 Never reuse the testnet faucet key or any testnet wallet on a valuable network.
 
 ## Containerized two-node testnet
+
+For the simplest single public runner, use:
+
+```text
+docker compose -f compose.runner.yml up --build -d
+```
+
+This keeps chain data in the `runner-data` volume, connects outbound to Seed A,
+and exposes status only at `http://127.0.0.1:7777/status`. See
+[`docs/RUN-A-NODE.md`](docs/RUN-A-NODE.md) for stop, update, and troubleshooting
+commands.
+
+For a private two-node developer testnet, use:
 
 ```text
 docker compose -f compose.testnet.yml up --build
@@ -101,7 +146,10 @@ producer and back-checker to report the same non-zero chain height.
 ## Network exposure
 
 Inbound P2P stays on loopback unless `--host 0.0.0.0` is explicitly supplied.
-Do not expose the P2P port to the public internet yet. Peer traffic uses a
+An ordinary public-pilot runner does not need an inbound port. Public seed
+operators should terminate TLS/WSS on TCP 443 and follow
+[`deploy/README.md`](deploy/README.md); do not expose raw P2P or status ports to
+the internet. Peer traffic uses a
 bounded, versioned binary envelope with network identity and SHA3-256 checksums.
 The node now also enforces per-host inbound caps, per-peer message budgets,
 misbehavior scores, and temporary host bans. A real-network adversarial soak
@@ -151,6 +199,9 @@ closed. See [`docs/STORAGE-RECOVERY.md`](docs/STORAGE-RECOVERY.md) before backup
 restore, upgrade, or reset operations.
 
 This is an early testnet node, not mainnet software.
+
+For the continuously running Google Cloud + Fly.io pilot, see
+[`deploy/README.md`](deploy/README.md).
 
 Architecture references:
 

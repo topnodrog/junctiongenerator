@@ -2,16 +2,20 @@
 
 **A Protocol for Redirecting Mining Compute to Real AI Workloads**
 
-*Version 0.3 — Implementation-aligned draft, 2026-07-28*
+*Version 0.4 — Implementation-aligned draft, 2026-08-11*
 
-> **Implementation status:** JGC currently runs as local/private testnet
-> software. Consensus V3 commits delayed-beacon, ML-DSA-signed historical-audit
+> **Implementation status:** JGC currently runs as early, valueless testnet
+> software. One public pilot seed is reachable; the second seed, resilient
+> operations, and the multi-machine soak remain incomplete. Consensus V3
+> commits delayed-beacon, ML-DSA-signed historical-audit
 > evidence through `auditRoot`, uses portable canonical encodings and integer
 > work weights, separates heterogeneous verification roles, and uses versioned,
-> checksum-protected, network-bound persistent storage. Thirty suites /
-> 286 tests, a 31-block two-node sync demo, and a bounded six-proof strict WASM
-> run pass. Public seeds, mandatory bonded-validator activation, economic
-> rewards/slashing, the marketplace, and mainnet are not deployed.
+> checksum-protected, network-bound persistent storage. Thirty-one suites /
+> 293 tests, a 31-block two-node sync demo, and a bounded six-proof strict WASM
+> run pass. Mandatory bonded-validator activation, economic rewards/slashing,
+> the marketplace, and mainnet are not deployed. See the
+> [node-runner guide](../packages/jgc-node/docs/RUN-A-NODE.md) for the supported
+> pilot path and its limitations.
 
 ---
 

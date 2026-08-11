@@ -1,0 +1,46 @@
+app = "jgc-testnet-seed-b"
+primary_region = "yyz"
+kill_signal = "SIGTERM"
+kill_timeout = "30s"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  JGC_P2P_HOST = "0.0.0.0"
+  JGC_P2P_PORT = "19444"
+  JGC_STATUS_HOST = "0.0.0.0"
+  JGC_STATUS_PORT = "7777"
+  JGC_DATA_DIR = "/data"
+  JGC_ADVERTISE_URL = "wss://jgc-testnet-seed-b.fly.dev"
+  JGC_SEEDS = "wss://seed-a.junctiongenerator.net"
+  JGC_PRODUCE = "false"
+
+[[mounts]]
+  source = "jgc_seed_b_data"
+  destination = "/data"
+
+[[services]]
+  protocol = "tcp"
+  internal_port = 19444
+  auto_stop_machines = "off"
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[services.ports]]
+    handlers = ["http"]
+    port = 80
+    force_https = true
+
+  [[services.ports]]
+    handlers = ["tls", "http"]
+    port = 443
+
+  [[services.tcp_checks]]
+    interval = "15s"
+    timeout = "2s"
+    grace_period = "20s"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
