@@ -224,12 +224,13 @@ Exit criteria:
 - Supported operating systems and architectures are evidenced by CI.
 
 **Protocol experiment (2026-08-13):** The repository includes a repeatable,
-valueless ten-day ledger prototype for a proposed 04:00 America/Toronto
-distribution of the preceding civil day's rewards. It exercises ten ML-DSA
-wallets, signed UTXO transfers, coinbase maturity, supply conservation, and
-final two-wallet consolidation. It is not deployed and is not valid under the
-current height-based `jgc-testnet-v3` settlement rule; the calendar, timezone,
-reorg, fee, and daylight-saving rules require a versioned consensus decision.
+valueless ten-day ledger prototype with 144-block earning windows and a fixed
+24-block settlement delay (nominally 04:00 UTC at the ten-minute target). It
+exercises ten ML-DSA wallets, signed UTXO transfers, coinbase maturity, supply
+conservation, and final two-wallet consolidation. Block height alone activates
+distribution; UTC timestamps are audit labels, so daylight-saving changes
+cannot affect consensus. It is not deployed and requires a versioned consensus
+decision before replacing the current immediate height-epoch settlement.
 
 ## Phase 5 — Closed beta and soak
 

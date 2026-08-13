@@ -19,19 +19,21 @@ import { Wallet } from "../wallet/wallet.js";
 
 export const TEN_DAY_WALLET_COUNT = 10;
 export const TEN_DAY_EARNING_DAYS = 10;
-export const DAILY_DISTRIBUTION_HOUR_LOCAL = 4;
-export const DAILY_DISTRIBUTION_TIMEZONE = "America/Toronto" as const;
-// 2026-08-01 00:00:00 in Toronto is 04:00:00 UTC (EDT, UTC-04:00).
-export const TEN_DAY_START_UTC = Date.UTC(2026, 7, 1, 4, 0, 0) / 1000;
+export const DAILY_DISTRIBUTION_HOUR_UTC = 4;
+export const DAILY_DISTRIBUTION_TIMEZONE = "UTC" as const;
+export const TEN_DAY_START_UTC = Date.UTC(2026, 7, 1, 0, 0, 0) / 1000;
 export const DAILY_REWARD = getBlockReward(1) * BigInt(BLOCKS_PER_EPOCH);
 export const PER_WALLET_DAILY_REWARD = DAILY_REWARD / BigInt(TEN_DAY_WALLET_COUNT);
 export const PERIODIC_TRANSFER_AMOUNT = BASE_UNITS_PER_JGC;
+export const DISTRIBUTION_DELAY_BLOCKS =
+  DAILY_DISTRIBUTION_HOUR_UTC * 60 * 60 / TARGET_BLOCK_INTERVAL_SECONDS;
 
 const ZERO_HASH = "0".repeat(64);
 const DAY_SECONDS = 24 * 60 * 60;
-const DISTRIBUTION_DELAY_SECONDS = DAILY_DISTRIBUTION_HOUR_LOCAL * 60 * 60;
-const TORONTO_UTC_OFFSET_SECONDS = -4 * 60 * 60;
-const RING_TRANSFER_HOURS_LOCAL = new Set([8, 12, 16, 20]);
+const FIRST_RING_TRANSFER_HEIGHT = 8 * 60 * 60 / TARGET_BLOCK_INTERVAL_SECONDS;
+const RING_TRANSFER_HEIGHTS = new Set(
+  [8, 12, 16, 20].map(hour => hour * 60 * 60 / TARGET_BLOCK_INTERVAL_SECONDS),
+);
 
 export interface ScenarioWallet {
   label: string;
@@ -40,6 +42,9 @@ export interface ScenarioWallet {
 
 export interface DailyDistributionRecord {
   earningDay: string;
+  earningHeightStart: number;
+  earningHeightEnd: number;
+  settlementDelayBlocks: number;
   windowStart: string;
   windowEnd: string;
   distributedAt: string;
@@ -84,12 +89,8 @@ function iso(timestamp: number): string {
   return new Date(timestamp * 1000).toISOString();
 }
 
-function torontoIso(timestamp: number): string {
-  return `${new Date((timestamp + TORONTO_UTC_OFFSET_SECONDS) * 1000).toISOString().slice(0, -1)}-04:00`;
-}
-
 function dayLabel(timestamp: number): string {
-  return torontoIso(timestamp).slice(0, 10);
+  return iso(timestamp).slice(0, 10);
 }
 
 function markerTransaction(height: number): Transaction {
@@ -196,12 +197,13 @@ function totalValue(utxos: UTXOSet): bigint {
  *
  * This deliberately does not mutate the live `jgc-testnet-v3` rules. The
  * current public testnet settles height-based epochs immediately at slot 143;
- * this prototype tests a proposed America/Toronto calendar policy that pays at
- * 04:00 for the preceding local 00:00:00-23:59:59 earning day.
+ * this prototype tests a height-derived policy: each 144-block earning window
+ * is paid after a fixed 24-block delay. UTC timestamps are display/audit labels
+ * only and never control whether distribution occurs.
  */
 export function buildTenDayLedger(startTimestamp = TEN_DAY_START_UTC): TenDayLedgerResult {
-  if ((startTimestamp + TORONTO_UTC_OFFSET_SECONDS) % DAY_SECONDS !== 0) {
-    throw new Error("scenario start must be 00:00:00 America/Toronto");
+  if (startTimestamp % DAY_SECONDS !== 0) {
+    throw new Error("scenario display anchor must be 00:00:00 UTC");
   }
 
   const { wallet, records: wallets } = deterministicWallets();
@@ -213,35 +215,38 @@ export function buildTenDayLedger(startTimestamp = TEN_DAY_START_UTC): TenDayLed
   let prevHash = ZERO_HASH;
   let periodicCycle = 0;
 
-  const finalDistributionAt = startTimestamp + TEN_DAY_EARNING_DAYS * DAY_SECONDS + DISTRIBUTION_DELAY_SECONDS;
-  const finalTimestamp = finalDistributionAt + COINBASE_MATURITY * TARGET_BLOCK_INTERVAL_SECONDS;
+  const finalDistributionHeight =
+    TEN_DAY_EARNING_DAYS * BLOCKS_PER_EPOCH + DISTRIBUTION_DELAY_BLOCKS;
+  const finalHeight = finalDistributionHeight + COINBASE_MATURITY;
+  const finalTimestamp = startTimestamp + finalHeight * TARGET_BLOCK_INTERVAL_SECONDS;
 
-  for (
-    let timestamp = startTimestamp, height = 0;
-    timestamp <= finalTimestamp;
-    timestamp += TARGET_BLOCK_INTERVAL_SECONDS, height++
-  ) {
+  for (let height = 0; height <= finalHeight; height++) {
+    const timestamp = startTimestamp + height * TARGET_BLOCK_INTERVAL_SECONDS;
     const transactions: Transaction[] = [];
     let distributionDay: string | undefined;
 
-    const elapsed = timestamp - startTimestamp;
-    const isDistributionSlot = elapsed >= DAY_SECONDS + DISTRIBUTION_DELAY_SECONDS &&
-      (elapsed - DISTRIBUTION_DELAY_SECONDS) % DAY_SECONDS === 0;
+    const isDistributionSlot = height >= BLOCKS_PER_EPOCH + DISTRIBUTION_DELAY_BLOCKS &&
+      (height - DISTRIBUTION_DELAY_BLOCKS) % BLOCKS_PER_EPOCH === 0;
     const distributionIndex = isDistributionSlot
-      ? Math.floor((elapsed - DISTRIBUTION_DELAY_SECONDS) / DAY_SECONDS) - 1
+      ? Math.floor((height - DISTRIBUTION_DELAY_BLOCKS) / BLOCKS_PER_EPOCH) - 1
       : -1;
 
     if (distributionIndex >= 0 && distributionIndex < TEN_DAY_EARNING_DAYS) {
-      const windowStart = startTimestamp + distributionIndex * DAY_SECONDS;
+      const earningHeightStart = distributionIndex * BLOCKS_PER_EPOCH;
+      const earningHeightEnd = earningHeightStart + BLOCKS_PER_EPOCH - 1;
+      const windowStart = startTimestamp + earningHeightStart * TARGET_BLOCK_INTERVAL_SECONDS;
       distributionDay = dayLabel(windowStart);
       const distribution = distributionTransaction(wallets, distributionDay);
       transactions.push(distribution);
       settledDays.push(distributionDay);
       distributions.push({
         earningDay: distributionDay,
-        windowStart: torontoIso(windowStart),
-        windowEnd: torontoIso(windowStart + DAY_SECONDS - 1),
-        distributedAt: torontoIso(timestamp),
+        earningHeightStart,
+        earningHeightEnd,
+        settlementDelayBlocks: DISTRIBUTION_DELAY_BLOCKS,
+        windowStart: iso(windowStart),
+        windowEnd: iso(windowStart + DAY_SECONDS - 1),
+        distributedAt: iso(timestamp),
         blockHeight: height,
         transactionId: txid(distribution),
         total: DAILY_REWARD,
@@ -251,11 +256,10 @@ export function buildTenDayLedger(startTimestamp = TEN_DAY_START_UTC): TenDayLed
       transactions.push(markerTransaction(height));
     }
 
-    const localDate = new Date((timestamp + TORONTO_UTC_OFFSET_SECONDS) * 1000);
-    const isPeriodicSlot = localDate.getUTCMinutes() === 0 &&
-      RING_TRANSFER_HOURS_LOCAL.has(localDate.getUTCHours()) &&
-      timestamp >= startTimestamp + 2 * DAY_SECONDS + 8 * 60 * 60 &&
-      timestamp < finalTimestamp;
+    const heightWithinWindow = height % BLOCKS_PER_EPOCH;
+    const isPeriodicSlot = RING_TRANSFER_HEIGHTS.has(heightWithinWindow) &&
+      height >= 2 * BLOCKS_PER_EPOCH + FIRST_RING_TRANSFER_HEIGHT &&
+      height < finalHeight;
 
     if (isPeriodicSlot) {
       const direction = periodicCycle % 2 === 0 ? 1 : -1;
@@ -284,7 +288,7 @@ export function buildTenDayLedger(startTimestamp = TEN_DAY_START_UTC): TenDayLed
       periodicCycle++;
     }
 
-    if (timestamp === finalTimestamp) {
+    if (height === finalHeight) {
       for (let index = 2; index < wallets.length; index++) {
         const from = wallets[index]!;
         const to = wallets[index < 6 ? 0 : 1]!;
@@ -318,9 +322,9 @@ export function buildTenDayLedger(startTimestamp = TEN_DAY_START_UTC): TenDayLed
     prevHash = hash;
   }
 
-  const finalHeight = blocks.at(-1)!.header.height + 1;
+  const balanceScanHeight = blocks.at(-1)!.header.height + 1;
   const finalBalances = Object.fromEntries(
-    wallets.map(record => [record.label, wallet.balance(record.label, utxos, finalHeight)]),
+    wallets.map(record => [record.label, wallet.balance(record.label, utxos, balanceScanHeight)]),
   );
   const totalMinted = totalValue(utxos);
 
@@ -340,7 +344,7 @@ export function buildTenDayLedger(startTimestamp = TEN_DAY_START_UTC): TenDayLed
 
   return {
     mode: "daily-distribution-prototype-v1",
-    warning: "Valueless repeatable protocol prototype; not deployed to jgc-testnet-v3 and not valid under its current height-based settlement rule.",
+    warning: "Valueless repeatable protocol prototype; not deployed to jgc-testnet-v3 and not valid under its current immediate epoch-boundary settlement rule.",
     timezone: DAILY_DISTRIBUTION_TIMEZONE,
     blocks,
     wallets,

@@ -2,6 +2,7 @@ import { computeTransactionMerkleRoot, hashBlockHeader } from "../consensus/bloc
 import { BASE_UNITS_PER_JGC, TARGET_BLOCK_INTERVAL_SECONDS } from "../consensus/emission.js";
 import {
   DAILY_REWARD,
+  DISTRIBUTION_DELAY_BLOCKS,
   PER_WALLET_DAILY_REWARD,
   TEN_DAY_EARNING_DAYS,
   TEN_DAY_WALLET_COUNT,
@@ -28,13 +29,18 @@ describe("ten-day daily-distribution ledger prototype", () => {
     }
   });
 
-  test("distributes each prior Toronto earning day equally at 04:00", () => {
+  test("distributes each 144-block earning window after a 24-block delay", () => {
     expect(result.wallets).toHaveLength(TEN_DAY_WALLET_COUNT);
     expect(result.distributions).toHaveLength(TEN_DAY_EARNING_DAYS);
     for (const distribution of result.distributions) {
-      expect(distribution.distributedAt.endsWith("T04:00:00.000-04:00")).toBe(true);
-      expect(distribution.windowStart.endsWith("T00:00:00.000-04:00")).toBe(true);
-      expect(distribution.windowEnd.endsWith("T23:59:59.000-04:00")).toBe(true);
+      expect(distribution.earningHeightEnd - distribution.earningHeightStart + 1).toBe(144);
+      expect(distribution.settlementDelayBlocks).toBe(DISTRIBUTION_DELAY_BLOCKS);
+      expect(distribution.blockHeight).toBe(
+        distribution.earningHeightEnd + 1 + DISTRIBUTION_DELAY_BLOCKS,
+      );
+      expect(distribution.distributedAt.endsWith("T04:00:00.000Z")).toBe(true);
+      expect(distribution.windowStart.endsWith("T00:00:00.000Z")).toBe(true);
+      expect(distribution.windowEnd.endsWith("T23:59:59.000Z")).toBe(true);
       expect(distribution.total).toBe(DAILY_REWARD);
       expect(distribution.perWallet).toBe(PER_WALLET_DAILY_REWARD);
     }
