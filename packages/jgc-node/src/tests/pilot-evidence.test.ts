@@ -57,21 +57,33 @@ describe("pilot evidence collection", () => {
 
   test("collects both providers into one readiness snapshot", async () => {
     const invocations: string[][] = [];
+    let activeGoogleCommands = 0;
+    let maximumConcurrentGoogleCommands = 0;
     const runner: CommandRunner = async (command, args) => {
       invocations.push([command, ...args]);
-      const joined = args.join(" ");
-      if (joined.includes("/status") || (command === "flyctl" && joined.includes("ssh console") && !joined.includes("df -P"))) {
-        const seedA = command.startsWith("gcloud");
-        return JSON.stringify({
-          network: "jgc-testnet-v3",
-          height: seedA ? 501 : 500,
-          peerCount: 2,
-          producer: { enabled: seedA },
-        });
+      const isGoogle = command.startsWith("gcloud");
+      if (isGoogle) {
+        activeGoogleCommands += 1;
+        maximumConcurrentGoogleCommands = Math.max(maximumConcurrentGoogleCommands, activeGoogleCommands);
+        await new Promise(resolve => setTimeout(resolve, 1));
       }
-      if (joined.includes("df -P") || joined.includes("df${IFS}-P")) return command.startsWith("gcloud") ? "disk 100 20 80 20% /var/lib/jgc" : "disk 100 25 75 25% /data";
-      if (command.startsWith("gcloud")) return JSON.stringify([{ creationTimestamp: "2026-08-13T05:00:00Z" }]);
-      return JSON.stringify([{ created_at: "2026-08-13T05:30:00Z" }]);
+      const joined = args.join(" ");
+      try {
+        if (joined.includes("/status") || (command === "flyctl" && joined.includes("ssh console") && !joined.includes("df -P"))) {
+          const seedA = command.startsWith("gcloud");
+          return JSON.stringify({
+            network: "jgc-testnet-v3",
+            height: seedA ? 501 : 500,
+            peerCount: 2,
+            producer: { enabled: seedA },
+          });
+        }
+        if (joined.includes("df -P") || joined.includes("df${IFS}-P")) return command.startsWith("gcloud") ? "disk 100 20 80 20% /var/lib/jgc" : "disk 100 25 75 25% /data";
+        if (command.startsWith("gcloud")) return JSON.stringify([{ creationTimestamp: "2026-08-13T05:00:00Z" }]);
+        return JSON.stringify([{ created_at: "2026-08-13T05:30:00Z" }]);
+      } finally {
+        if (isGoogle) activeGoogleCommands -= 1;
+      }
     };
     const certificateReader: CertificateExpiryReader = async url =>
       url.includes("seed-a") ? "2026-11-13T00:00:00.000Z" : "2026-11-14T00:00:00.000Z";
@@ -92,6 +104,7 @@ describe("pilot evidence collection", () => {
       expect.stringMatching(/^gcloud/),
       "--filter=sourceDisk~jgc-seed-a-data$",
     ]));
+    expect(maximumConcurrentGoogleCommands).toBe(1);
     expect(snapshot.seeds[0]).toEqual(expect.objectContaining({
       id: "seed-a",
       reachable: true,

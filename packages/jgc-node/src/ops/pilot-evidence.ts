@@ -269,15 +269,19 @@ export async function collectPilotEvidence(
       commandTimeoutMs,
     ))
     .then(parseDiskUsedPercent);
-  const [aStatus, aDisk, aSnapshot, aCertificate, bStatus, bDisk, bSnapshot, bCertificate] = await Promise.allSettled([
-    googleStatus,
-    googleDisk,
-    runner(gcloudCommand, [
+  const googleSnapshot = googleDisk
+    .catch(() => undefined)
+    .then(() => runner(gcloudCommand, [
       "compute", "snapshots", "list",
       `--project=${options.googleProject}`,
       `--filter=sourceDisk~${googleDataDisk}$`,
       "--format=json",
-    ], commandTimeoutMs).then(latestSnapshotTimestamp),
+    ], commandTimeoutMs))
+    .then(latestSnapshotTimestamp);
+  const [aStatus, aDisk, aSnapshot, aCertificate, bStatus, bDisk, bSnapshot, bCertificate] = await Promise.allSettled([
+    googleStatus,
+    googleDisk,
+    googleSnapshot,
     certificateReader(seedAUrl, tlsTimeoutMs),
     runner("flyctl", ["ssh", "console", "--app", flyApp, "--pty=false", "--command", FLY_STATUS_COMMAND, "--quiet"], commandTimeoutMs).then(parseNodeStatus),
     runner("flyctl", ["ssh", "console", "--app", flyApp, "--pty=false", "--command", "df -P /data", "--quiet"], commandTimeoutMs).then(parseDiskUsedPercent),
