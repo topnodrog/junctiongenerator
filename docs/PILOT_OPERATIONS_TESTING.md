@@ -9,6 +9,40 @@ through each provider's authenticated administration path.
 
 Run from `packages/jgc-node` after `npm ci` and `npm run build`.
 
+Authenticated evidence collector:
+
+1. Install and authenticate the Google Cloud CLI and Fly CLI. The collector
+   uses their existing credential stores; it never reads or writes access
+   tokens itself.
+2. Copy `deploy/ops/pilot-attestations.template.json` into `.tmp`, then record
+   only observations that require human confirmation: billing alerts, the most
+   recent restore drill, corruption-log review, repeated peer bans, and external
+   runner continuity. Do not put credentials or raw provider output in it.
+3. Get Seed B's volume ID with `flyctl volumes list --app
+   jgc-testnet-seed-b`, then run:
+
+```powershell
+npm run collect-pilot-evidence -- `
+  --google-project <project-id> `
+  --fly-volume <volume-id> `
+  --attestations .tmp/pilot-attestations.json `
+  --append .tmp/pilot-evidence/readiness.jsonl
+```
+
+The command collects both private `/status` responses through authenticated
+SSH, disk usage, the newest ready Google disk snapshot, the newest Fly volume
+snapshot, and both public TLS certificate expiries. It writes a sanitized
+snapshot to `.tmp/pilot-evidence/current.json`, evaluates it immediately, and
+returns a failing exit code until the readiness gate passes. Provider CLI
+errors are recorded as bounded, single-line collection failures; missing data
+is never converted into a healthy default.
+
+Google snapshot discovery uses `gcloud compute snapshots list`; Fly snapshot
+discovery uses `flyctl volumes snapshots list <volume-id> --json`. These
+interfaces are documented by the providers at
+<https://cloud.google.com/sdk/gcloud/reference/compute/snapshots/list> and
+<https://fly.io/docs/flyctl/volumes-snapshots-list/>.
+
 Public TLS/WSS transport probe:
 
 ```powershell
@@ -19,7 +53,8 @@ The probe opens each public WSS endpoint and records reachability and latency.
 It does not claim that private status, chain height, backups, or billing are
 healthy.
 
-Copy `deploy/ops/pilot-readiness.template.json` to a private working location,
+For a manual or offline fallback, copy
+`deploy/ops/pilot-readiness.template.json` to a private working location,
 replace the placeholders with current authenticated observations, then run:
 
 ```powershell
@@ -71,10 +106,26 @@ transport-only pass is necessary but is not operational-readiness evidence.
 
 ## Evidence captured 2026-08-13
 
-A read-only WSS opening probe succeeded against both public endpoints:
+The public WSS probe and the authenticated collector succeeded from a Windows
+operator workstation against both public endpoints and provider administration
+paths:
 
 - `wss://seed-a.junctiongenerator.net`
 - `wss://jgc-testnet-seed-b.fly.dev`
 
-Detailed authenticated status, snapshot/restore, disk, certificate-expiry, and
-billing evidence was not available from this workstation and remains open.
+Both seeds reported `jgc-testnet-v3`, height `0`, two peers, and 1% disk use.
+Seed A was the only producer. Its certificate expires 2026-11-08; Seed B's
+expires 2026-09-19. Fresh snapshots completed on both providers. A bounded log
+review found no corruption signatures or peer guard rejections in Seed A's
+prior 24 hours or Seed B's current provider log buffer.
+
+Google billing is linked and has a CAD 25 monthly budget with current-spend
+thresholds at 50%, 90%, 100%, and 150%. Fly's current
+[cost-management documentation](https://fly.io/docs/about/cost-management/)
+states that native billing alerts are not supported, so Seed B's
+billing gate remains failed until an external usage monitor is connected. Both
+providers' restore drills also remain open and must be performed with
+disposable replacements during an approved maintenance window. Private JSON
+evidence remains under `.tmp` and is not committed. The resulting gate was 20
+passes, zero warnings, and three failures: Seed B billing alerting plus the two
+restore drills.

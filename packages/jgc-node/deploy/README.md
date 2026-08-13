@@ -99,6 +99,15 @@ An ordinary external runner must also connect successfully when Seed B is its
 only configured bootstrap peer. Seed B's first deployment passed this check on
 2026-08-13 and reported `producer.enabled: false`.
 
+## 4. Collect readiness evidence
+
+Use the authenticated collector in `../../../docs/PILOT_OPERATIONS_TESTING.md`
+to turn both private status responses, disk usage, provider snapshots, and TLS
+certificate expiries into one sanitized readiness snapshot. The only manual
+inputs are explicit operator attestations for billing alerts, restore drills,
+log review, and external-runner continuity. Generated snapshots belong under
+`.tmp` and must not be committed.
+
 ## Upgrades and rollback
 
 Pin `-RepositoryRef` to the reviewed commit when provisioning. For an upgrade,

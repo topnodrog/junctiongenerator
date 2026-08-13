@@ -65,6 +65,17 @@ describe("pilot readiness tracking", () => {
     ]));
   });
 
+  test("fails when log-review evidence is missing", () => {
+    const snapshot = healthySnapshot();
+    snapshot.seeds[0].corruptionErrors = undefined;
+    snapshot.seeds[1].repeatedPeerBans = undefined;
+    const report = evaluatePilotReadiness(snapshot);
+    expect(report.checks).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "seed-a.corruption", severity: "fail" }),
+      expect.objectContaining({ id: "seed-b.peer-bans", severity: "fail" }),
+    ]));
+  });
+
   test("passes a declared seed-loss drill when the runner survives", () => {
     const snapshot = healthySnapshot();
     snapshot.expectedOutage = "seed-a";
