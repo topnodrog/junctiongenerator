@@ -1,10 +1,11 @@
 # Junction Generator Next-Steps Plan
 
-**Status:** Execution approved; Phases 1–2 complete. Phase 3 is active. Seed A
-is reachable and external runner onboarding is documented; Seed B, monitoring,
-recovery checks, and the multi-host soak remain incomplete.
+**Status:** Execution approved; Phases 1–2 complete. Phase 3 is active. Google
+Seed A and independent Fly.io Seed B are reachable, and external runner
+onboarding is documented; monitoring, recovery checks, and the multi-host soak
+remain incomplete.
 
-**Prepared:** 2026-07-30 · **Last updated:** 2026-08-11
+**Prepared:** 2026-07-30 · **Last updated:** 2026-08-13
 
 **Target milestone:** A small, observable, recoverable public JGC testnet.
 
@@ -14,10 +15,10 @@ The next project milestone should be **public-testnet readiness**, not new token
 marketplace, or promotional features.
 
 Repository truth/security, versioned crash-safe storage, the local-model
-evaluation, and Google Seed A deployment are complete. Neither installed model
-passed the operations safety gate. The active milestone is Phase 3: complete
-Seed A operations checks, bring the independent Fly.io Seed B online, and prove
-the monitored two-provider TLS/WSS edge.
+evaluation, Google Seed A deployment, and independent Fly.io Seed B deployment
+are complete. Neither installed model passed the operations safety gate. The
+active milestone is Phase 3: complete monitoring and recovery exercises for
+the live two-provider TLS/WSS edge.
 
 ## Verified starting point
 
@@ -149,11 +150,14 @@ two-seed shape, recovery boundary, verified quota, pricing caveats, and
 remaining approval gates are recorded in
 [`PUBLIC_SEED_DEPLOYMENT.md`](PUBLIC_SEED_DEPLOYMENT.md).
 
-**Rollout update (2026-08-11):** Seed A is deployed in `us-east1-b` and
+**Rollout update (2026-08-13):** Seed A is deployed in `us-east1-b` and
 reachable at `wss://seed-a.junctiongenerator.net`; its HTTPS health check
-answers and a fresh
-external validator/back-checker completed the compatibility handshake. Seed B
-does not currently resolve, so provider redundancy is not complete.
+answers and a fresh external validator/back-checker completed the compatibility
+handshake. Seed B is deployed on Fly.io in Toronto (`yyz`) at
+`wss://jgc-testnet-seed-b.fly.dev` with an encrypted 10 GB volume. Its Fly
+health check passes, private status reports `peerCount: 2` and
+`producer.enabled: false`, and a fresh external runner completed the public WSS
+compatibility handshake.
 
 **Purpose:** Deploy the minimum safe network edge after storage is trustworthy.
 
@@ -164,10 +168,9 @@ Planned work:
    sanitized drafting only.
 2. [x] Provision the first persistent seed on Google Cloud after verifying quota,
    billing safeguards, region, static address, and persistent disk.
-3. Select and provision the second seed in a separate provider or independently
-   operated failure domain; record expected recurring cost.
-4. [x] Define the two-seed topology and rebuild procedure. Seed B provisioning
-   remains gated by current price, billing, and owner approval.
+3. [x] Select and provision the second seed in a separate provider or
+   independently operated failure domain; record expected recurring cost.
+4. [x] Define the two-seed topology and rebuild procedure.
 5. [x] Put TLS/WSS ingress in front of Seed A's node transport; keep status
    endpoints private or authenticated.
 6. Document firewall rules, advertised addresses, peer limits, upgrades, and
@@ -176,9 +179,10 @@ Planned work:
 8. Add encrypted backups and a tested restoration procedure.
 9. Run adversarial transport tests before publishing seed addresses.
 
-Rollout update (2026-08-11): Seed A's health endpoint answers and a fresh
-external validator/back-checker connected successfully over WSS. Seed B does
-not currently resolve. The public runner path is documented in
+Rollout update (2026-08-13): Seed A's health endpoint answers, and fresh
+external validator/back-checkers connected successfully over WSS to both Seed A
+and Seed B. The public runner path now dials both seeds by default and is
+documented in
 [`../packages/jgc-node/docs/RUN-A-NODE.md`](../packages/jgc-node/docs/RUN-A-NODE.md).
 
 Exit criteria:
@@ -275,8 +279,7 @@ Implementation should begin only after the owner approves each checkpoint:
 
 ## Next task
 
-Verify Seed A monitoring, snapshots, billing, and recovery evidence, then bring
-the prepared Fly.io Seed B online after confirming the current estimate and
-billing approval. Confirm both private status endpoints report the same
-`jgc-testnet-v3` height and at least one peer before describing the pilot as
-redundant.
+Verify monitoring, snapshots, billing alerts, and recovery evidence for both
+live seeds. Then run the multi-host soak and confirm both private status
+endpoints continue to report the same `jgc-testnet-v3` height and at least one
+peer through restarts and simulated seed loss.

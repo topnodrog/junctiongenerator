@@ -11,14 +11,14 @@ JGC is early, valueless testnet software. It is not mainnet, and running a node
 does not currently earn coins or rewards. The network may be reset while the
 protocol is under development.
 
-The public pilot currently has one reachable bootstrap node:
+The public pilot currently has two reachable bootstrap nodes in independent
+provider failure domains:
 
 - Seed A: `wss://seed-a.junctiongenerator.net`
-- Seed B: not yet online
+- Seed B: `wss://jgc-testnet-seed-b.fly.dev`
 
-One seed is enough for testing, but it is not a resilient public network. If
-Seed A is unavailable, your node will keep its local data and retry until the
-seed returns.
+The public runner dials both. If either seed is unavailable, your node keeps
+its local data and can stay connected through the other seed while retrying.
 
 ### Supported setup
 
@@ -46,7 +46,7 @@ startup prints lines like these:
 
 ```text
 [testnet] network: jgc-testnet-v3 (simnet-receipts-v1)
-[testnet] seeds:   wss://seed-a.junctiongenerator.net
+[testnet] seeds:   wss://seed-a.junctiongenerator.net, wss://jgc-testnet-seed-b.fly.dev
 [testnet] role:    validator/back-checker
 ```
 

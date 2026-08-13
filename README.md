@@ -25,7 +25,7 @@ development.
 The primary protocol product lives in `packages/jgc-node`; it is separate from
 the legacy JGT token on Base.
 
-Current node milestone (2026-08-11):
+Current node milestone (2026-08-13):
 
 - Consensus V3 freezes the `jgc-testnet-v3` identity and rejects incompatible
   peers before chain data is exchanged;
@@ -36,19 +36,21 @@ Current node milestone (2026-08-11):
   a bonded roster exists;
 - a persistent designated producer, network-aware wallet/faucet path, and
   two-node container topology are implemented;
-- an external runner can join the live Seed A pilot with one npm command or a
-  one-command Docker Compose setup;
+- an external runner can join the live two-provider pilot with one npm command
+  or a one-command Docker Compose setup;
 - versioned, network-bound, checksum-protected storage now recovers torn tails,
   quarantines bad snapshots, and refuses incompatible data;
 - 31 suites / 293 tests, a 31-block sync demo, a six-proof strict WASM run,
   cross-platform CI, and the hosted Docker smoke test pass.
 
-The node is early, valueless testnet software. Seed A is reachable at
-`wss://seed-a.junctiongenerator.net`; Seed B is not yet online, so the pilot is
-not redundant and should not be described as a resilient public network. No
-JGC mainnet has been deployed. Runner-facing faucet and explorer services and a
-multi-day real-network soak remain gates. Rewards and slashing remain disabled
-until mandatory bonded-validator activation and an economics/security review.
+The node is early, valueless testnet software. Two independent bootstrap seeds
+are reachable: Google Seed A at `wss://seed-a.junctiongenerator.net` and Fly.io
+Seed B at `wss://jgc-testnet-seed-b.fly.dev`. A fresh external runner completed
+the JGC compatibility handshake with Seed B on 2026-08-13. No JGC mainnet has
+been deployed. Runner-facing faucet and explorer services, recovery exercises,
+monitoring, and a multi-day real-network soak remain gates. Rewards and slashing
+remain disabled until mandatory bonded-validator activation and an
+economics/security review.
 
 To run a node, follow
 [`packages/jgc-node/docs/RUN-A-NODE.md`](packages/jgc-node/docs/RUN-A-NODE.md).
@@ -119,11 +121,10 @@ material, not the current launch strategy.
 The active plan is [`docs/NEXT_STEPS_PLAN.md`](docs/NEXT_STEPS_PLAN.md). Work is
 sequenced behind explicit gates:
 
-1. benchmark a local model as an advisory deployment/operations copilot;
-2. finish monitoring and recovery checks for the live Google Cloud Seed A;
-3. bring Seed B online on the independent Fly.io failure domain;
-4. add explorer-lite, a rate-limited testnet faucet, and runner onboarding;
-5. complete a closed multi-machine soak before any public announcement.
+1. finish monitoring, alerting, and recovery checks for both live seeds;
+2. add explorer-lite and a rate-limited testnet faucet;
+3. recruit a small group of external node runners using the two-seed guide;
+4. complete a closed multi-machine soak before any broad public announcement.
 
 The local model can help draft configuration, run checks, summarize monitoring,
 and support incident response. It cannot replace the public hosts, persistent
@@ -164,8 +165,8 @@ batch-preparation endpoint and does not submit an on-chain transaction.
 
 **Public-testnet readiness** (In Progress)
 - Consensus V3 and local/container testnet foundation complete
-- Storage hardening and local operations-model evaluation complete; Seed A is
-  live, while Seed B and full operations evidence remain next
+- Storage hardening and local operations-model evaluation complete; Google
+  Seed A and independent Fly.io Seed B are live
 - Explorer/faucet/onboarding and multi-day soak follow
 
 ---
