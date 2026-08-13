@@ -1,0 +1,69 @@
+name: Fly resource-cost guard
+
+on:
+  schedule:
+    - cron: "17 11 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: fly-resource-cost-guard
+  cancel-in-progress: false
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: packages/jgc-node/package-lock.json
+      - uses: superfly/flyctl-actions/setup-flyctl@ed8efb33836e8b2096c7fd3ba1c8afe303ebbff1
+      - name: Install and build the guard
+        working-directory: packages/jgc-node
+        run: npm ci && npm run build
+      - name: Check the approved Fly footprint
+        id: guard
+        continue-on-error: true
+        working-directory: packages/jgc-node
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          set -o pipefail
+          npm run fly-cost-guard -- --app jgc-testnet-seed-b | tee fly-cost-guard.txt
+      - name: Publish guard summary
+        if: always()
+        working-directory: packages/jgc-node
+        run: cat fly-cost-guard.txt >> "$GITHUB_STEP_SUMMARY"
+      - name: Open or update a cost alert
+        if: steps.guard.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          title='[Pilot cost guard] Fly resource footprint drift'
+          issue="$(gh issue list --state open --search "$title in:title" --json number --jq '.[0].number // empty')"
+          if [ -n "$issue" ]; then
+            gh issue comment "$issue" --body "The daily guard failed again. See $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID."
+          else
+            gh issue create --title "$title" --body "The approved one-Machine, one-volume Fly footprint changed or could not be verified. See $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID."
+          fi
+      - name: Resolve a recovered cost alert
+        if: steps.guard.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          title='[Pilot cost guard] Fly resource footprint drift'
+          issue="$(gh issue list --state open --search "$title in:title" --json number --jq '.[0].number // empty')"
+          if [ -n "$issue" ]; then
+            gh issue comment "$issue" --body "The daily Fly resource-cost guard is healthy again."
+            gh issue close "$issue"
+          fi
+      - name: Fail after alerting
+        if: steps.guard.outcome == 'failure'
+        run: exit 1

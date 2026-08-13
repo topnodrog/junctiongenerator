@@ -32,8 +32,11 @@ IPv4 address, snapshots, logging, and excess network transfer remain billable.
 
 Fly.io's Toronto `shared-cpu-1x` with 512 MB RAM plus a 10 GB volume is roughly
 USD 5-6 per month before transfer and snapshot usage. Fly has no general free
-tier for new accounts. Keep the existing CA$25 Google budget alert and add a
-separate Fly usage alert in its dashboard.
+tier for new accounts. Keep the existing CA$25 Google budget alert. Because
+Fly does not offer native billing alerts, keep the repository's daily
+`Fly resource-cost guard` workflow enabled with its read-only organization
+token. It alerts through a GitHub issue if the approved one-Machine,
+one-volume footprint expands. Transfer charges still require invoice review.
 
 ## Prerequisites
 
@@ -107,6 +110,22 @@ certificate expiries into one sanitized readiness snapshot. The only manual
 inputs are explicit operator attestations for billing alerts, restore drills,
 log review, and external-runner continuity. Generated snapshots belong under
 `.tmp` and must not be committed.
+
+## 5. Verify Fly's cost-bearing footprint
+
+The scheduled `.github/workflows/fly-cost-guard.yml` job runs the same check as:
+
+```powershell
+npm run fly-cost-guard -- --app jgc-testnet-seed-b
+```
+
+It requires a short-lived, read-only organization token stored as the
+`FLY_API_TOKEN` repository secret. The guard expects exactly one started
+`shared-cpu-1x` Machine with 512 MB RAM, one encrypted 10 GB Toronto volume,
+five-day automatic snapshots, and no dedicated billable IP address. A drift
+opens or updates a GitHub issue; recovery closes it. Rotate the token before
+expiry and continue reviewing transfer and invoice totals because Fly exposes
+no native spend alert.
 
 ## Upgrades and rollback
 

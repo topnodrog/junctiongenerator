@@ -15,9 +15,10 @@ Authenticated evidence collector:
    uses their existing credential stores; it never reads or writes access
    tokens itself.
 2. Copy `deploy/ops/pilot-attestations.template.json` into `.tmp`, then record
-   only observations that require human confirmation: billing alerts, the most
-   recent restore drill, corruption-log review, repeated peer bans, and external
-   runner continuity. Do not put credentials or raw provider output in it.
+   only observations that require human confirmation: billing/cost safeguards,
+   the most recent restore drill, corruption-log review, repeated peer bans,
+   and external runner continuity. Do not put credentials or raw provider
+   output in it.
 3. Get Seed B's volume ID with `flyctl volumes list --app
    jgc-testnet-seed-b`, then run:
 
@@ -101,6 +102,18 @@ For each provider independently:
 5. record `lastRestoreTestAt`, snapshot age, disk use, and any incident notes;
 6. destroy the disposable replacement after the evidence is reviewed.
 
+For Google, a VM without a public IP also needs an outbound path to install
+packages and clone the pinned repository. Keep recovery isolated from the live
+seed VPC: use a temporary custom VPC, IAP-only SSH rule, and Cloud NAT scoped to
+the temporary subnet, then delete the VM, restored disk, NAT, router, firewall
+rule, subnet, and VPC after verification. Do not add a public IP to a restored
+data VM or add recovery NAT to the production seed subnet.
+
+For Fly, restore the snapshot to a temporary app and encrypted volume, run the
+same pinned node image without public services, and keep the restored node in
+the non-producing role. Verify private status through `flyctl ssh console`,
+then delete the exact temporary Machine, volume, and app.
+
 The readiness report must pass before beginning the multi-day closed soak. A
 transport-only pass is necessary but is not operational-readiness evidence.
 
@@ -123,9 +136,17 @@ Google billing is linked and has a CAD 25 monthly budget with current-spend
 thresholds at 50%, 90%, 100%, and 150%. Fly's current
 [cost-management documentation](https://fly.io/docs/about/cost-management/)
 states that native billing alerts are not supported, so Seed B's
-billing gate remains failed until an external usage monitor is connected. Both
-providers' restore drills also remain open and must be performed with
-disposable replacements during an approved maintenance window. Private JSON
-evidence remains under `.tmp` and is not committed. The resulting gate was 20
-passes, zero warnings, and three failures: Seed B billing alerting plus the two
-restore drills.
+billing gate remains failed until the repository's external resource-cost
+guard is connected with its read-only Fly token. Private JSON evidence remains
+under `.tmp` and is not committed.
+
+Both restore drills completed on 2026-08-13. Seed B was restored to an
+encrypted temporary Fly volume and booted with the pinned production image in
+a non-producing, unexposed Machine. It reported height 0, two peers, and the
+expected role. Seed A was restored to a temporary Google disk and rebuilt in
+an isolated VPC with IAP-only SSH and temporary outbound NAT. It reported
+height 0, two peers, and producer enabled. All temporary Fly and Google
+resources were deleted, then both live seeds again reported height 0 and two
+peers. The resulting gate is 22 passes, zero warnings, and one failure: the
+external Fly cost guard still needs its GitHub secret connected and its first
+scheduled-path run verified.

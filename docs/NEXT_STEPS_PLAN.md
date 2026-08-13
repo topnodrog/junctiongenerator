@@ -166,9 +166,19 @@ collection confirmed both seeds on `jgc-testnet-v3` at height 0 with two peers
 and 1% disk use, the intended producer roles, and valid certificates. Fresh
 backups completed on both providers, a bounded log review found no
 corruption signatures or peer-guard rejections, and Google's CAD 25 monthly
-budget was verified. Phase 3 still requires completed restore drills and an
-external Fly usage alert because Fly does not currently offer native billing
-alerts.
+budget was verified. The remaining work at that checkpoint was the two restore
+drills and an external Fly safeguard because Fly does not currently offer
+native billing alerts.
+
+**Recovery update (2026-08-13):** Both provider snapshots were restored into
+disposable infrastructure and booted as healthy `jgc-testnet-v3` nodes at
+height 0 with two peers and the intended producer roles. The Fly temporary
+Machine, volume, and app were deleted. The Google drill used a separate
+temporary VPC with IAP-only SSH and outbound NAT; its VM, restored disk, NAT,
+router, firewall rule, subnet, and VPC were deleted. Both live seeds remained
+healthy afterward. A daily GitHub resource-cost guard now enforces Fly's
+approved one-Machine, one-volume footprint; its read-only repository secret
+and first workflow run are the last Phase 3 gate.
 
 **Purpose:** Deploy the minimum safe network edge after storage is trustworthy.
 
