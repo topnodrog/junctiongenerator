@@ -159,6 +159,13 @@ health check passes, private status reports `peerCount: 2` and
 `producer.enabled: false`, and a fresh external runner completed the public WSS
 compatibility handshake.
 
+**Operations-tooling update (2026-08-13):** A public WSS transport probe, a
+structured two-seed readiness evaluator, JSONL evidence history, and explicit
+seed-loss/recovery drill instructions are implemented. A fresh read-only WSS
+probe opened both public endpoints. Authenticated height, disk, snapshot,
+restore, certificate-expiry, and billing evidence still needs to be collected
+through the provider administration paths before Phase 3 can pass.
+
 **Purpose:** Deploy the minimum safe network edge after storage is trustworthy.
 
 Planned work:
@@ -215,6 +222,14 @@ Exit criteria:
   failures from public documentation.
 - Faucet and explorer traffic cannot mutate privileged node state.
 - Supported operating systems and architectures are evidenced by CI.
+
+**Protocol experiment (2026-08-13):** The repository includes a repeatable,
+valueless ten-day ledger prototype for a proposed 04:00 America/Toronto
+distribution of the preceding civil day's rewards. It exercises ten ML-DSA
+wallets, signed UTXO transfers, coinbase maturity, supply conservation, and
+final two-wallet consolidation. It is not deployed and is not valid under the
+current height-based `jgc-testnet-v3` settlement rule; the calendar, timezone,
+reorg, fee, and daylight-saving rules require a versioned consensus decision.
 
 ## Phase 5 — Closed beta and soak
 
