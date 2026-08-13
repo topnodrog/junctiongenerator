@@ -39,9 +39,10 @@ Join the public pilot as an outbound-only validator/back-checker:
 npm run testnet:public
 ```
 
-Seed A at `wss://seed-a.junctiongenerator.net` is reachable. Seed B is not yet
-online, so this is still a single-seed pilot rather than a resilient public
-network. The `testnet:public` command builds before starting.
+The public pilot has two reachable bootstrap peers: Google Seed A at
+`wss://seed-a.junctiongenerator.net` and Fly.io Seed B at
+`wss://jgc-testnet-seed-b.fly.dev`. The `testnet:public` command builds before
+starting and dials both seeds.
 
 Run a standalone node without contacting a public seed:
 
@@ -61,7 +62,7 @@ Both safe presets:
   genesis hash, consensus version, or proof mode before accepting chain data.
 
 The standalone preset starts with no seed peers. The public preset makes only
-an outbound connection to Seed A. Check either node at
+outbound connections to both public seeds. Check the local node at
 `http://127.0.0.1:7777/status` and press `Ctrl+C` to stop it cleanly.
 
 Simulation receipts exercise networking and consensus plumbing but do not prove
@@ -112,8 +113,8 @@ For the simplest single public runner, use:
 docker compose -f compose.runner.yml up --build -d
 ```
 
-This keeps chain data in the `runner-data` volume, connects outbound to Seed A,
-and exposes status only at `http://127.0.0.1:7777/status`. See
+This keeps chain data in the `runner-data` volume, connects outbound to both
+public seeds, and exposes status only at `http://127.0.0.1:7777/status`. See
 [`docs/RUN-A-NODE.md`](docs/RUN-A-NODE.md) for stop, update, and troubleshooting
 commands.
 

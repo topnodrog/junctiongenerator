@@ -15,7 +15,7 @@
     "pretestnet": "npm run build",
     "testnet": "node dist/scripts/testnet-node.js",
     "pretestnet:public": "npm run build",
-    "testnet:public": "node dist/scripts/testnet-node.js --seed wss://seed-a.junctiongenerator.net",
+    "testnet:public": "node dist/scripts/testnet-node.js --seed wss://seed-a.junctiongenerator.net --seed wss://jgc-testnet-seed-b.fly.dev",
     "pretestnet:producer": "npm run build",
     "testnet:producer": "node dist/scripts/testnet-node.js --produce",
     "test:compose": "node scripts/compose-smoke.mjs",

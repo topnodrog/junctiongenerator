@@ -2,11 +2,11 @@
 
 **A Protocol for Redirecting Mining Compute to Real AI Workloads**
 
-*Version 0.4 — Implementation-aligned draft, 2026-08-11*
+*Version 0.4 — Implementation-aligned draft, 2026-08-13*
 
 > **Implementation status:** JGC currently runs as early, valueless testnet
-> software. One public pilot seed is reachable; the second seed, resilient
-> operations, and the multi-machine soak remain incomplete. Consensus V3
+> software. Independent Google Cloud and Fly.io public pilot seeds are
+> reachable; resilient operations and the multi-machine soak remain incomplete. Consensus V3
 > commits delayed-beacon, ML-DSA-signed historical-audit
 > evidence through `auditRoot`, uses portable canonical encodings and integer
 > work weights, separates heterogeneous verification roles, and uses versioned,
@@ -221,7 +221,7 @@ as issued equity or a guaranteed claim before those questions are settled.
 | **1. Concept & architecture** | ✅ Complete | Core PoUC direction and sovereign-node architecture established. |
 | **2. Local node foundation** | ✅ Complete | UTXO ledger, wallets, PoUC records, local inference seam, and safe loopback testnet. |
 | **3. Consensus V3 portability and audit foundation** | ✅ Complete | Canonical encodings, integer work, execution profiles, delayed sampling, ML-DSA quorum evidence, `auditRoot`, bond-derived rosters, persistence, sync, and adversarial validation. |
-| **4. Public-testnet deployment** | 🔄 In progress | Frozen testnet identity, compatibility handshake, designated producer, faucet path, container and CI are implemented; public TLS/WSS seeds, storage crash hardening, native ARM CI, explorer service, and multi-day soak remain. |
+| **4. Public-testnet deployment** | 🔄 In progress | Frozen testnet identity, compatibility handshake, designated producer, faucet path, container and CI, two-provider TLS/WSS seeds, and storage crash hardening are implemented; native ARM CI, explorer service, monitoring/recovery evidence, and multi-day soak remain. |
 | **5. Marketplace and pilots** | ⬜ Planned | Buyer/provider scheduling, pricing, privacy, SLA design, and measured research pilots. |
 | **6. Mainnet** | ⬜ Not scheduled | Requires successful public soak tests, audited economics, operations, governance, and security review. |
 

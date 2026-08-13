@@ -1,8 +1,8 @@
 # Continuous two-seed pilot
 
-> Current rollout, 2026-08-11: Google Seed A is online and accepts external JGC
-> peers at `wss://seed-a.junctiongenerator.net`. Fly Seed B is not yet
-> reachable. Ordinary node runners should use
+> Current rollout, 2026-08-13: Google Seed A and independent Fly.io Seed B are
+> online and accept external JGC peers at `wss://seed-a.junctiongenerator.net`
+> and `wss://jgc-testnet-seed-b.fly.dev`. Ordinary node runners should use
 > [`../docs/RUN-A-NODE.md`](../docs/RUN-A-NODE.md); this document is for seed
 > operators.
 
@@ -74,7 +74,7 @@ Run from `packages/jgc-node` so the Docker build context is correct:
 ```powershell
 flyctl apps create jgc-testnet-seed-b
 flyctl volumes create jgc_seed_b_data --app jgc-testnet-seed-b --region yyz --size 10 --yes
-flyctl deploy --config deploy/fly/fly.toml --ha=false
+flyctl deploy --config deploy/fly/fly.toml --ha=false --wg=false
 flyctl status --app jgc-testnet-seed-b
 ```
 
@@ -88,12 +88,16 @@ Read each private status endpoint through its provider administration path:
 
 ```powershell
 gcloud compute ssh jgc-seed-a --zone us-east1-b --tunnel-through-iap --command "curl -fsS http://127.0.0.1:7777/status"
-flyctl ssh console --app jgc-testnet-seed-b --command "wget -qO- http://127.0.0.1:7777/status"
+flyctl ssh console --app jgc-testnet-seed-b --command "node -e fetch(String.fromCharCode(104,116,116,112,58,47,47,49,50,55,46,48,46,48,46,49,58,55,55,55,55,47,115,116,97,116,117,115)).then(r=>r.text()).then(console.log)"
 ```
 
 Both responses must report `network: jgc-testnet-v3` and `peerCount` of at
 least one. The heights must agree. Seed A alone must report
 `producer.enabled: true`.
+
+An ordinary external runner must also connect successfully when Seed B is its
+only configured bootstrap peer. Seed B's first deployment passed this check on
+2026-08-13 and reported `producer.enabled: false`.
 
 ## Upgrades and rollback
 

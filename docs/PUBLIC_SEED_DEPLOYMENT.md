@@ -1,10 +1,14 @@
 # Public Seed Deployment Gate
 
-**Status (2026-08-11):** Seed A is deployed and reachable at
+**Status (2026-08-13):** Seed A is deployed and reachable at
 `wss://seed-a.junctiongenerator.net`; its HTTPS health check answers `ok`, and a
 fresh external validator/back-checker completed the JGC compatibility handshake.
-Seed B is not yet reachable. The pilot therefore has a working public entry
-point but not the required provider redundancy.
+Seed B is deployed independently on Fly.io in Toronto and reachable at
+`wss://jgc-testnet-seed-b.fly.dev`. Its Fly health check passes, its encrypted
+10 GB volume is attached, private status reports `peerCount: 2` and
+`producer.enabled: false`, and a fresh external runner completed the JGC
+compatibility handshake. The pilot now has two-provider bootstrap redundancy;
+monitoring and recovery evidence remain incomplete.
 
 This runbook records the minimum safe two-seed shape for `jgc-testnet-v3` and
 the remaining rollout controls. It does not authorize new spending or changes
@@ -105,8 +109,8 @@ without a paid-account upgrade, Google stops trial resources. Any later billing
 upgrade requires separate owner approval even if the selected VM remains inside
 monthly Free Tier usage.
 
-Seed A's operating record should retain the evidence captured for these
-pre-deployment controls; item 5 remains open for Seed B:
+The operating record should retain the evidence captured for these deployment
+controls:
 
 1. capacity in the selected `us-east1-b` zone and the console's current
    estimate immediately before creation;
@@ -115,7 +119,8 @@ pre-deployment controls; item 5 remains open for Seed B:
 3. the free-trial expiry/paid-upgrade decision and recovery plan;
 4. the deployment window and owner approval for the live billable resources;
    and
-5. the independent provider/operator for Seed B.
+5. Fly.io as Seed B's independent provider, Toronto (`yyz`) as its region, and
+   the approved shared CPU, 512 MB RAM, and 10 GB encrypted-volume footprint.
 
 ## Two-seed topology
 
@@ -174,13 +179,13 @@ logs and checksums, create a fresh host from pinned configuration, restore only
 a verified compatible backup or resync from the surviving seed, then validate
 network identity and height before returning the endpoint to service.
 
-## Remaining approvals and controls
+## Remaining controls
 
-Before Seed B is provisioned or Seed A is materially changed, the owner must
-approve the applicable items from a current console or pricing estimate:
+Before either seed is materially changed, the owner must approve the applicable
+items from a current console or pricing estimate:
 
 - Google Cloud region, machine type, disk class/size, and monthly estimate;
-- independent provider, region, machine type, and monthly estimate for Seed B;
+- Fly.io region, machine type, volume size, and monthly estimate for Seed B;
 - the two public DNS names and certificate ownership;
 - the least-privilege administrator and monitoring identities; and
 - the first deployment window and rollback owner.
