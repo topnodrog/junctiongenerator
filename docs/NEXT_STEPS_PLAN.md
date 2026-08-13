@@ -177,8 +177,10 @@ Machine, volume, and app were deleted. The Google drill used a separate
 temporary VPC with IAP-only SSH and outbound NAT; its VM, restored disk, NAT,
 router, firewall rule, subnet, and VPC were deleted. Both live seeds remained
 healthy afterward. A daily GitHub resource-cost guard now enforces Fly's
-approved one-Machine, one-volume footprint; its read-only repository secret
-and first workflow run are the last Phase 3 gate.
+approved one-Machine, one-volume footprint. Its 90-day read-only repository
+secret and scheduled-path workflow were verified, including automatic alert
+recovery. The final authenticated readiness result is 23 passes, zero warnings,
+and zero failures, completing the Phase 3 gate.
 
 **Purpose:** Deploy the minimum safe network edge after storage is trustworthy.
 

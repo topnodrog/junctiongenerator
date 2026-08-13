@@ -135,10 +135,11 @@ prior 24 hours or Seed B's current provider log buffer.
 Google billing is linked and has a CAD 25 monthly budget with current-spend
 thresholds at 50%, 90%, 100%, and 150%. Fly's current
 [cost-management documentation](https://fly.io/docs/about/cost-management/)
-states that native billing alerts are not supported, so Seed B's
-billing gate remains failed until the repository's external resource-cost
-guard is connected with its read-only Fly token. Private JSON evidence remains
-under `.tmp` and is not committed.
+states that native billing alerts are not supported. The repository's daily
+external resource-cost guard is connected with a 90-day read-only Fly token;
+its verified run passed the approved one-Machine, one-volume footprint and
+automatically resolved its test alert. Private JSON evidence remains under
+`.tmp` and is not committed.
 
 Both restore drills completed on 2026-08-13. Seed B was restored to an
 encrypted temporary Fly volume and booted with the pinned production image in
@@ -147,6 +148,6 @@ expected role. Seed A was restored to a temporary Google disk and rebuilt in
 an isolated VPC with IAP-only SSH and temporary outbound NAT. It reported
 height 0, two peers, and producer enabled. All temporary Fly and Google
 resources were deleted, then both live seeds again reported height 0 and two
-peers. The resulting gate is 22 passes, zero warnings, and one failure: the
-external Fly cost guard still needs its GitHub secret connected and its first
-scheduled-path run verified.
+peers. A final authenticated collection after the Fly guard recovery produced
+23 passes, zero warnings, and zero failures. Phase 3 public-testnet readiness
+is complete; the next operational activity is the multi-day closed soak.
