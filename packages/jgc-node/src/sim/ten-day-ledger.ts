@@ -196,8 +196,8 @@ function totalValue(utxos: UTXOSet): bigint {
  *
  * This deliberately does not mutate the live `jgc-testnet-v3` rules. The
  * current public testnet settles height-based epochs immediately at slot 143;
- * this prototype tests a proposed UTC-calendar policy that pays at 04:00 for
- * the preceding 00:00:00-23:59:59 earning day.
+ * this prototype tests a proposed America/Toronto calendar policy that pays at
+ * 04:00 for the preceding local 00:00:00-23:59:59 earning day.
  */
 export function buildTenDayLedger(startTimestamp = TEN_DAY_START_UTC): TenDayLedgerResult {
   if ((startTimestamp + TORONTO_UTC_OFFSET_SECONDS) % DAY_SECONDS !== 0) {
