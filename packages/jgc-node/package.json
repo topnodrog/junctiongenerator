@@ -39,7 +39,10 @@
     "emission-table": "node dist/scripts/print-emission.js",
     "junctioning-smoke": "node dist/scripts/junctioning-smoke.js",
     "junctioning-verify-smoke": "node dist/scripts/junctioning-verify-smoke.js",
-    "node-status": "node dist/scripts/node-status-server.js"
+    "node-status": "node dist/scripts/node-status-server.js",
+    "pilot-readiness": "node dist/scripts/pilot-readiness.js",
+    "public-seed-probe": "node dist/scripts/public-seed-probe.js",
+    "ten-day-ledger": "node dist/scripts/ten-day-ledger.js"
   },
   "dependencies": {
     "@noble/post-quantum": "^0.6.1",

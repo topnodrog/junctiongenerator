@@ -1,0 +1,26 @@
+{
+  "capturedAt": "2026-08-13T12:00:00.000Z",
+  "externalRunnerConnected": false,
+  "seeds": [
+    {
+      "id": "seed-a",
+      "provider": "Google Cloud",
+      "reachable": false,
+      "network": "jgc-testnet-v3",
+      "producerEnabled": true,
+      "billingAlertConfigured": true,
+      "corruptionErrors": 0,
+      "repeatedPeerBans": 0
+    },
+    {
+      "id": "seed-b",
+      "provider": "Fly.io",
+      "reachable": false,
+      "network": "jgc-testnet-v3",
+      "producerEnabled": false,
+      "billingAlertConfigured": false,
+      "corruptionErrors": 0,
+      "repeatedPeerBans": 0
+    }
+  ]
+}
