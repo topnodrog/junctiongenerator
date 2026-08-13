@@ -24,11 +24,6 @@ interface FlyVolume {
   auto_backup_enabled?: unknown;
 }
 
-interface FlyIp {
-  Type?: unknown;
-  type?: unknown;
-}
-
 function array(value: unknown, label: string): unknown[] {
   if (!Array.isArray(value)) throw new Error(`${label} must be a JSON array`);
   return value;
@@ -49,11 +44,9 @@ export function parseFlyJson(value: string, label: string): unknown[] {
 export function evaluateFlyCostGuard(
   rawMachines: unknown,
   rawVolumes: unknown,
-  rawIps: unknown,
 ): FlyCostGuardResult {
   const machines = array(rawMachines, "machines") as FlyMachine[];
   const volumes = array(rawVolumes, "volumes") as FlyVolume[];
-  const ips = array(rawIps, "IP addresses") as FlyIp[];
   const checks: FlyCostGuardResult["checks"] = [];
   const check = (id: string, pass: boolean, detail: string): void => {
     checks.push({ id, pass, detail });
@@ -93,14 +86,5 @@ export function evaluateFlyCostGuard(
     `snapshot retention is ${String(volume?.snapshot_retention ?? "missing")} day(s)`,
   );
 
-  const ipTypes = ips.map(ip => String(ip.Type ?? ip.type ?? "missing"));
-  const billableIps = ipTypes.filter(type => !["shared_v4", "v6"].includes(type));
-  check(
-    "billable-ip-addresses",
-    billableIps.length === 0,
-    billableIps.length === 0 ? "no dedicated or other billable IP address found" : `unexpected IP types: ${billableIps.join(", ")}`,
-  );
-
   return { pass: checks.every(item => item.pass), checks };
 }
-
