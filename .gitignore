@@ -33,6 +33,7 @@ packages/web/out/
 # jgc-node build output
 packages/jgc-node/dist/
 packages/jgc-node/rust/pkg/
+packages/*/.tmp/
 
 # jgc-node local testnet (data + run script — never commit)
 packages/jgc-node/testnet-data/

@@ -9,6 +9,40 @@ through each provider's authenticated administration path.
 
 Run from `packages/jgc-node` after `npm ci` and `npm run build`.
 
+Authenticated evidence collector:
+
+1. Install and authenticate the Google Cloud CLI and Fly CLI. The collector
+   uses their existing credential stores; it never reads or writes access
+   tokens itself.
+2. Copy `deploy/ops/pilot-attestations.template.json` into `.tmp`, then record
+   only observations that require human confirmation: billing alerts, the most
+   recent restore drill, corruption-log review, repeated peer bans, and external
+   runner continuity. Do not put credentials or raw provider output in it.
+3. Get Seed B's volume ID with `flyctl volumes list --app
+   jgc-testnet-seed-b`, then run:
+
+```powershell
+npm run collect-pilot-evidence -- `
+  --google-project <project-id> `
+  --fly-volume <volume-id> `
+  --attestations .tmp/pilot-attestations.json `
+  --append .tmp/pilot-evidence/readiness.jsonl
+```
+
+The command collects both private `/status` responses through authenticated
+SSH, disk usage, the newest ready Google disk snapshot, the newest Fly volume
+snapshot, and both public TLS certificate expiries. It writes a sanitized
+snapshot to `.tmp/pilot-evidence/current.json`, evaluates it immediately, and
+returns a failing exit code until the readiness gate passes. Provider CLI
+errors are recorded as bounded, single-line collection failures; missing data
+is never converted into a healthy default.
+
+Google snapshot discovery uses `gcloud compute snapshots list`; Fly snapshot
+discovery uses `flyctl volumes snapshots list <volume-id> --json`. These
+interfaces are documented by the providers at
+<https://cloud.google.com/sdk/gcloud/reference/compute/snapshots/list> and
+<https://fly.io/docs/flyctl/volumes-snapshots-list/>.
+
 Public TLS/WSS transport probe:
 
 ```powershell
@@ -19,7 +53,8 @@ The probe opens each public WSS endpoint and records reachability and latency.
 It does not claim that private status, chain height, backups, or billing are
 healthy.
 
-Copy `deploy/ops/pilot-readiness.template.json` to a private working location,
+For a manual or offline fallback, copy
+`deploy/ops/pilot-readiness.template.json` to a private working location,
 replace the placeholders with current authenticated observations, then run:
 
 ```powershell
@@ -77,4 +112,7 @@ A read-only WSS opening probe succeeded against both public endpoints:
 - `wss://jgc-testnet-seed-b.fly.dev`
 
 Detailed authenticated status, snapshot/restore, disk, certificate-expiry, and
-billing evidence was not available from this workstation and remains open.
+billing evidence was not available from this workstation and remains open. At
+the time the collector was added, neither `gcloud` nor `flyctl` was installed
+on this workstation, so no provider observation has been inferred or marked as
+passing.

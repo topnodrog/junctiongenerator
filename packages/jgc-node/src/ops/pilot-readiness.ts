@@ -16,6 +16,8 @@ export interface SeedTelemetry {
   billingAlertConfigured?: boolean;
   corruptionErrors?: number;
   repeatedPeerBans?: number;
+  /** Sanitized collection failure details; must never include credentials. */
+  collectionError?: string;
 }
 
 export interface PilotReadinessSnapshot {
@@ -121,7 +123,8 @@ function evaluateSeed(
   }
 
   if (!seed.reachable) {
-    check(checks, `${seed.id}.reachable`, "fail", `${seed.id} is unexpectedly unreachable`);
+    const detail = seed.collectionError ? `: ${seed.collectionError}` : "";
+    check(checks, `${seed.id}.reachable`, "fail", `${seed.id} is unexpectedly unreachable${detail}`);
     return;
   }
   check(checks, `${seed.id}.reachable`, "pass", `${seed.id} is reachable`);
