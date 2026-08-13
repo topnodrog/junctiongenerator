@@ -36,7 +36,9 @@ tier for new accounts. Keep the existing CA$25 Google budget alert. Because
 Fly does not offer native billing alerts, keep the repository's daily
 `Fly resource-cost guard` workflow enabled with its read-only organization
 token. It alerts through a GitHub issue if the approved one-Machine,
-one-volume footprint expands. Transfer charges still require invoice review.
+one-volume footprint expands. Dedicated IP and transfer charges still require
+invoice review because Fly's read-only organization token cannot list IP
+assignments.
 
 ## Prerequisites
 
@@ -122,10 +124,10 @@ npm run fly-cost-guard -- --app jgc-testnet-seed-b
 It requires a short-lived, read-only organization token stored as the
 `FLY_API_TOKEN` repository secret. The guard expects exactly one started
 `shared-cpu-1x` Machine with 512 MB RAM, one encrypted 10 GB Toronto volume,
-five-day automatic snapshots, and no dedicated billable IP address. A drift
-opens or updates a GitHub issue; recovery closes it. Rotate the token before
-expiry and continue reviewing transfer and invoice totals because Fly exposes
-no native spend alert.
+and five-day automatic snapshots. A drift opens or updates a GitHub issue;
+recovery closes it. Rotate the token before expiry and continue reviewing
+dedicated IP, transfer, and invoice totals because Fly exposes no native spend
+alert and does not allow its read-only organization token to list IP addresses.
 
 ## Upgrades and rollback
 

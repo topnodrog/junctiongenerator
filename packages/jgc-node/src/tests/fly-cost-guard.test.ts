@@ -20,14 +20,13 @@ function healthyInventory() {
       snapshot_retention: 5,
       auto_backup_enabled: true,
     }],
-    ips: [{ Type: "v6" }, { Type: "shared_v4" }],
   };
 }
 
 describe("Fly resource-cost guard", () => {
   test("passes the approved single-seed footprint", () => {
     const inventory = healthyInventory();
-    expect(evaluateFlyCostGuard(inventory.machines, inventory.volumes, inventory.ips)).toEqual(
+    expect(evaluateFlyCostGuard(inventory.machines, inventory.volumes)).toEqual(
       expect.objectContaining({ pass: true }),
     );
   });
@@ -39,13 +38,11 @@ describe("Fly resource-cost guard", () => {
       id: "machine-2",
     });
     inventory.volumes[0].size_gb = 20;
-    inventory.ips.push({ Type: "public_v4" });
-    const result = evaluateFlyCostGuard(inventory.machines, inventory.volumes, inventory.ips);
+    const result = evaluateFlyCostGuard(inventory.machines, inventory.volumes);
     expect(result.pass).toBe(false);
     expect(result.checks).toEqual(expect.arrayContaining([
       expect.objectContaining({ id: "machine-count", pass: false }),
       expect.objectContaining({ id: "volume-size", pass: false }),
-      expect.objectContaining({ id: "billable-ip-addresses", pass: false }),
     ]));
   });
 
@@ -54,4 +51,3 @@ describe("Fly resource-cost guard", () => {
     expect(() => parseFlyJson("{}", "machines")).toThrow("JSON array");
   });
 });
-
