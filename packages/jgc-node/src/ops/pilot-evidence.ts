@@ -19,7 +19,7 @@ export interface PilotEvidenceAttestations {
 
 export function validatePilotEvidenceAttestations(value: unknown): PilotEvidenceAttestations {
   if (!isRecord(value)) throw new Error("attestations must be a JSON object");
-  if (value.externalRunnerConnected !== undefined && typeof value.externalRunnerConnected !== "boolean") {
+  if (value.externalRunnerConnected !== undefined && value.externalRunnerConnected !== null && typeof value.externalRunnerConnected !== "boolean") {
     throw new Error("externalRunnerConnected must be a boolean");
   }
   const normalized: PilotEvidenceAttestations = {};
@@ -35,7 +35,7 @@ export function validatePilotEvidenceAttestations(value: unknown): PilotEvidence
     if (raw === undefined) continue;
     if (!isRecord(raw)) throw new Error(`attestations.seeds.${id} must be a JSON object`);
     const attestation: SeedAttestation = {};
-    if (raw.billingAlertConfigured !== undefined) {
+    if (raw.billingAlertConfigured !== undefined && raw.billingAlertConfigured !== null) {
       if (typeof raw.billingAlertConfigured !== "boolean") {
         throw new Error(`${id}.billingAlertConfigured must be a boolean`);
       }
@@ -49,7 +49,7 @@ export function validatePilotEvidenceAttestations(value: unknown): PilotEvidence
     }
     for (const field of ["corruptionErrors", "repeatedPeerBans"] as const) {
       const count = raw[field];
-      if (count !== undefined) {
+      if (count !== undefined && count !== null) {
         if (!Number.isInteger(count) || Number(count) < 0) {
           throw new Error(`${id}.${field} must be a non-negative integer`);
         }
@@ -86,15 +86,41 @@ const DEFAULT_SEED_A_URL = "wss://seed-a.junctiongenerator.net";
 const DEFAULT_SEED_B_URL = "wss://jgc-testnet-seed-b.fly.dev";
 const FLY_STATUS_COMMAND = "node -e fetch(String.fromCharCode(104,116,116,112,58,47,47,49,50,55,46,48,46,48,46,49,58,55,55,55,55,47,115,116,97,116,117,115)).then(r=>r.text()).then(console.log)";
 
+export function windowsCommandArguments(command: string, args: string[]): string[] {
+  const unsafe = [command, ...args].find(value => /[&|<>^%\r\n]/.test(value));
+  if (unsafe) throw new Error(`${command} argument contains a Windows shell metacharacter`);
+  const quote = (value: string): string =>
+    /[\s"]/.test(value) ? `"${value.replaceAll('"', '""')}"` : value;
+  return ["/d", "/s", "/c", [command, ...args.map(quote)].join(" ")];
+}
+
 export const runCommand: CommandRunner = (command, args, timeoutMs) =>
   new Promise((resolve, reject) => {
+    let executable = command;
+    let executableArgs = args;
+    if (process.platform === "win32" && command.toLowerCase().endsWith(".cmd")) {
+      try {
+        executableArgs = windowsCommandArguments(command, args);
+      } catch (error) {
+        reject(error);
+        return;
+      }
+      executable = process.env.ComSpec ?? "cmd.exe";
+    }
     execFile(
-      command,
-      args,
+      executable,
+      executableArgs,
       { encoding: "utf8", maxBuffer: 1024 * 1024, timeout: timeoutMs, windowsHide: true },
       (error, stdout, stderr) => {
         if (error) {
           const detail = String(stderr).trim();
+          const flyWindowsHandleWarning = process.platform === "win32" &&
+            String(stdout).trim().length > 0 &&
+            detail.split(/\r?\n/).every(line => line.trim() === "Error: The handle is invalid.");
+          if (flyWindowsHandleWarning) {
+            resolve(String(stdout).trim());
+            return;
+          }
           reject(new Error(detail ? `${command} failed: ${detail}` : `${command} failed: ${error.message}`));
           return;
         }
@@ -221,6 +247,7 @@ export async function collectPilotEvidence(
   const seedBUrl = options.seedBUrl ?? DEFAULT_SEED_B_URL;
   const commandTimeoutMs = options.commandTimeoutMs ?? 60_000;
   const tlsTimeoutMs = options.tlsTimeoutMs ?? 15_000;
+  const gcloudCommand = process.platform === "win32" ? "gcloud.cmd" : "gcloud";
 
   const googleBase = [
     "compute", "ssh", googleInstance,
@@ -229,18 +256,31 @@ export async function collectPilotEvidence(
     "--tunnel-through-iap",
     "--quiet",
   ];
+  const googleStatus = runner(
+    gcloudCommand,
+    [...googleBase, "--command=curl${IFS}-fsS${IFS}http://127.0.0.1:7777/status"],
+    commandTimeoutMs,
+  ).then(parseNodeStatus);
+  const googleDisk = googleStatus
+    .catch(() => undefined)
+    .then(() => runner(
+      gcloudCommand,
+      [...googleBase, "--command=df${IFS}-P${IFS}/var/lib/jgc"],
+      commandTimeoutMs,
+    ))
+    .then(parseDiskUsedPercent);
   const [aStatus, aDisk, aSnapshot, aCertificate, bStatus, bDisk, bSnapshot, bCertificate] = await Promise.allSettled([
-    runner("gcloud", [...googleBase, "--command=curl -fsS http://127.0.0.1:7777/status"], commandTimeoutMs).then(parseNodeStatus),
-    runner("gcloud", [...googleBase, "--command=df -P /var/lib/jgc | tail -1"], commandTimeoutMs).then(parseDiskUsedPercent),
-    runner("gcloud", [
+    googleStatus,
+    googleDisk,
+    runner(gcloudCommand, [
       "compute", "snapshots", "list",
       `--project=${options.googleProject}`,
-      `--filter=sourceDisk~'/disks/${googleDataDisk}$' AND status=READY`,
+      `--filter=sourceDisk~${googleDataDisk}$`,
       "--format=json",
     ], commandTimeoutMs).then(latestSnapshotTimestamp),
     certificateReader(seedAUrl, tlsTimeoutMs),
-    runner("flyctl", ["ssh", "console", "--app", flyApp, "--command", FLY_STATUS_COMMAND, "--quiet"], commandTimeoutMs).then(parseNodeStatus),
-    runner("flyctl", ["ssh", "console", "--app", flyApp, "--command", "df -P /data | tail -1", "--quiet"], commandTimeoutMs).then(parseDiskUsedPercent),
+    runner("flyctl", ["ssh", "console", "--app", flyApp, "--pty=false", "--command", FLY_STATUS_COMMAND, "--quiet"], commandTimeoutMs).then(parseNodeStatus),
+    runner("flyctl", ["ssh", "console", "--app", flyApp, "--pty=false", "--command", "df -P /data", "--quiet"], commandTimeoutMs).then(parseDiskUsedPercent),
     runner("flyctl", ["volumes", "snapshots", "list", options.flyVolumeId, "--app", flyApp, "--json"], commandTimeoutMs).then(latestSnapshotTimestamp),
     certificateReader(seedBUrl, tlsTimeoutMs),
   ]);

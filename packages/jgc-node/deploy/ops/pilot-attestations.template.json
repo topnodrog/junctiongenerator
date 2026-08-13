@@ -1,17 +1,17 @@
 {
-  "externalRunnerConnected": false,
+  "externalRunnerConnected": null,
   "seeds": {
     "seed-a": {
-      "billingAlertConfigured": true,
+      "billingAlertConfigured": null,
       "lastRestoreTestAt": null,
-      "corruptionErrors": 0,
-      "repeatedPeerBans": 0
+      "corruptionErrors": null,
+      "repeatedPeerBans": null
     },
     "seed-b": {
-      "billingAlertConfigured": false,
+      "billingAlertConfigured": null,
       "lastRestoreTestAt": null,
-      "corruptionErrors": 0,
-      "repeatedPeerBans": 0
+      "corruptionErrors": null,
+      "repeatedPeerBans": null
     }
   }
 }

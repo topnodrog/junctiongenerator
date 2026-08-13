@@ -106,13 +106,26 @@ transport-only pass is necessary but is not operational-readiness evidence.
 
 ## Evidence captured 2026-08-13
 
-A read-only WSS opening probe succeeded against both public endpoints:
+The public WSS probe and the authenticated collector succeeded from a Windows
+operator workstation against both public endpoints and provider administration
+paths:
 
 - `wss://seed-a.junctiongenerator.net`
 - `wss://jgc-testnet-seed-b.fly.dev`
 
-Detailed authenticated status, snapshot/restore, disk, certificate-expiry, and
-billing evidence was not available from this workstation and remains open. At
-the time the collector was added, neither `gcloud` nor `flyctl` was installed
-on this workstation, so no provider observation has been inferred or marked as
-passing.
+Both seeds reported `jgc-testnet-v3`, height `0`, two peers, and 1% disk use.
+Seed A was the only producer. Its certificate expires 2026-11-08; Seed B's
+expires 2026-09-19. Fresh snapshots completed on both providers. A bounded log
+review found no corruption signatures or peer guard rejections in Seed A's
+prior 24 hours or Seed B's current provider log buffer.
+
+Google billing is linked and has a CAD 25 monthly budget with current-spend
+thresholds at 50%, 90%, 100%, and 150%. Fly's current
+[cost-management documentation](https://fly.io/docs/about/cost-management/)
+states that native billing alerts are not supported, so Seed B's
+billing gate remains failed until an external usage monitor is connected. Both
+providers' restore drills also remain open and must be performed with
+disposable replacements during an approved maintenance window. Private JSON
+evidence remains under `.tmp` and is not committed. The resulting gate was 20
+passes, zero warnings, and three failures: Seed B billing alerting plus the two
+restore drills.

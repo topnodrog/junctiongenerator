@@ -161,10 +161,14 @@ compatibility handshake.
 
 **Operations-tooling update (2026-08-13):** A public WSS transport probe, a
 structured two-seed readiness evaluator, JSONL evidence history, and explicit
-seed-loss/recovery drill instructions are implemented. A fresh read-only WSS
-probe opened both public endpoints. Authenticated height, disk, snapshot,
-restore, certificate-expiry, and billing evidence still needs to be collected
-through the provider administration paths before Phase 3 can pass.
+seed-loss/recovery drill instructions are implemented. Authenticated provider
+collection confirmed both seeds on `jgc-testnet-v3` at height 0 with two peers
+and 1% disk use, the intended producer roles, and valid certificates. Fresh
+backups completed on both providers, a bounded log review found no
+corruption signatures or peer-guard rejections, and Google's CAD 25 monthly
+budget was verified. Phase 3 still requires completed restore drills and an
+external Fly usage alert because Fly does not currently offer native billing
+alerts.
 
 **Purpose:** Deploy the minimum safe network edge after storage is trustworthy.
 

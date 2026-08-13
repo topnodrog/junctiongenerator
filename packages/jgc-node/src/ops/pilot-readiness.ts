@@ -171,14 +171,17 @@ function evaluateSeed(
     `${seed.id} billing alert is ${seed.billingAlertConfigured === true ? "recorded" : "not recorded"}`,
   );
 
-  check(
-    checks,
-    `${seed.id}.corruption`,
-    (seed.corruptionErrors ?? 0) === 0 ? "pass" : "fail",
-    `${seed.id} reports ${seed.corruptionErrors ?? 0} corruption error(s)`,
-  );
+  if (seed.corruptionErrors === undefined) {
+    check(checks, `${seed.id}.corruption`, "fail", `${seed.id} has no corruption-log evidence`);
+  } else if (seed.corruptionErrors > 0) {
+    check(checks, `${seed.id}.corruption`, "fail", `${seed.id} reports ${seed.corruptionErrors} corruption error(s)`);
+  } else {
+    check(checks, `${seed.id}.corruption`, "pass", `${seed.id} reports no corruption errors`);
+  }
 
-  if ((seed.repeatedPeerBans ?? 0) > 0) {
+  if (seed.repeatedPeerBans === undefined) {
+    check(checks, `${seed.id}.peer-bans`, "fail", `${seed.id} has no repeated-peer-ban evidence`);
+  } else if (seed.repeatedPeerBans > 0) {
     check(checks, `${seed.id}.peer-bans`, "warn", `${seed.id} reports ${seed.repeatedPeerBans} repeated peer ban(s)`);
   } else {
     check(checks, `${seed.id}.peer-bans`, "pass", `${seed.id} reports no repeated peer bans`);
