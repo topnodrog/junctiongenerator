@@ -168,7 +168,7 @@ function evaluateSeed(
     checks,
     `${seed.id}.billing`,
     seed.billingAlertConfigured === true ? "pass" : "fail",
-    `${seed.id} billing alert is ${seed.billingAlertConfigured === true ? "recorded" : "not recorded"}`,
+    `${seed.id} billing/cost safeguard is ${seed.billingAlertConfigured === true ? "recorded" : "not recorded"}`,
   );
 
   if (seed.corruptionErrors === undefined) {

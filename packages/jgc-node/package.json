@@ -40,6 +40,7 @@
     "junctioning-smoke": "node dist/scripts/junctioning-smoke.js",
     "junctioning-verify-smoke": "node dist/scripts/junctioning-verify-smoke.js",
     "node-status": "node dist/scripts/node-status-server.js",
+    "fly-cost-guard": "node dist/scripts/fly-cost-guard.js",
     "collect-pilot-evidence": "node dist/scripts/collect-pilot-evidence.js",
     "pilot-readiness": "node dist/scripts/pilot-readiness.js",
     "public-seed-probe": "node dist/scripts/public-seed-probe.js",
