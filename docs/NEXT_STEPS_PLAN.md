@@ -1,13 +1,12 @@
 # Junction Generator Next-Steps Plan
 
-**Status:** Execution approved; Phases 1–3 complete. Phase 4 is active. Google
-Seed A and independent Fly.io Seed B are reachable, operational readiness
-passed 23/23, and the zero-premine JGTC explorer/participation upgrade is ready to deploy.
-The multi-host soak remains incomplete.
+**Status:** Execution approved; Phases 1–4 complete. Phase 5 is active. Google
+Seed A, independent Fly.io Seed B, and a workstation participant synchronized
+block 1 of the live zero-premine JGTC pilot. The multi-host soak remains incomplete.
 
-**Prepared:** 2026-07-30 · **Last updated:** 2026-08-13
+**Prepared:** 2026-07-30 · **Last updated:** 2026-08-15
 
-**Target milestone:** A small, observable, recoverable public JGC testnet.
+**Target milestone:** A measured multi-day soak of the public JGTC testnet.
 
 ## Recommendation
 
@@ -17,8 +16,8 @@ marketplace, or promotional features.
 Repository truth/security, versioned crash-safe storage, the local-model
 evaluation, Google Seed A deployment, and independent Fly.io Seed B deployment
 are complete. Neither installed model passed the operations safety gate. The
-active milestone is Phase 4: deploy runner visibility and signed pilot
-participation, then begin the multi-host soak.
+active milestone is Phase 5: recruit known runners and preserve evidence from
+the multi-host soak.
 
 ## Verified starting point
 
@@ -235,12 +234,13 @@ Planned work:
 Implementation update (2026-08-15): the explorer reads canonical node state,
 reports JGTC pending issuance and settlement height, and participant mode
 persists an ML-DSA identity whose equal-weight pilot receipts
-are committed to blocks and settled by the existing epoch rules. Seed A can run
+are committed to blocks and settled by the existing epoch rules. Seed A runs
 one anchor participant so the chain advances without external runners. These
 receipts record testnet presence, not useful-compute proof. JGTC has a distinct
 zero-value genesis, a ten-minute block target, no faucet allocation, and no
-spendable supply before settlement. Coordinated seed reset and site deployment
-are the remaining activation steps.
+spendable supply before settlement. The coordinated seed reset and site
+deployment completed on 2026-08-15; block 1 synchronized across both seeds and
+an ordinary workstation participant.
 
 Exit criteria:
 
@@ -321,7 +321,8 @@ Implementation should begin only after the owner approves each checkpoint:
 
 ## Next task
 
-Reset both seeds onto `jgtc-testnet-v1`, deploy the explorer/anchor-participant
-upgrade and public site, then confirm ten-minute block timing, zero premine,
-144-block settlement, balances, and Seed B height convergence. Begin the multi-host soak with external
-participant identities and simulated seed loss.
+Recruit the first independent runners and continue the multi-host soak on
+`jgtc-testnet-v1`. Confirm ten-minute timing over multiple blocks, first
+144-block settlement, balance conservation, seed height convergence, restart
+recovery, and simulated seed loss. Preserve participant identities and measured
+evidence so JGTC compensation is attributable.

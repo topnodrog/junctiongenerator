@@ -1,8 +1,9 @@
 # JGC Team — Credentials & Background
 
-> **Project-status note (2026-07-23):** The achievements below refer to a
-> local/private implementation. The audit-evidence path is consensus-committed;
-> public-network operation and consensus-owned bonded economics are not yet
+> **Project-status note (2026-08-15):** The early, valueless zero-premine JGTC
+> public pilot is live across independent seeds and a workstation participant.
+> The audit-evidence path is consensus-committed, but the current signed receipt
+> adapter is test-only; consensus-owned bonded economics and JGC mainnet are not
 > deployed.
 
 ## James Gordon — Founder & Protocol Engineer

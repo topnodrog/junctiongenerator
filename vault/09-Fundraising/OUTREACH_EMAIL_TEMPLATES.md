@@ -1,16 +1,17 @@
 # Cold Outreach Email Templates for JGC
 
-> **Accuracy guardrail (2026-07-23):** JGC is a validated local/private
-> testnet. Signed audit evidence is consensus-committed; bonded rewards and
-> slashing are planned but not active. Update every template with current
-> measured facts before sending.
+> **Accuracy guardrail (2026-08-15):** An early, valueless zero-premine JGTC
+> public pilot is live across two independent seeds and a workstation runner.
+> Current receipts record participation but are not production-sound useful-
+> compute proofs. Bonded rewards, slashing, and JGC mainnet are not active.
+> Update every template with measured facts before sending.
 
 ## Template 1: Crypto-Native VCs (Paradigm, a16z, Polychain)
 
 **Subject Line Options:**
 - "Layer-1 junctioning + collusion-resistant verification"
-- "Crypto verification failures remain costly — we shipped a local audit layer"
-- "Deterministic replay + signed quorum evidence (local testnet)"
+- "Crypto verification failures remain costly — we shipped an early public pilot"
+- "Deterministic replay + signed participation evidence (JGTC pilot)"
 
 ---
 
@@ -26,9 +27,10 @@ We're solving this with Proof of Useful Computation — a Layer-1 where verifica
 work (AI inference) becomes consensus. Deterministic execution + multi-challenger 
 quorum produces post-quantum signed, consensus-committed evidence.
 
-We shipped a local testnet in June and junctioning (our local inference layer)
-works with Gemma. Consensus v2 now commits delayed-sample, ML-DSA-signed quorum
-evidence. Bonded validator economics are the next milestone.
+We shipped a local testnet in June and launched an early public JGTC pilot in
+August across independent seeds. Its current signed receipts record testnet
+participation; production-sound useful-compute proofs and bonded validator
+economics remain milestones.
 
 Your portfolio (Eigen Layer, Lido) suggests you care about consensus security and 
 economic incentives. This is that problem from a different angle.
@@ -58,7 +60,7 @@ making validators honest through collusion-resistant quorum. Worth a look.
 **For Polychain:**
 ```
 Your focus on "novel consensus + economic security" is exactly what JGC is building. 
-Local testnet validated, junctioning shipped, ready to show you.
+Public JGTC pilot live, junctioning shipped, ready to show you.
 ```
 
 ---
@@ -85,16 +87,17 @@ solves two problems:
    execution evidence for institutional settlement
 
 Our approach: Make useful work (AI inference) the basis for consensus. Validators 
-replay sampled work and commit signed quorum evidence. The current local
-implementation detects and records disagreement; bonded penalties are the next
+replay sampled work and commit signed quorum evidence. The current pilot
+records test participation; production-sound proofs and bonded penalties are the next
 consensus milestone.
 
 We're pre-revenue but shipped product:
 - Local/private testnet validated (June 2026)
+- Early public JGTC pilot launched (August 2026; soak in progress)
 - Junctioning Layer-1 working with local inference
 - Consensus-v2 evidence path (replay + delayed sampling + signed quorum)
 
-We're raising seed funding for public-testnet hardening, external review, and enterprise research pilots.
+We're raising seed funding for pilot hardening, external review, and enterprise research pilots.
 
 Think this is worth 15-20 minutes to discuss?
 
@@ -226,9 +229,9 @@ Great — appreciate the interest. Three quick points:
 1. **Problem:** Crypto scams and exploits remain costly. Execution evidence can
    be opaque, oracles can be centralized, and validators can collude.
 
-2. **What we built:** Proof of Useful Computation — AI inference runs on Layer-1, 
-   validators reach quorum and commit signed evidence. A local/private testnet,
-   junctioning, and the consensus-v2 audit-evidence path are working.
+2. **What we built:** An early public JGTC pilot across independent seeds. It
+   records signed participation while production-sound useful-compute proofs
+   and bonded enforcement remain future work.
 
 3. **Why it matters:** Targets better execution evidence for DeFi, enterprise
    smart-contract auditability, and AI-model tamper detection.
@@ -241,7 +244,7 @@ Would love to walk you through it live — 15-20 min call Friday?
 ### If They Ask "What's the ask?"
 ```
 $1M seed round to accelerate:
-- Bonded validator consensus + public-testnet hardening (date not committed)
+- Bonded validator consensus + public-pilot hardening (date not committed)
 - Enterprise pilot partnerships
 - Exchange integration
 

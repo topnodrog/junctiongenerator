@@ -38,7 +38,7 @@ export default function CommunityPage() {
 
       <section className="jg-community-hero">
         <div>
-          <span className="jg-kicker"><span />90-day founding cohort · local/private testnet</span>
+          <span className="jg-kicker"><span />90-day founding cohort · public JGTC pilot</span>
           <h1>Help turn ordinary computing power into <span>useful, verifiable AI work.</span></h1>
           <p>Junction Generator is bringing together the careful builders, researchers, operators, storytellers, connectors, and supporters needed to make useful compute real.</p>
           <div className="jg-actions">
@@ -83,7 +83,7 @@ export default function CommunityPage() {
         </div>
       </section>
 
-      <footer className="jg-community-footer"><p>Local/private testnet software. No public JGC mainnet is deployed.</p><Link href="/">Return to Junction Generator</Link></footer>
+      <footer className="jg-community-footer"><p>Early, valueless JGTC public pilot. No JGC mainnet is deployed.</p><Link href="/">Return to Junction Generator</Link></footer>
     </main>
   );
 }

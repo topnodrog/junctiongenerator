@@ -25,7 +25,7 @@ development.
 The primary protocol product lives in `packages/jgc-node`; it is separate from
 the legacy JGT token on Base.
 
-Current node milestone (2026-08-13):
+Current node milestone (2026-08-15):
 
 - Consensus V3 underlies the zero-premine `jgtc-testnet-v1` identity and rejects incompatible
   peers before chain data is exchanged;
@@ -40,16 +40,16 @@ Current node milestone (2026-08-13):
   or a one-command Docker Compose setup;
 - versioned, network-bound, checksum-protected storage now recovers torn tails,
   quarantines bad snapshots, and refuses incompatible data;
-- 31 suites / 293 tests, a 31-block sync demo, a six-proof strict WASM run,
+- 37 suites / 318 tests under Node.js 22, a 31-block sync demo, a six-proof strict WASM run,
   cross-platform CI, and the hosted Docker smoke test pass.
 
 The node is early, valueless testnet software. Two independent bootstrap seeds
 are reachable: Google Seed A at `wss://seed-a.junctiongenerator.net` and Fly.io
-Seed B at `wss://jgc-testnet-seed-b.fly.dev`. A fresh external runner completed
-the JGC compatibility handshake with Seed B on 2026-08-13. No JGC mainnet has
-been deployed. Runner-facing explorer and signed pilot participation are
-implemented with zero-premine JGTC epoch issuance; deployment and a multi-day
-real-network soak remain gates. JGTC is valueless. Production rewards and slashing remain disabled until mandatory bonded-validator activation and an
+Seed B at `wss://jgc-testnet-seed-b.fly.dev`. On 2026-08-15 both seeds and this
+workstation synchronized block 1 of `jgtc-testnet-v1`. No JGC mainnet has been
+deployed. The runner-facing explorer and signed pilot participation are live
+with zero-premine JGTC issuance through 144-block settlement; a multi-day
+real-network soak remains a gate. JGTC is valueless. Production rewards and slashing remain disabled until mandatory bonded-validator activation and an
 economics/security review.
 
 To run a node, follow
@@ -121,8 +121,8 @@ material, not the current launch strategy.
 The active plan is [`docs/NEXT_STEPS_PLAN.md`](docs/NEXT_STEPS_PLAN.md). Work is
 sequenced behind explicit gates:
 
-1. reset both seeds onto the zero-premine JGTC genesis and deploy the explorer;
-2. recruit a small group of external participant nodes using the two-seed guide;
+1. recruit a small group of external participant nodes using the two-seed guide;
+2. observe 144-block settlement, balances, height convergence, and recovery;
 3. complete a closed multi-machine soak before any broad public announcement;
 4. publish only the participation and reliability claims supported by that evidence.
 
@@ -163,21 +163,22 @@ batch-preparation endpoint and does not submit an on-chain transaction.
 - Self-serve ad slots with ETH payments
 - Cloudflare security: Bot Fight Mode + rate limiting
 
-**Public-testnet readiness** (In Progress)
+**Public JGTC testnet pilot** (Live; closed soak in progress)
 - Consensus V3 and local/container testnet foundation complete
 - Storage hardening and local operations-model evaluation complete; Google
   Seed A and independent Fly.io Seed B are live
-- Zero-premine JGTC explorer/participation is ready; seed reset and multi-day soak follow
+- Zero-premine JGTC explorer/participation is live; block 1 synchronized across
+  both seeds and a workstation participant; multi-day soak follows
 
 ---
 
 ## Quick Commands
 
 ```bash
-# Join the JGC testnet pilot (after cloning the repository)
+# Join and record participation in the JGTC testnet pilot
 cd packages/jgc-node
 npm ci
-npm run testnet:public
+npm run testnet:participate
 
 # Local website development
 cd C:/dev/JunctionGenerator

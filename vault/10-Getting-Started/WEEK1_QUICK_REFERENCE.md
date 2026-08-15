@@ -1,8 +1,9 @@
 # Week 1 Fundraising — Quick Reference Card
 
-> **Technical status (2026-07-23):** Use “local/private testnet validated.”
-> Do not claim a public testnet, mainnet, or active slashing. Consensus-v2
-> signed audit evidence is shipped; bonded economics remain next.
+> **Technical status (2026-08-15):** Use “early, valueless zero-premine JGTC
+> public pilot live; closed soak in progress.” Do not claim a JGC mainnet,
+> production-sound useful-compute proof, or active slashing. Bonded economics
+> remain future work.
 
 ## Your Goal
 **$1M seed round. 40-50 cold emails sent. 1-2 serious conversations by Friday.**

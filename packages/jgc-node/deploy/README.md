@@ -1,6 +1,8 @@
 # Continuous two-seed pilot
 
-> Current rollout, 2026-08-13: Google Seed A and independent Fly.io Seed B are
+> Current rollout, 2026-08-15: Google Seed A and independent Fly.io Seed B run
+> Node.js 22.23.2 on `jgtc-testnet-v1`. Block 1 synchronized across both seeds
+> and an ordinary workstation participant. The seeds
 > online and accept external JGC peers at `wss://seed-a.junctiongenerator.net`
 > and `wss://jgc-testnet-seed-b.fly.dev`. Ordinary node runners should use
 > [`../docs/RUN-A-NODE.md`](../docs/RUN-A-NODE.md); this document is for seed
@@ -19,7 +21,7 @@ provider-independent `wss://jgc-testnet-seed-b.fly.dev` hostname. Each dials
 the other continuously. The status service remains private on both machines.
 Only the WebSocket edge on TCP 443 is public.
 
-Seed A runs the designated producer at the JGC ten-minute target and one
+Seed A runs the designated producer at the JGTC ten-minute target and one
 persistent anchor participant. The
 anchor submits an equal-weight, signed pilot receipt so the chain continues
 when no external runner is online. External `testnet:participate` nodes are
@@ -151,9 +153,10 @@ script, then deploy the same commit to Fly. Upgrade the back-checker first,
 confirm compatibility, then upgrade the producer. Follow
 `../docs/STORAGE-RECOVERY.md` before restoring or resetting either data volume.
 
-### Coordinated `jgtc-testnet-v1` reset
+### Completed coordinated `jgtc-testnet-v1` reset
 
-The zero-premine JGTC genesis is intentionally incompatible with the former
+The reset completed on 2026-08-15. The zero-premine JGTC genesis is
+intentionally incompatible with the former
 `jgc-testnet-v3` data. Reset in this order so the producer is the last old node
 to stop:
 

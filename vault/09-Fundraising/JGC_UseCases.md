@@ -1,9 +1,9 @@
 # JGC Use Cases & Case Studies
 
-> **Status note (2026-07-23):** The use cases below are target applications,
-> not production deployments. JGC currently runs as a local/private testnet.
-> Signed audit evidence is consensus-committed; automatic slashing is not yet
-> active.
+> **Status note (2026-08-15):** The use cases below are target applications,
+> not production deployments. An early, valueless zero-premine JGTC public
+> pilot is live, but its signed participation receipts are test-only. Automatic
+> slashing and JGC mainnet are not active.
 
 ## Use Case 1: DeFi Fraud Prevention
 

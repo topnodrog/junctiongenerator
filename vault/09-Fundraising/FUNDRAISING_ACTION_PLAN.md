@@ -1,9 +1,11 @@
 # JGC Fundraising Action Plan — Cold Outreach to $1M Seed
 
-> **Technical status (2026-07-23):** JGC is a validated local/private testnet.
-> Consensus-v2 commits post-quantum signed audit evidence. A public testnet,
-> consensus-owned validator bonds, and automatic rewards/slashing remain future
-> milestones. Verify every metric and external claim again before outreach.
+> **Technical status (2026-08-15):** An early, valueless zero-premine JGTC
+> public pilot is live across independent Google and Fly.io seeds; block 1 also
+> synchronized to an ordinary workstation participant. Its signed receipts
+> record participation but are not production-sound useful-compute proofs.
+> Consensus-owned validator bonds, automatic rewards/slashing, and JGC mainnet
+> remain future milestones. Verify every metric before outreach.
 
 ## Week 1 Timeline
 

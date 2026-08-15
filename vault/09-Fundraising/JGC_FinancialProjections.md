@@ -1,17 +1,18 @@
 # JGC Financial Model & Projections
 
-> **Planning model, not current operations (updated 2026-07-23):** JGC has no
-> deployed public chain, market price, active bonded validator set, or
-> slashing-based supply reduction. All dollar values and adoption figures below
-> are scenarios that require explicit assumptions and external validation.
+> **Planning model, not current operations (updated 2026-08-15):** An early,
+> valueless zero-premine JGTC public pilot is live, but JGC has no mainnet,
+> market price, active bonded validator set, or slashing-based supply reduction.
+> All dollar values and adoption figures below are scenarios that require
+> explicit assumptions and external validation.
 
 ## Token Economics
 
 ### JGC Coin Supply
-- **Total Supply:** Fixed (non-inflationary after genesis)
+- **Issuance:** Zero genesis premine; protocol emission is created only through 144-block settlement
 - **Precision:** 16 decimals
 - **Divisibility:** Single-absorber dust mitigation (no sub-satoshi issues)
-- **Proposed Distribution Model:** Genesis allocation → validator rewards → potential slashing/burn policy (not active)
+- **Proposed Distribution Model:** Participation/work settlement → validator rewards → potential slashing/burn policy (not active)
 
 ### Revenue Streams (Year 1-3 Projections)
 
@@ -66,7 +67,7 @@
 
 | Use of Funds | Amount | Timeline |
 |--------------|--------|----------|
-| **Product Development** | $1M | Months 1-12: bonded-validator consensus, public-testnet hardening, inference scaling |
+| **Product Development** | $1M | Months 1-12: bonded-validator consensus, public-pilot hardening, inference scaling |
 | **Validator Incentives** | $800K | 12+ months: Initial rewards to bootstrap network |
 | **Go-to-Market** | $600K | Months 6-24: Exchange partnerships, enterprise pilots |
 | **Operations & Team** | $400K | Months 1-24: Hiring, infrastructure |

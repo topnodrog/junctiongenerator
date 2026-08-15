@@ -188,9 +188,9 @@ The network verifies the work without running it again — and without trusting 
 
 ## Why Verification Is the Hard Part
 
-Anyone can claim they ran a workload. The interesting problem is proving it. Junction Generator's current testnet uses deterministic-replay verification: given the same model weights, same sampler seed, and same input, inference is reproducible. Validators can spot-check any block, replay the inference independently, and compare outputs. Cheating requires forging reproducible inference — which is equivalent to running it honestly.
+Anyone can claim they ran a workload. The interesting problem is proving it. Junction Generator implements deterministic replay for tightly matched execution profiles, where compatible validators can re-run sampled work and compare committed outputs. That is useful audit evidence, but cross-hardware reproducibility and a production-sound general useful-compute proof remain open problems.
 
-This is not the final word on verification. Zero-knowledge proofs over neural network arithmetic (ZKML) would allow constant-time verification without re-execution. That is a research frontier we are actively tracking. But deterministic replay is a working, deployable primitive today — and it is live on the JGC testnet.
+This is not the final word on verification. Zero-knowledge proofs over neural network arithmetic (ZKML) would allow verification without re-execution. That is a research frontier we are actively tracking. Deterministic replay is implemented as a bounded research primitive; the live JGTC pilot uses signed test receipts to record participation, not production-sound proof that useful computation occurred.
 
 ## What This Changes
 
@@ -204,8 +204,10 @@ Junction Generator is building the protocol that makes that possible.`,
     dateISO: "2026-06-19",
     date: "June 19, 2026",
     readTime: "8 min read",
-    excerpt: "A technical walkthrough of how the JGC Layer-1 block structure, FLOP measurement, and economic reward model fit together in the live testnet.",
-    content: `## What Is Junctioning?
+    excerpt: "A historical walkthrough of the JGC Layer-1 prototype and how its block structure, FLOP measurement, and proposed reward model fit together.",
+content: `> **Implementation update (August 2026):** This article records the June prototype design. The live JGTC pilot records signed participation with a test-only receipt adapter. Bonded slashing and production-sound useful-compute proof are not active.
+
+## What Is Junctioning?
 
 Junctioning is the name for the local Layer-1 operation in the JGC protocol. A junctioning node mines blocks by running LLM inference on a locally-served model (currently Gemma 4 via Ollama), measuring the honest compute contributed, and producing a block that commits to the result with full cryptographic traceability.
 
@@ -234,13 +236,13 @@ JGC's verification stack has three layers, each providing a different security g
 
 **Deterministic Replay** — The base layer. Given the same model, seed, and input, inference is deterministic. Any validator can re-run a challenged block and compare outputs exactly. A miner who fabricates outputs will be caught every time they are sampled.
 
-**Sampling + Slashing** — Validators do not re-run every block (that would eliminate the efficiency gain). Instead, they sample randomly. When a challenge is raised, validators replay the block and vote on whether the output matches. A confirmed mismatch triggers a proportional slash of the miner's stake.
+**Sampling + Slashing (planned economics)** — Validators do not re-run every block. Instead, the design samples historical work. The code commits signed verdict evidence, but an automatic proportional slash requires the future consensus-owned bonded-validator path and is not active.
 
 **Multi-challenger Quorum** — No single validator can slash a miner unilaterally. A quorum of independent challengers must agree. This means framing a honest miner requires coordinating a majority of independent validators — economically irrational given slashing exposure for false challenges.
 
 ## What Is Live Today
 
-The junctioning Layer-1 went live on 2026-06-18. The current testnet includes:
+The local junctioning prototype reached its June milestone on 2026-06-18. It included:
 
 - Local block production via Ollama inference (Gemma 4 and compatible models)
 - Full FLOP measurement from real model parameter counts
@@ -249,7 +251,7 @@ The junctioning Layer-1 went live on 2026-06-18. The current testnet includes:
 - Multi-challenger quorum with configurable threshold
 - Coinbase transaction flow with 16-decimal $JGC precision
 
-The next milestone is P2P sync — connecting multiple junctioning nodes across machines into a shared chain.
+P2P synchronization and the early public JGTC pilot have since launched. The active milestone is a measured multi-machine soak, while production-sound useful-compute proof and bonded economics remain open.
 
 ## Why This Architecture
 

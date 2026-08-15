@@ -1,12 +1,12 @@
 # Junction Generator — Completion Roadmap
 
-**Updated:** 2026-08-13 · **Owner:** James Gordon
+**Updated:** 2026-08-15 · **Owner:** James Gordon
 
 Three components, one repo. Keep them distinct:
 
 | Component | What it is | Status |
 |---|---|---|
-| **JGC coin** (`packages/jgc-node`) | Sovereign PoUC Layer-1 — the actual product | Consensus V3 testnet; independent Google and Fly.io seeds live; soak pending |
+| **JGC coin** (`packages/jgc-node`) | Sovereign PoUC Layer-1 — the actual product | Zero-premine JGTC public pilot live; block 1 synced across two seeds and a workstation; soak pending |
 | **JGT token** (`contracts/`) | ERC-20 on Base (legacy) | Deployed; held, not promoted (no-sale stance) |
 | **junctiongenerator.net** (`src/` + `api/`) | Public site + Cloudflare Worker backend | Worker live and verified; community-first site merged to `main` |
 
@@ -109,7 +109,8 @@ Gate: do not open the P2P port to the internet before the first three items.
   migration rules, corrupt-tail recovery, and explicit V2-to-V3 refusal.
 - [x] **JGTC explorer-lite**: canonical node state supplies height, blocks,
   health, participation, balances, pending issuance, and the next settlement.
-  There is no genesis faucet or premine. Seed reset and site deployment remain.
+  There is no genesis faucet or premine. The seed reset and site deployment
+  completed on 2026-08-15; the first public block synchronized across all three nodes.
 - [x] **Node-runner guide**:
   `packages/jgc-node/docs/RUN-A-NODE.md` provides a Node.js quick start, a
   one-command Docker runner, two live seed connections, status checks, updates,
@@ -165,8 +166,8 @@ problems, in priority order:
 With the local testnet demo working and the worker/digest funnel working: submit the
 Gitcoin/verifiable-compute grant applications using `JGC_OnePager.md` and the
 financial projections; route interested parties to the site's node-runner
-section. The pitch materials exist — the missing artifact has been a running
-public testnet, which is Phase 2's deliverable.
+section. The early public JGTC pilot is now a running artifact; the next useful
+fundraising evidence is a measured multi-day soak with independent runners.
 
 ---
 
@@ -180,7 +181,8 @@ public testnet, which is Phase 2's deliverable.
   checksums, PQ wallet integration, strict proof verification, and documented
   quantum-readiness boundaries.
 - Audit evidence survives mining, peer sync, restart, and reorg; forged votes
-  and replayed verdicts are rejected. Full suite: 30 suites / 286 tests, plus
+  and replayed verdicts are rejected. Full suite: 37 suites / 318 tests under
+  Node.js 22, plus
   a passing 31-block two-node sync demo and a real six-proof strict WASM demo.
 - JGT rescued to a clean wallet after the 2026-06 key compromise; no rogue
   minters on-chain; no-sale stance adopted.

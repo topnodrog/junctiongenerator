@@ -61,28 +61,31 @@ Consensus results must depend only on canonical bytes and bounded integer arithm
 - Strict Groth16 loading fails closed and can never select the accept-all JavaScript stub.
 - Simulation mode relaxes only proof soundness; ML-DSA contribution signatures remain enforced.
 - The bounded sound path was exercised end to end: three blocks containing six real Conv1D Groth16 proofs were accepted by the Rust/WASM pairing verifier with ML-DSA miner identities.
-- Verification status after testnet deployment work: typecheck and build passed;
-  30 suites and 280 tests passed.
+- Verification status after the JGTC launch work: typecheck and build passed;
+  37 suites and 318 tests passed under Node.js 22.
 
-## Testnet V3 deployment foundation (2026-07-28)
-- Canonical genesis construction now derives every header commitment from the
-  actual block body. The timestamp is the intended 2026-06-11 UTC value.
-- Public testnet identity is `jgc-testnet-v3`, magic `0x4a474354`, Consensus V3,
+## JGTC public-testnet launch (2026-08-15)
+- Canonical genesis construction derives every header commitment from the
+  actual block body. The current zero-value genesis timestamp is
+  2026-08-15 04:00:00 UTC.
+- Public testnet identity is `jgtc-testnet-v1`, magic `0x4a475443`, Consensus V3,
   proof mode `simnet-receipts-v1`, and golden genesis hash
-  `df5d37d6a1e7799621bba84580c9cf94ddd37ae4fec008bb3356ea990b77b485`.
+  `738588b974ed62ed52e74a946371bc8b6d84508b6c38203f56ada38fce4bab36`.
 - VERSION negotiation binds chain ID, genesis hash, consensus version, and proof
   mode. Required-identity nodes reject missing/mismatched peers and reject chain
   data sent before a successful identity handshake.
 - `DesignatedBlockProducer` builds from live/replayed chainstate rather than a
   private mirror, waits for sufficient signed work, fully validates locally,
   persists, relays, and resumes after restart. Enable only with `--produce`.
-- The wallet selects testnet/mainnet network parameters. Testnet has a distinct,
-  immediately spendable one-million-JGC faucet allocation; its deterministic key
-  is intentionally public and must never be reused on a valuable network.
+- JGTC has zero premine and no faucet allocation. New test coins enter the UTXO
+  set only when recorded participation is paid by the 144-block settlement path.
 - Added a two-node container preset, Node 20/22 engine bounds, pinned Rust 1.96.0
   and wasm-pack 0.15.0, and Windows/Linux/macOS CI with consensus golden vectors.
-- Native ARM execution, public seeds/TLS, storage fsync/versioned recovery,
-  explorer UI, and real-network adversarial soak remain open deployment gates.
+- Google Seed A and independent Fly.io Seed B run Node.js 22 behind TLS/WSS;
+  storage recovery, explorer/participation, and the coordinated reset are live.
+  Block 1 synchronized across both seeds and an ordinary workstation participant.
+- Native ARM execution, independent verifier vectors, a multi-day hostile soak,
+  and a production-sound useful-compute proof remain open gates.
 
 ## Next proof-system milestones
 - Bind the assigned task, approved program/circuit digest, input/output commitments, integer work metric, miner, network, and epoch entropy into one public proof statement.
