@@ -15,6 +15,8 @@ kill_timeout = "30s"
   JGC_ADVERTISE_URL = "wss://jgc-testnet-seed-b.fly.dev"
   JGC_SEEDS = "wss://seed-a.junctiongenerator.net"
   JGC_PRODUCE = "false"
+  JGC_BLOCK_INTERVAL_SEC = "600"
+  JGC_RESET_TO_GENESIS = "738588b974ed62ed52e74a946371bc8b6d84508b6c38203f56ada38fce4bab36"
 
 [[mounts]]
   source = "jgc_seed_b_data"

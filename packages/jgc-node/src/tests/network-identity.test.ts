@@ -9,18 +9,16 @@ import {
 } from "../consensus/block.js";
 import { computeContributionsMerkleRoot, computeEpochRoot } from "../consensus/epoch.js";
 import {
-  TESTNET_FAUCET_ADDRESS,
-  TESTNET_FAUCET_ALLOCATION,
   TESTNET_GENESIS_HASH,
+  TESTNET_GENESIS_MESSAGE,
+  TESTNET_GENESIS_TIMESTAMP,
   TESTNET_NETWORK,
   createNetworkGenesis,
   networkGenesisHash,
-  testnetFaucetKeyPair,
 } from "../config/networks.js";
 import { JGCNode } from "../network/node.js";
 import { makeMessage, makePeer } from "../sim/harness.js";
 import { MessageType as MT, type NodeConfig } from "../types/index.js";
-import { Wallet } from "../wallet/wallet.js";
 
 const GOLDEN_GENESIS_HASH = "3f02891f049982583721143d3cd81dd96faabc7e3f3ce2452540cf834b13e7ff";
 
@@ -57,30 +55,19 @@ describe("canonical genesis", () => {
     expect(hashBlockHeader(createGenesisBlock().header)).toBe(GOLDEN_GENESIS_HASH);
   });
 
-  test("freezes a distinct testnet genesis with immediately spendable faucet funds", () => {
+  test("freezes a distinct zero-premine JGTC testnet genesis", () => {
     const testnetGenesis = createNetworkGenesis(TESTNET_NETWORK);
     expect(networkGenesisHash(TESTNET_NETWORK)).toBe(TESTNET_GENESIS_HASH);
+    expect(testnetGenesis.header.timestamp).toBe(TESTNET_GENESIS_TIMESTAMP);
     expect(testnetGenesis.header.merkleRoot)
       .toBe(computeTransactionMerkleRoot(testnetGenesis.transactions));
-    expect(testnetGenesis.transactions).toHaveLength(2);
+    expect(testnetGenesis.transactions).toHaveLength(1);
+    expect(testnetGenesis.transactions[0]!.outputs.every((output) => output.value === 0n)).toBe(true);
+    expect(Buffer.from(testnetGenesis.transactions[0]!.outputs[0]!.scriptPubKey, "hex").toString("utf8"))
+      .toContain(TESTNET_GENESIS_MESSAGE);
 
     const node = new JGCNode(testnetConfig(), testnetGenesis);
-    const faucet = Wallet.create();
-    const key = testnetFaucetKeyPair();
-    expect(faucet.importKey("faucet", key.privateKey, key.publicKey)).toBe(TESTNET_FAUCET_ADDRESS);
-    expect(faucet.balance("faucet", node.getUTXOSet(), 1)).toBe(TESTNET_FAUCET_ALLOCATION);
-
-    const recipient = Wallet.create();
-    const recipientAddress = recipient.generate("recipient");
-    const spend = faucet.buildSpend({
-      fromLabel: "faucet",
-      toAddress: recipientAddress,
-      amount: 100n,
-      fee: 1n,
-      utxo: node.getUTXOSet(),
-      currentHeight: 1,
-    });
-    expect(spend.tx.outputs[0]!.value).toBe(100n);
+    expect([...node.getUTXOSet().entries()]).toHaveLength(0);
   });
 
   test("commits exactly to its transaction, compute, epoch, and audit bodies", () => {

@@ -85,7 +85,7 @@ export default function WhitepaperPage() {
 
         <h3 style={{ color: "var(--color-purple)", marginTop: 20 }}>2.3 Verification</h3>
         <p style={{ color: "var(--text-secondary)" }}>
-          JGC verifies useful work through a three-layer model that provides strong economic guarantees without trusted hardware. <strong>Deterministic replay</strong> allows any validator to re-run a challenged block from its seed and compare outputs exactly — fabricating valid outputs is equivalent to running the workload honestly. <strong>Sampling + slashing</strong> means validators check a random fraction of blocks; cheaters who are caught lose stake proportional to the fraud. <strong>Multi-challenger quorum</strong> prevents single validators from extorting or framing miners — a slash requires agreement from a configurable majority of independent challengers, each of whom risks their own stake on a false challenge. This stack is live on the JGC testnet as of June 2026. Zero-knowledge verification (Groth16/BN254) remains the long-term target and is tracked actively as ZKML tooling matures.
+          JGC is developing a three-layer verification model without trusted hardware. <strong>Deterministic replay</strong> can let compatible validators re-run sampled work and compare committed outputs. <strong>Delayed sampling</strong> makes the audit target unpredictable. <strong>Multi-challenger quorum</strong> reduces single-observer risk. The live JGTC pilot currently uses signed test receipts to record participation; those receipts are not production-sound proof of useful computation, and bonded slashing is not active. Zero-knowledge or transparent general-compute proofs remain a long-term target as ZKML tooling matures.
         </p>
 
         <h2 style={{ color: "var(--color-cyan)", marginTop: 32 }}>3. Token Economics ($JGC)</h2>
@@ -132,8 +132,8 @@ export default function WhitepaperPage() {
             </tr>
             <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
               <td style={{ padding: "8px" }}>4. Public Testnet & Explorer</td>
-              <td style={{ padding: "8px", color: "var(--color-cyan)" }}>🔄 Next</td>
-              <td style={{ padding: "8px" }}>P2P sync across nodes, public node, block explorer</td>
+              <td style={{ padding: "8px", color: "var(--color-cyan)" }}>✅ Live pilot</td>
+              <td style={{ padding: "8px" }}>Two public seeds, participant records, read-only explorer; closed soak in progress</td>
             </tr>
             <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
               <td style={{ padding: "8px" }}>5. GPU Mining Client & Workloads</td>

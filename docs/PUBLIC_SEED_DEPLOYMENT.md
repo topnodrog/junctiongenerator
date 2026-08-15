@@ -1,18 +1,22 @@
 # Public Seed Deployment Gate
 
-**Status (2026-08-13):** Seed A is deployed and reachable at
+**Status (2026-08-15):** Seed A is deployed and reachable at
 `wss://seed-a.junctiongenerator.net`; its HTTPS health check answers `ok`, and a
 fresh external validator/back-checker completed the JGC compatibility handshake.
 Seed B is deployed independently on Fly.io in Toronto and reachable at
 `wss://jgc-testnet-seed-b.fly.dev`. Its Fly health check passes, its encrypted
 10 GB volume is attached, private status reports `peerCount: 2` and
 `producer.enabled: false`, and a fresh external runner completed the JGC
-compatibility handshake. The pilot now has two-provider bootstrap redundancy;
-monitoring and recovery evidence remain incomplete.
+compatibility handshake. Both seeds run Node.js 22.23.2 and were reset onto
+`jgtc-testnet-v1` after their old state was archived. Block 1 synchronized
+across both seeds and a workstation participant. The pilot has two-provider
+bootstrap redundancy; the 23-check readiness gate and both restore drills pass.
 
-This runbook records the minimum safe two-seed shape for `jgc-testnet-v3` and
-the remaining rollout controls. It does not authorize new spending or changes
-to live infrastructure.
+This runbook records the original `jgc-testnet-v3` deployment evidence. The
+live successor is `jgtc-testnet-v1`: a distinct zero-premine genesis with
+ten-minute block targets and direct 144-block settlement. Its coordinated
+reset procedure is in `packages/jgc-node/deploy/README.md` and preserves the
+old seed data in recoverable archives.
 
 External runners should use
 [`../packages/jgc-node/docs/RUN-A-NODE.md`](../packages/jgc-node/docs/RUN-A-NODE.md),

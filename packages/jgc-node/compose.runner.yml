@@ -3,6 +3,7 @@ services:
     build: .
     environment:
       JGC_SEEDS: "${JGC_SEEDS:-wss://seed-a.junctiongenerator.net,wss://jgc-testnet-seed-b.fly.dev}"
+      JGC_PARTICIPATE: "${JGC_PARTICIPATE:-false}"
     ports:
       - "127.0.0.1:7777:7777"
     volumes:

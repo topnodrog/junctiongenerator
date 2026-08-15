@@ -62,7 +62,11 @@ import { computeAuditClaimId } from "../broker/audit-schedule.js";
 import { AuditStore } from "../storage/audit-store.js";
 import { PeerGuard, DEFAULT_PEER_GUARD_POLICY, type PeerViolation } from "./peer-guard.js";
 import { validatorStakeSnapshot } from "../consensus/validator-bonds.js";
-import { quantumScriptPubKeyFromAddress } from "../crypto/pq.js";
+import {
+  quantumScriptPubKeyFromAddress,
+  quantumVerifyContributionSignature,
+  quantumVerifyProofForConsensus,
+} from "../crypto/pq.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Peer Connection Types
@@ -857,6 +861,8 @@ export class JGCNode extends EventEmitter {
     peer:    PeerConnection,
     contrib: MinerComputeContribution,
   ): Promise<void> {
+    const checked = this.validatePendingContribution(contrib);
+    if (!checked.ok) return;
     // Lightweight duplicate check.
     if (this.pendingProofs.some(p =>
       p.proof.taskCommitment === contrib.proof.taskCommitment &&
@@ -1528,8 +1534,63 @@ export class JGCNode extends EventEmitter {
     return [...this.pendingProofs];
   }
 
+  /**
+   * Accept and relay a locally-created testnet contribution for the next block.
+   * The full aggregate is still verified when the producer assembles a block;
+   * this fast path only rejects an invalid identity/proof or a duplicate miner.
+   */
+  async broadcastComputeProof(
+    contribution: MinerComputeContribution,
+  ): Promise<{ ok: boolean; error?: string }> {
+    const checked = this.validatePendingContribution(contribution);
+    if (!checked.ok) return checked;
+    const pending = this.pendingProofs.find(
+      (existing) => existing.minerAddress === contribution.minerAddress,
+    );
+    if (pending) {
+      if (pending.proof.taskCommitment !== contribution.proof.taskCommitment) {
+        return { ok: false, error: "contribution already pending for this miner" };
+      }
+      for (const [, peer] of this.peers) {
+        void peer.send(this.buildMessage(MT.COMPUTE_PROOF, pending));
+      }
+      return { ok: true };
+    }
+
+    this.pendingProofs.push(contribution);
+    this.emit("proof", contribution);
+    for (const [, peer] of this.peers) {
+      void peer.send(this.buildMessage(MT.COMPUTE_PROOF, contribution));
+    }
+    return { ok: true };
+  }
+
+  private validatePendingContribution(
+    contribution: MinerComputeContribution,
+  ): { ok: boolean; error?: string } {
+    const nextHeight = this.chain.tipHeight + 1;
+    if (!quantumVerifyContributionSignature(contribution, nextHeight)) {
+      return { ok: false, error: "invalid contribution signature" };
+    }
+    const minimumWork = decodeDifficultyBits(this.chain.currentDifficultyBits) * 0.1;
+    const proof = quantumVerifyProofForConsensus(
+      contribution.proof,
+      nextHeight,
+      minimumWork,
+    );
+    return proof.valid
+      ? { ok: true }
+      : { ok: false, error: proof.error ?? "invalid contribution proof" };
+  }
+
   getMempool(): Transaction[] {
     return Array.from(this.mempool.values(), e => e.tx);
+  }
+
+  /** Active-chain block lookup for explorer and diagnostics. */
+  getBlockAtHeight(height: number): Block | null {
+    const hash = this.chain.heightIndex.get(height);
+    return hash ? this.chain.blocks.get(hash) ?? null : null;
   }
 
   /** Register and gossip a locally constructed, active-chain-bound assignment. */

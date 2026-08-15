@@ -1,8 +1,10 @@
 # Visible Setup & Investor Tracking Guide
 
-> **Technical status (2026-07-23):** JGC is a validated local/private testnet.
-> Signed audit evidence is consensus-committed; bonded rewards/slashing and a
-> public network are not deployed. Keep outreach language aligned with this.
+> **Technical status (2026-08-15):** An early, valueless zero-premine JGTC
+> public pilot is live across independent seeds and a workstation runner. Its
+> signed receipts record participation but are not production-sound useful-
+> compute proofs. Bonded rewards/slashing and JGC mainnet are not deployed.
+> Keep outreach language aligned with this.
 
 ## Why Use Visible?
 

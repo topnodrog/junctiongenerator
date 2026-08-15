@@ -29,8 +29,6 @@ import { JGCNode } from "../network/node.js";
 import {
   createNetworkGenesis,
   networkByName,
-  TESTNET_FAUCET_ADDRESS,
-  testnetFaucetKeyPair,
 } from "../config/networks.js";
 import { serializeTransaction } from "../consensus/block.js";
 import { connectToPeers } from "../network/transport.js";
@@ -52,7 +50,6 @@ CHAIN (need --datadir <block-store>)
   balance <label>             spendable balance
   utxos   <label>             list spendable outputs
   send    <label> <toAddr> <amount> [--fee <amt>] [--broadcast ws://host:port]
-  faucet  <toAddr> <amount>   testnet-only funding [--broadcast ws://host:port]
 
 OPTIONS
   --keystore <path>   keystore file (or $JGC_KEYSTORE, default ./wallet.keystore.json)
@@ -82,6 +79,10 @@ function passphrase(f: Args): string {
   const p = f.flags.pass ?? process.env.JGC_WALLET_PASS;
   if (!p) throw new Error("passphrase required (--pass <phrase> or $JGC_WALLET_PASS)");
   return p;
+}
+
+function currencySymbol(f: Args): string {
+  return networkByName(f.flags.network ?? "testnet").currencySymbol;
 }
 
 function loadWallet(f: Args, mustExist: boolean): { wallet: Wallet; path: string } {
@@ -160,7 +161,7 @@ async function run(f: Args): Promise<number> {
       const { wallet } = loadWallet(f, true);
       const node = bootNode(f);
       const height = node.getChainInfo().tipHeight + 1;
-      console.log(`${formatJGC(wallet.balance(label, node.getUTXOSet(), height))} JGC`);
+      console.log(`${formatJGC(wallet.balance(label, node.getUTXOSet(), height))} ${currencySymbol(f)}`);
       return 0;
     }
     case "utxos": {
@@ -170,8 +171,9 @@ async function run(f: Args): Promise<number> {
       const height = node.getChainInfo().tipHeight + 1;
       const us = wallet.listUnspent(label, node.getUTXOSet(), height);
       if (us.length === 0) { console.log("(no spendable outputs)"); return 0; }
-      for (const u of us) console.log(`${u.txid}:${u.vout}  ${formatJGC(u.value).padStart(20)} JGC${u.isCoinbase ? "  (coinbase)" : ""}`);
-      console.log(`total: ${formatJGC(us.reduce((s, u) => s + u.value, 0n))} JGC across ${us.length} output(s)`);
+      const symbol = currencySymbol(f);
+      for (const u of us) console.log(`${u.txid}:${u.vout}  ${formatJGC(u.value).padStart(20)} ${symbol}${u.isCoinbase ? "  (coinbase)" : ""}`);
+      console.log(`total: ${formatJGC(us.reduce((s, u) => s + u.value, 0n))} ${symbol} across ${us.length} output(s)`);
       return 0;
     }
     case "send": {
@@ -187,8 +189,9 @@ async function run(f: Args): Promise<number> {
         utxo: node.getUTXOSet(), currentHeight: height,
       });
       console.log(`built spend ${txid}`);
-      console.log(`  to:     ${toAddress}  ${amountStr} JGC`);
-      console.log(`  fee:    ${formatJGC(fee)} JGC    change: ${formatJGC(change)} JGC`);
+      const symbol = currencySymbol(f);
+      console.log(`  to:     ${toAddress}  ${amountStr} ${symbol}`);
+      console.log(`  fee:    ${formatJGC(fee)} ${symbol}    change: ${formatJGC(change)} ${symbol}`);
       console.log(`  inputs: ${tx.inputs.length}`);
 
       if (f.flags.broadcast) {
@@ -198,45 +201,6 @@ async function run(f: Args): Promise<number> {
         await sleep(300);
         links.close();
         if (!res.ok) { console.error(`broadcast rejected: ${res.error}`); return 1; }
-        console.log(`  broadcast to ${f.flags.broadcast} ✓`);
-      } else {
-        console.log(`  raw: ${serializeTransaction(tx).toString("hex")}`);
-        console.log("  (not broadcast — pass --broadcast ws://host:port to relay)");
-      }
-      return 0;
-    }
-    case "faucet": {
-      const [toAddress, amountStr] = f.pos;
-      if (!toAddress || !amountStr) {
-        throw new Error("usage: faucet <toAddr> <amount> --datadir <dir> [--broadcast ws://host:port]");
-      }
-      if ((f.flags.network ?? "testnet") !== "testnet") {
-        throw new Error("the built-in faucet exists only on testnet");
-      }
-      const node = bootNode(f);
-      const wallet = Wallet.create();
-      const faucetKey = testnetFaucetKeyPair();
-      wallet.importKey("testnet-faucet", faucetKey.privateKey, faucetKey.publicKey);
-      const { tx, txid, fee } = wallet.buildSpend({
-        fromLabel: "testnet-faucet",
-        toAddress,
-        amount: parseJGC(amountStr),
-        fee: parseJGC(f.flags.fee ?? DEFAULT_FEE),
-        utxo: node.getUTXOSet(),
-        currentHeight: node.getChainInfo().tipHeight + 1,
-      });
-      console.log(`built testnet faucet spend ${txid}`);
-      console.log(`  faucet: ${TESTNET_FAUCET_ADDRESS}`);
-      console.log(`  to:     ${toAddress}  ${amountStr} JGC`);
-      console.log(`  fee:    ${formatJGC(fee)} JGC`);
-
-      if (f.flags.broadcast) {
-        const links = connectToPeers(node, [f.flags.broadcast], { retryMs: 500 });
-        await sleep(700);
-        const result = await node.broadcastTransaction(tx);
-        await sleep(300);
-        links.close();
-        if (!result.ok) { console.error(`broadcast rejected: ${result.error}`); return 1; }
         console.log(`  broadcast to ${f.flags.broadcast} ✓`);
       } else {
         console.log(`  raw: ${serializeTransaction(tx).toString("hex")}`);

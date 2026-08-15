@@ -15,7 +15,9 @@ npm run testnet:public
 ```
 
 This starts a safe outbound-only validator/back-checker and connects it to the
-live Seed A pilot. Running a node does not currently earn coins or rewards.
+live two-seed pilot. To add signed participation records and earn valueless
+JGTC at epoch settlement, use `npm run testnet:participate`. Test coins have no cash value
+and do not promise future compensation.
 
 ## Requirements
 
@@ -44,6 +46,18 @@ The public pilot has two reachable bootstrap peers: Google Seed A at
 `wss://jgc-testnet-seed-b.fly.dev`. The `testnet:public` command builds before
 starting and dials both seeds.
 
+Run an outbound-only participant with a persistent post-quantum identity:
+
+```text
+npm run testnet:participate
+```
+
+Participant mode submits one equal-weight signed pilot receipt per block slot.
+Receipts and epoch payouts are recorded on-chain, but the current simnet receipt
+is evidence of testnet presence—not proof of useful computation. Back up
+`data/testnet/participant-identity.json` and never reuse it on a valuable
+network. Inspect the chain at `https://junctiongenerator.net/testnet`.
+
 Run a standalone node without contacting a public seed:
 
 ```text
@@ -58,7 +72,7 @@ Both safe presets:
 - listens for peers at `ws://127.0.0.1:19444`;
 - exposes read-only status at `http://127.0.0.1:7777/status`;
 - bind P2P and status to loopback, so they are not exposed to the internet;
-- identifies itself as `jgc-testnet-v3` and rejects peers with a different
+- identifies itself as `jgtc-testnet-v1` and rejects peers with a different
   genesis hash, consensus version, or proof mode before accepting chain data.
 
 The standalone preset starts with no seed peers. The public preset makes only
@@ -84,7 +98,7 @@ environment variables. Explicit command-line options take precedence.
 Run exactly one designated producer for a small testnet:
 
 ```text
-npm run testnet:producer -- --block-interval 30
+npm run testnet:producer
 ```
 
 The producer waits for enough signed compute contributions, constructs its
@@ -92,18 +106,14 @@ template from the node's live chain state, submits it through full validation,
 and resumes from persisted state after restart. Other nodes should omit
 `--produce` and operate as validators/back-checkers.
 
-## Testnet wallet and faucet
+## Testnet wallet and issuance
 
-Wallet chain commands default to testnet. Pass `--network mainnet` only when
-deliberately reading mainnet-format data. The testnet genesis contains an
-immediately spendable, valueless faucet allocation whose deterministic key is
-public by design:
-
-```text
-npm run wallet -- faucet <1QGC-address> 100 --datadir ./data/testnet --broadcast ws://127.0.0.1:19444
-```
-
-Never reuse the testnet faucet key or any testnet wallet on a valuable network.
+Wallet chain commands default to testnet and display balances as JGTC. Pass
+`--network mainnet` only when deliberately reading mainnet-format data. Genesis
+contains no spendable JGTC. The 50-coin subsidy accumulates for each ten-minute
+block and the settlement transaction creates and distributes 7,200 JGTC every
+144 blocks in Era 0. Coinbase maturity and all other monetary checks match JGC.
+Never reuse a testnet wallet on a valuable network.
 
 ## Containerized two-node testnet
 

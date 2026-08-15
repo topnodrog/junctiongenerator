@@ -11,13 +11,22 @@ import { startP2PServer, maintainPeers, type PeerLinks, type P2PServer } from ".
 import { startStatusServer, type NodeStatus, type StatusServerHandle } from "../network/status-server.js";
 import {
   createNetworkGenesis,
-  TESTNET_FAUCET_ADDRESS,
   TESTNET_NETWORK,
 } from "../config/networks.js";
 import { hashBlockHeader } from "../consensus/block.js";
 import { setQuantumVerifierMode } from "../crypto/pq.js";
 import { DesignatedBlockProducer } from "../network/designated-producer.js";
 import { parseTestnetOptions } from "../config/testnet-options.js";
+import { join } from "path";
+import {
+  addressBalance,
+  explorerSnapshot,
+} from "../network/public-testnet-api.js";
+import {
+  loadOrCreateTestnetParticipantIdentity,
+  TestnetParticipant,
+} from "../miner/testnet-participant.js";
+import { prepareTestnetGenesisReset } from "../config/testnet-reset.js";
 
 const VERSION = "0.1.0";
 
@@ -27,9 +36,18 @@ async function main(): Promise<void> {
   // all non-proof consensus checks remain enforced, while production forbids
   // enabling this simulation-only proof mode.
   setQuantumVerifierMode("simnet");
-  console.warn("[JGC testnet] simulation receipts enabled; no production proof-of-compute rewards");
+  console.warn("[JGTC testnet] simulation receipts enabled; monetary and settlement rules match JGC, but useful-compute proof soundness is not production-ready");
 
   const genesis = createNetworkGenesis(TESTNET_NETWORK);
+  const genesisHash = hashBlockHeader(genesis.header);
+  const reset = prepareTestnetGenesisReset(opts.dataDir, genesisHash);
+  if (reset) {
+    console.warn(
+      reset.archiveDir
+        ? `[JGTC testnet] archived ${reset.movedFiles.length} old state file(s) at ${reset.archiveDir}`
+        : "[JGTC testnet] recorded fresh-genesis reset; no previous chain state was present",
+    );
+  }
   const config: NodeConfig = {
     listenPort: opts.port,
     rpcPort: opts.statusPort,
@@ -46,6 +64,12 @@ async function main(): Promise<void> {
   };
   const node = new JGCNode(config, genesis);
   const producer = new DesignatedBlockProducer(node, opts.blockIntervalSec);
+  const participant = opts.participate
+    ? new TestnetParticipant(
+      node,
+      loadOrCreateTestnetParticipantIdentity(join(opts.dataDir, "participant-identity.json")),
+    )
+    : undefined;
   const startedAt = Date.now();
 
   let p2p: P2PServer | undefined;
@@ -80,17 +104,26 @@ async function main(): Promise<void> {
           waitingForTFLOPS: producerStatus.waitingForTFLOPS,
         },
       };
-    }, { host: opts.statusHost, port: opts.statusPort });
+    }, {
+      host: opts.statusHost,
+      port: opts.statusPort,
+      publicApi: {
+        explorer: () => explorerSnapshot(node, producer),
+        balance: (address) => addressBalance(node, address),
+      },
+    });
 
     console.log(`[testnet] network: ${TESTNET_NETWORK.chainId} (${TESTNET_NETWORK.proofMode})`);
-    console.log(`[testnet] genesis: ${hashBlockHeader(genesis.header)}`);
+    console.log(`[testnet] genesis: ${genesisHash}`);
     console.log(`[testnet] data:    ${opts.dataDir}`);
     console.log(`[testnet] p2p:     ws://${opts.host}:${p2p.port}`);
     console.log(`[testnet] status:  http://${status.host}:${status.port}/status`);
     console.log(`[testnet] seeds:   ${opts.seeds.length ? opts.seeds.join(", ") : "(none; standalone node)"}`);
-    console.log(`[testnet] faucet:  ${TESTNET_FAUCET_ADDRESS}`);
+    console.log(`[testnet] explorer: http://${status.host}:${status.port}/explorer`);
     console.log(`[testnet] role:    ${opts.produce ? `designated producer (${opts.blockIntervalSec}s interval)` : "validator/back-checker"}`);
+    if (participant) console.log(`[testnet] participant: ${participant.address} (equal-weight pilot receipts)`);
     if (opts.produce) producer.start();
+    participant?.start();
   } catch (error) {
     links?.close();
     await status?.close();
@@ -103,6 +136,7 @@ async function main(): Promise<void> {
     if (stopping) return;
     stopping = true;
     console.log("\n[testnet] shutting down...");
+    participant?.stop();
     producer.stop();
     links?.close();
     await status?.close();

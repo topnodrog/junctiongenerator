@@ -195,7 +195,7 @@ function totalValue(utxos: UTXOSet): bigint {
 /**
  * Build an executable prototype of the requested distribution policy.
  *
- * This deliberately does not mutate the live `jgc-testnet-v3` rules. The
+ * This deliberately does not mutate the live `jgtc-testnet-v1` rules. The
  * current public testnet settles height-based epochs immediately at slot 143;
  * this prototype tests a height-derived policy: each 144-block earning window
  * is paid after a fixed 24-block delay. UTC timestamps are display/audit labels
@@ -344,7 +344,7 @@ export function buildTenDayLedger(startTimestamp = TEN_DAY_START_UTC): TenDayLed
 
   return {
     mode: "daily-distribution-prototype-v1",
-    warning: "Valueless repeatable protocol prototype; not deployed to jgc-testnet-v3 and not valid under its current immediate epoch-boundary settlement rule.",
+    warning: "Valueless repeatable protocol prototype; not deployed to jgtc-testnet-v1 and not valid under its current immediate epoch-boundary settlement rule.",
     timezone: DAILY_DISTRIBUTION_TIMEZONE,
     blocks,
     wallets,

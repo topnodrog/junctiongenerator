@@ -1,9 +1,10 @@
 # JunctionGenerator (JGC) — One-Pager
 
-> **Implementation status (2026-07-23):** JGC is a local/private testnet, not a
-> deployed public chain. Consensus commits post-quantum signed audit evidence;
-> bonded-validator rewards and slashing are the next economic milestone and
-> are not active today.
+> **Implementation status (2026-08-15):** An early, valueless zero-premine JGTC
+> public pilot is live across two independent seeds and a workstation runner.
+> Its signed test receipts record participation but are not production-sound
+> useful-compute proofs. Bonded-validator rewards, slashing, and JGC mainnet are
+> not active today.
 
 ## The Problem
 Crypto scams, exploits, and oracle failures remain costly. Execution evidence
@@ -48,12 +49,12 @@ of performing discarded hash work
 | Layer-1 Junctioning | ✓ Working locally since June 2026 |
 | Quantum-ready audit consensus v2 | ✓ July 2026 |
 | Bonded validator registry + stake snapshots | → Next |
-| Public multi-machine testnet | → After P2P hardening and soak testing |
+| Public multi-machine JGTC pilot | ✓ Live August 2026; soak in progress |
 | Mainnet Launch | → Date not committed |
 
 ## Ask
 Seed/grant funding for external security review, bonded-validator consensus,
-public-testnet hardening, and multi-machine verification research.
+public-pilot soak evidence, and multi-machine verification research.
 
 ---
 

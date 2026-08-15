@@ -1,14 +1,14 @@
 # Ten-day JGC daily-distribution prototype
 
 This prototype exercises a proposed UTC/height-based distribution policy
-without changing or deploying the current `jgc-testnet-v3` consensus rules.
+without changing the live `jgtc-testnet-v1` settlement rules.
 
 ## Scenario
 
 - Ten earning windows of exactly 144 blocks each.
 - Height 0 is anchored to 2026-08-01 00:00:00 UTC for readable evidence; the
   first window is heights 0-143.
-- The completed window's 7,200 test JGC is issued after a fixed 24-block delay.
+- The completed window's 7,200 JGTC is issued after a fixed 24-block delay.
   At the ten-minute target this appears at 04:00 UTC, but block height—not the
   wall clock—activates distribution.
 - Ten reproducibly derived ML-DSA wallet identities receive 720 JGC each per
@@ -58,4 +58,4 @@ A versioned consensus proposal still needs to define reorg handling across the
 earning boundary and delayed settlement height, fee attribution during the
 24-block delay, and how a missed settlement transaction is recovered. Until
 then these blocks remain `daily-distribution-prototype-v1` evidence and must not
-be presented as valid current `jgc-testnet-v3` blocks.
+be presented as valid current `jgtc-testnet-v1` blocks.

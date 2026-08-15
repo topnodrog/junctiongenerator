@@ -14,8 +14,8 @@ Junction Generator has three DISTINCT, SEPARATE components. They were once 3 fol
 ~10 min (Bitcoin), each participant's compute contribution is tallied through
 the day (144-block epoch) and reward dispersed PRO-RATA by TFLOPS provided.
 Consensus V3 commits post-quantum signed historical-audit evidence through
-`auditRoot`; this is hardened local/private testnet code, not a deployed public
-chain. Positioned as a **store of value**. Codebase: `packages/jgc-node`. See
+`auditRoot`; an early zero-premine JGTC public pilot is live, but no valuable
+JGC mainnet is deployed. Positioned as a **store of value**. Codebase: `packages/jgc-node`. See
 [[project-jgc]].
 
 2. **JGT — Junction Generator Token**. COMPLETELY SEPARATE from JGC. ERC-20 on Base network. Purpose: promote and support the project (marketing/incentives) — NOT a store of value. Deployer key was compromised (see [[leaked-secrets-risk]]); rescue complete (see [[compromised-wallet-7702-sweeper]]). Contracts: `contracts/`. NEVER use JGT's ERC-20 design (18 decimals, etc.) to inform JGC design — unrelated.

@@ -65,7 +65,7 @@ npm run pilot-readiness -- --input <snapshot.json> --append .tmp/pilot-evidence/
 The evaluator checks:
 
 - both expected provider failure domains;
-- `jgc-testnet-v3` identity and no more than one block of height difference;
+- `jgtc-testnet-v1` identity and no more than one block of height difference;
 - at least one peer per active seed;
 - Seed A producer enabled and Seed B producer disabled;
 - disk thresholds, corruption errors, and repeated peer bans;
@@ -97,7 +97,7 @@ For each provider independently:
 1. preserve the failed volume and logs rather than repairing them in place;
 2. create a disposable replacement from the pinned deployment configuration;
 3. restore an encrypted snapshot or resync from the surviving seed;
-4. verify `jgc-testnet-v3`, expected producer role, height convergence, and at
+4. verify `jgtc-testnet-v1`, expected producer role, height convergence, and at
    least one peer;
 5. record `lastRestoreTestAt`, snapshot age, disk use, and any incident notes;
 6. destroy the disposable replacement after the evidence is reviewed.
@@ -151,3 +151,20 @@ resources were deleted, then both live seeds again reported height 0 and two
 peers. A final authenticated collection after the Fly guard recovery produced
 23 passes, zero warnings, and zero failures. Phase 3 public-testnet readiness
 is complete; the next operational activity is the multi-day closed soak.
+
+## JGTC launch evidence captured 2026-08-15
+
+The two live seeds were upgraded to Node.js 22.23.2 and reset from archived
+`jgc-testnet-v3` state onto `jgtc-testnet-v1`. The frozen genesis hash is
+`738588b974ed62ed52e74a946371bc8b6d84508b6c38203f56ada38fce4bab36`;
+genesis has zero spendable supply, the target interval is ten minutes, and
+JGTC becomes spendable only through 144-block settlement.
+
+Block 1 synchronized across Seed A, Seed B, and an ordinary workstation
+participant with tip
+`0799949e151a538eadc5d296f9abcf83f21a14db96ff808b9f3709aa0811e328`.
+It recorded two equal 1000-weight contributions, projecting equal settlement
+shares for the seed anchor and workstation address. Seed A reported three
+peers, one produced block, and no producer error; Seed B reported three peers;
+the workstation reported two peers. The displayed 100 JGTC pending pool is
+unsettled accounting, not a premine or faucet balance.

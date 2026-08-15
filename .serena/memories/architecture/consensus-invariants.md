@@ -31,5 +31,6 @@
   any genesis body or timestamp change creates a new, explicitly golden identity.
 - A small testnet has one explicitly enabled designated producer; validators and
   heterogeneous back-checkers must not silently become producers.
-- The deterministic faucet key and allocation are testnet-only and valueless;
-  neither may be carried into a valuable network definition.
+- Public JGTC genesis must contain zero spendable supply. Test coins become
+  outputs only through the same 144-block settlement path planned for JGC;
+  there is no deterministic faucet, premine, or private genesis allocation.

@@ -10,6 +10,7 @@ export interface TestnetOptions {
   advertiseUrl?: string;
   seeds: string[];
   produce: boolean;
+  participate: boolean;
   blockIntervalSec: number;
 }
 
@@ -90,9 +91,14 @@ export function parseTestnetOptions(
     advertiseUrl: advertiseUrl || undefined,
     seeds: argumentSeeds.length ? argumentSeeds : environmentSeeds(env.JGC_SEEDS),
     produce: argv.includes("--produce") || boolean(env.JGC_PRODUCE, false, "JGC_PRODUCE"),
+    participate: argv.includes("--participate") || boolean(
+      env.JGC_PARTICIPATE,
+      false,
+      "JGC_PARTICIPATE",
+    ),
     blockIntervalSec: positiveSeconds(
       optionValue(argv, "--block-interval", env, "JGC_BLOCK_INTERVAL_SEC"),
-      30,
+      TESTNET_NETWORK.targetBlockIntervalSec,
       "--block-interval/JGC_BLOCK_INTERVAL_SEC",
     ),
   };

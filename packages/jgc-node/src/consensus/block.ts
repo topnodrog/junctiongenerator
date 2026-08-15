@@ -392,9 +392,9 @@ export const CONSENSUS_BLOCK_VERSION = 0x03000000;
 /** Backward-compatible name retained for callers; it always means current consensus. */
 export const GENESIS_BLOCK_VERSION = CONSENSUS_BLOCK_VERSION;
 
-/** Build the zero-value OP_RETURN-style transaction carrying the genesis message. */
-export function createGenesisTransaction(): Transaction {
-  const message = Buffer.from(GENESIS_MESSAGE, "utf8");
+/** Build a zero-value OP_RETURN-style transaction carrying a network's genesis message. */
+export function createGenesisTransaction(genesisMessage: string = GENESIS_MESSAGE): Transaction {
+  const message = Buffer.from(genesisMessage, "utf8");
   if (message.length > 75) {
     throw new RangeError("Genesis message exceeds direct-push script limit");
   }
@@ -412,9 +412,13 @@ export function createGenesisTransaction(): Transaction {
 }
 
 /** Construct the canonical JGC genesis header from its actual block body. */
-export function createGenesisHeader(difficultyBits: number = GENESIS_DIFFICULTY_BITS): BlockHeader {
-  const transactions = [createGenesisTransaction()];
-  const epochState = initEpochState(0, GENESIS_TIMESTAMP);
+export function createGenesisHeader(
+  difficultyBits: number = GENESIS_DIFFICULTY_BITS,
+  timestamp: number = GENESIS_TIMESTAMP,
+  message: string = GENESIS_MESSAGE,
+): BlockHeader {
+  const transactions = [createGenesisTransaction(message)];
+  const epochState = initEpochState(0, timestamp);
 
   return {
     version:        GENESIS_BLOCK_VERSION,
@@ -423,7 +427,7 @@ export function createGenesisHeader(difficultyBits: number = GENESIS_DIFFICULTY_
     computeRoot:    computeContributionsMerkleRoot([]),
     epochRoot:      computeEpochRoot(epochState),
     auditRoot:      computeAuditVerdictsMerkleRoot([]),
-    timestamp:      GENESIS_TIMESTAMP,
+    timestamp,
     difficultyBits,
     nonce:          0,
     height:         0,
@@ -431,13 +435,17 @@ export function createGenesisHeader(difficultyBits: number = GENESIS_DIFFICULTY_
 }
 
 /** Construct the one canonical genesis block used by nodes, demos, and tests. */
-export function createGenesisBlock(difficultyBits: number = GENESIS_DIFFICULTY_BITS): Block {
+export function createGenesisBlock(
+  difficultyBits: number = GENESIS_DIFFICULTY_BITS,
+  timestamp: number = GENESIS_TIMESTAMP,
+  message: string = GENESIS_MESSAGE,
+): Block {
   return {
-    header: createGenesisHeader(difficultyBits),
-    transactions: [createGenesisTransaction()],
+    header: createGenesisHeader(difficultyBits, timestamp, message),
+    transactions: [createGenesisTransaction(message)],
     computeProofs: [],
     auditVerdicts: [],
-    epochState: initEpochState(0, GENESIS_TIMESTAMP),
+    epochState: initEpochState(0, timestamp),
   };
 }
 

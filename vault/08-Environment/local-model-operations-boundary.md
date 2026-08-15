@@ -26,10 +26,10 @@ credentials, diffs, deterministic checks, and human verification.
 
 It does not replace two publicly reachable persistent seed hosts, separate
 failure domains, durable disks, DNS/TLS, monitoring, encrypted backups, or the
-multi-day soak. Hosting a seed from the owner's laptop is not the planned
-public-testnet architecture.
+multi-day soak. The owner's workstation may participate as an ordinary
+outbound-only node, but it is not a seed and does not replace public infrastructure.
 
-Google Cloud is the planned provider for the first seed. Confirm quota, billing
-safeguards, region, static address, and persistent disk before provisioning.
-Select a separate provider or independently operated failure domain for the
-second seed unless the owner approves a temporary two-zone pilot.
+Google Cloud now hosts Seed A and Fly.io hosts independent Seed B. Both run the
+frozen `jgtc-testnet-v1` identity under Node.js 22 behind TLS/WSS, with private
+monitoring and persistent storage. The local model remains advisory only and
+must not receive provider secrets or operational authority.

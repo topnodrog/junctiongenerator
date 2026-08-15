@@ -1,15 +1,17 @@
-# Run a JGC Node
+# Run a JGTC Testnet Node
 
-This guide is for anyone who wants to run an early JGC testnet node. The
+This guide is for anyone who wants to run the JGTC network: JGC monetary and
+settlement rules with valueless test coins. The
 safest default is an outbound-only validator/back-checker: it connects to the
 public seed, verifies what it receives, keeps its own chain data, and does not
 open an inbound peer port on your computer.
 
 ## Before you start
 
-JGC is early, valueless testnet software. It is not mainnet, and running a node
-does not currently earn coins or rewards. The network may be reset while the
-protocol is under development.
+JGTC is early, valueless testnet software. It is not mainnet. A participant node
+can earn valueless JGTC according to signed pilot receipts, but those
+coins have no cash value and do not promise a future payment. The network may
+be reset while the protocol is under development.
 
 The public pilot currently has two reachable bootstrap nodes in independent
 provider failure domains:
@@ -45,13 +47,40 @@ The last command builds the node automatically and starts it. A successful
 startup prints lines like these:
 
 ```text
-[testnet] network: jgc-testnet-v3 (simnet-receipts-v1)
+[testnet] network: jgtc-testnet-v1 (simnet-receipts-v1)
 [testnet] seeds:   wss://seed-a.junctiongenerator.net, wss://jgc-testnet-seed-b.fly.dev
 [testnet] role:    validator/back-checker
 ```
 
 Leave that terminal open. Press `Ctrl+C` to stop the node cleanly. Its chain
 data remains in `data/testnet` and is reused on the next start.
+
+### Record your participation
+
+To do more than validate, stop the ordinary runner and start participant mode:
+
+```text
+npm run testnet:participate
+```
+
+The first run creates `data/testnet/participant-identity.json`, prints its
+`1QGC...` address, and submits one equal-weight signed pilot receipt for each
+new block slot. That address and its receipts are committed to the blockchain;
+at the 144-block epoch boundary, the normal consensus settlement creates and
+distributes valueless JGTC proportionally among recorded participants.
+
+There is no JGTC premine and no genesis-funded faucet. Genesis has zero
+spendable supply. Era 0 accumulates 50 JGTC for each ten-minute block, and the
+settlement creates 7,200 JGTC after 144 blocks. Settlement outputs then follow
+the same coinbase-maturity rule as JGC.
+
+Back up the identity file privately. It establishes control of your testnet
+participation address. Never publish it and never reuse it on a valuable
+network. The receipt proves that this identity joined a block slot; the current
+simulation receipt does **not** prove useful AI computation.
+
+Use the live explorer at
+[junctiongenerator.net/testnet](https://junctiongenerator.net/testnet).
 
 On Windows, if PowerShell says that `npm.ps1` cannot be loaded because script
 execution is disabled, replace `npm` with `npm.cmd` in the two npm commands.
@@ -63,13 +92,14 @@ While the node is running, open
 Look for:
 
 - `"running": true`
-- `"network": "jgc-testnet-v3"`
+- `"network": "jgtc-testnet-v1"`
 - `"peerCount": 1` or higher
 - `"producer": { "enabled": false, ... }`
 
-A height of `0` can be normal during this pilot. The designated producer waits
-for enough signed compute contributions, and the testnet does not fabricate
-work just to increase the height.
+The designated producer targets one block every ten minutes and includes signed
+pilot participation receipts. Seed A
+provides an anchor receipt so the chain continues when no outside participant
+is online; additional participant nodes are recorded alongside it.
 
 ## Docker alternative
 
@@ -93,6 +123,15 @@ docker compose -f compose.runner.yml down
 
 `down` removes the container but keeps the `runner-data` volume. Do not add
 `-v` unless you deliberately want to erase the node's testnet data.
+
+To participate through Docker, set `JGC_PARTICIPATE=true` before `up`. The
+identity is stored in the persistent `runner-data` volume:
+
+```text
+# PowerShell
+$env:JGC_PARTICIPATE="true"
+docker compose -f compose.runner.yml up --build -d
+```
 
 ## Update the node
 

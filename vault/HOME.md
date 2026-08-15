@@ -20,7 +20,7 @@ The three-part architecture and where everything lives.
 The Proof-of-Useful-Computation cryptocurrency.
 - [[project-vision]] — JGC, JGT, junctioning explained
 - [[project-jgc]] — Local-testnet wallet milestone (2026-06-15) and current
-  consensus-v2 audit status
+  current JGTC public-pilot and audit status
 - [[jgc-reward-divisibility]] — 16 decimals, single-absorber dust policy (LOCKED)
 - [[jgc-rust-build-env]] — Rust/WASM build constraints (Smart App Control blocker)
 
@@ -56,6 +56,11 @@ Use **Ctrl+Shift+F** (Obsidian global search) to find keywords across all notes.
 
 ## Recent Updates
 
+- **2026-08-15:** The zero-premine `jgtc-testnet-v1` pilot launched across
+  Google Seed A, independent Fly.io Seed B, and an ordinary workstation
+  participant under Node.js 22. Block 1 synchronized on all three nodes. There
+  is no faucet or genesis allocation; JGTC becomes spendable only through
+  144-block settlement. The closed multi-machine soak is now the active work.
 - **2026-08-11:** Google Seed A is reachable over WSS and a fresh external
   validator/back-checker joined successfully. The public runner guide now has
   Node.js and Docker quick starts. Fly.io Seed B, full monitoring, recovery

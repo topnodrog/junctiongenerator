@@ -1,11 +1,11 @@
 /**
  * @file src/network/status-server.ts
- * @description Tiny read-only HTTP status endpoint for a running JGC node.
+ * @description Small HTTP status and deliberately narrow public testnet API.
  *
  * WHY THIS EXISTS
  * ───────────────
  * The public site (junctiongenerator.net) wants to show a live "node is running"
- * panel — wallet address, mature ("current") JGC, and immature ("pending") JGC —
+ * panel — chain height, public balances, and epoch participation —
  * sourced from the operator's OWN node rather than re-simulated. A node has no
  * UI, so it exposes a single JSON snapshot a browser can poll.
  *
@@ -13,8 +13,8 @@
  * ────────────────
  *  - Loopback only by default (127.0.0.1). Wallet balances must never be served
  *    to the LAN; bind elsewhere only with deliberate intent.
- *  - Read-only. There is no spend path, no key material, no mutation — the worst
- *    a caller learns is a public address and its balance (both already on-chain).
+ *  - `/status` remains loopback-only by default. The optional public API is also
+ *    read-only: explorer and public-address balance queries expose no key material.
  *  - CORS + Private-Network-Access headers are set so an HTTPS page may fetch the
  *    loopback endpoint. Chrome/Edge/Firefox treat http://127.0.0.1 as potentially
  *    trustworthy (not mixed content) and gate it behind a PNA preflight, which we
@@ -25,6 +25,7 @@
  */
 
 import { createServer, type Server, type IncomingMessage, type ServerResponse } from "http";
+import type { AddressBalance, ExplorerSnapshot } from "./public-testnet-api.js";
 
 /**
  * The snapshot served at GET /status. All money fields are pre-formatted decimal
@@ -73,6 +74,11 @@ export interface StatusServerOptions {
   port?: number;
   /** Bind address. Default 127.0.0.1 (loopback). Override at your own risk. */
   host?: string;
+  /** Optional, deliberately narrow public testnet API. `/status` stays private. */
+  publicApi?: {
+    explorer(): ExplorerSnapshot | Promise<ExplorerSnapshot>;
+    balance(address: string): AddressBalance | Promise<AddressBalance>;
+  };
 }
 
 export interface StatusServerHandle {
@@ -84,7 +90,7 @@ export interface StatusServerHandle {
 const DEFAULT_PORT = 7777;
 const DEFAULT_HOST = "127.0.0.1";
 
-/** Apply permissive read-only CORS + Private-Network-Access headers. */
+/** Apply CORS + Private-Network-Access headers for the browser-facing routes. */
 function setCorsHeaders(req: IncomingMessage, res: ServerResponse): void {
   const origin = req.headers.origin;
   // No credentials are ever used, so echoing the origin (or "*") is safe.
@@ -114,6 +120,8 @@ function sendJson(res: ServerResponse, status: number, body: unknown): void {
  * Routes:
  *   GET  /status   → NodeStatus JSON
  *   GET  /healthz  → { ok: true }   (liveness, no wallet data)
+ *   GET  /explorer → public chain snapshot (when configured)
+ *   GET  /balance  → public address balance (when configured)
  *   OPTIONS *      → 204 (CORS/PNA preflight)
  */
 export function startStatusServer(
@@ -122,7 +130,6 @@ export function startStatusServer(
 ): Promise<StatusServerHandle> {
   const port = opts.port ?? (Number(process.env.JGC_STATUS_PORT) || DEFAULT_PORT);
   const host = opts.host ?? DEFAULT_HOST;
-
   const server: Server = createServer((req, res) => {
     setCorsHeaders(req, res);
 
@@ -132,16 +139,36 @@ export function startStatusServer(
       return;
     }
 
-    if (req.method !== "GET") {
-      sendJson(res, 405, { error: "method not allowed" });
-      return;
-    }
-
-    // Strip any query string before matching the path.
-    const path = (req.url ?? "/").split("?")[0];
+    const url = new URL(req.url ?? "/", "http://127.0.0.1");
+    const path = url.pathname;
 
     if (path === "/healthz") {
       sendJson(res, 200, { ok: true });
+      return;
+    }
+
+    if (opts.publicApi && path === "/explorer" && req.method === "GET") {
+      Promise.resolve(opts.publicApi.explorer())
+        .then((snapshot) => sendJson(res, 200, snapshot))
+        .catch((err: unknown) => sendJson(res, 503, {
+          error: err instanceof Error ? err.message : String(err),
+        }));
+      return;
+    }
+
+    if (opts.publicApi && path === "/balance" && req.method === "GET") {
+      const address = url.searchParams.get("address") ?? "";
+      Promise.resolve()
+        .then(() => opts.publicApi!.balance(address))
+        .then((balance) => sendJson(res, 200, balance))
+        .catch((err: unknown) => sendJson(res, 400, {
+          error: err instanceof Error ? err.message : String(err),
+        }));
+      return;
+    }
+
+    if (req.method !== "GET") {
+      sendJson(res, 405, { error: "method not allowed" });
       return;
     }
 

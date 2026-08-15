@@ -1,9 +1,10 @@
 # Pitch Narratives — Tailored by Investor Type
 
-> **Accuracy guardrail (2026-07-23):** Say “local/private testnet validated,”
-> not “public testnet” or “mainnet.” Signed audit evidence is now
-> consensus-committed and post-quantum; rewards/slashing remain inactive until
-> the bonded validator registry and stake snapshot are in consensus.
+> **Accuracy guardrail (2026-08-15):** Say “early, valueless zero-premine JGTC
+> public pilot live; closed soak in progress,” not “JGC mainnet.” Current signed
+> receipts record participation but are not production-sound useful-compute
+> proofs. Rewards/slashing remain inactive until the bonded validator registry
+> and stake snapshot are in consensus.
 
 ## For Crypto-Native VCs (Paradigm, a16z, Polychain, Eigen Foundation)
 
@@ -66,8 +67,8 @@ Use cases:
 - Enterprise smart contracts get auditability (banks, insurance will use it)
 - AI model deployment gets stronger tamper evidence (healthcare, legal)
 
-We're pre-revenue with a working local/private testnet and independently
-verifiable audit evidence. Public-testnet hardening, cross-hardware
+We're pre-revenue with a working public JGTC pilot and independently
+verifiable participation records. Production-proof hardening, cross-hardware
 determinism, and bonded validator economics remain before production use.
 
 This is boring infrastructure that will be used by everything built on crypto in the next 5 years."
@@ -107,7 +108,8 @@ Why this works:
 
 We proved the local consensus-evidence path works: delayed sampling, signed
 quorum, block commitment, sync, restart, and adversarial rejection. The
-public network and economic penalty path are not deployed.
+early public JGTC pilot is deployed; the production-proof and economic penalty
+paths are not.
 
 This is the thing you've always wanted to build but didn't know it was possible. We figured out how."
 

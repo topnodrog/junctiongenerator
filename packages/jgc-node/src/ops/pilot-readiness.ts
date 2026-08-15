@@ -40,7 +40,7 @@ export interface PilotReadinessReport {
   summary: { passed: number; warnings: number; failures: number };
 }
 
-const EXPECTED_NETWORK = "jgc-testnet-v3";
+const EXPECTED_NETWORK = "jgtc-testnet-v1";
 const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
 

@@ -2,16 +2,17 @@
 
 **A Protocol for Redirecting Mining Compute to Real AI Workloads**
 
-*Version 0.4 — Implementation-aligned draft, 2026-08-13*
+*Version 0.5 — Implementation-aligned draft, 2026-08-15*
 
 > **Implementation status:** JGC currently runs as early, valueless testnet
-> software. Independent Google Cloud and Fly.io public pilot seeds are
-> reachable; resilient operations and the multi-machine soak remain incomplete. Consensus V3
+> software. Independent Google Cloud and Fly.io public pilot seeds and an
+> ordinary workstation participant synchronized block 1 of the zero-premine
+> `jgtc-testnet-v1` network; the multi-machine soak remains incomplete. Consensus V3
 > commits delayed-beacon, ML-DSA-signed historical-audit
 > evidence through `auditRoot`, uses portable canonical encodings and integer
 > work weights, separates heterogeneous verification roles, and uses versioned,
-> checksum-protected, network-bound persistent storage. Thirty-one suites /
-> 293 tests, a 31-block two-node sync demo, and a bounded six-proof strict WASM
+> checksum-protected, network-bound persistent storage. Thirty-seven suites /
+> 318 tests under Node.js 22, a 31-block two-node sync demo, and a bounded six-proof strict WASM
 > run pass. Mandatory bonded-validator activation, economic rewards/slashing,
 > the marketplace, and mainnet are not deployed. See the
 > [node-runner guide](../packages/jgc-node/docs/RUN-A-NODE.md) for the supported
@@ -221,7 +222,7 @@ as issued equity or a guaranteed claim before those questions are settled.
 | **1. Concept & architecture** | ✅ Complete | Core PoUC direction and sovereign-node architecture established. |
 | **2. Local node foundation** | ✅ Complete | UTXO ledger, wallets, PoUC records, local inference seam, and safe loopback testnet. |
 | **3. Consensus V3 portability and audit foundation** | ✅ Complete | Canonical encodings, integer work, execution profiles, delayed sampling, ML-DSA quorum evidence, `auditRoot`, bond-derived rosters, persistence, sync, and adversarial validation. |
-| **4. Public-testnet deployment** | 🔄 In progress | Frozen testnet identity, compatibility handshake, designated producer, faucet path, container and CI, two-provider TLS/WSS seeds, and storage crash hardening are implemented; native ARM CI, explorer service, monitoring/recovery evidence, and multi-day soak remain. |
+| **4. Public-testnet deployment** | ✅ Live pilot | Frozen zero-premine JGTC identity, compatibility handshake, designated producer, 144-block settlement, container and CI, two-provider TLS/WSS seeds, explorer, and storage/recovery evidence are deployed; block 1 synchronized across three nodes. Native ARM CI and the multi-day soak remain. |
 | **5. Marketplace and pilots** | ⬜ Planned | Buyer/provider scheduling, pricing, privacy, SLA design, and measured research pilots. |
 | **6. Mainnet** | ⬜ Not scheduled | Requires successful public soak tests, audited economics, operations, governance, and security review. |
 

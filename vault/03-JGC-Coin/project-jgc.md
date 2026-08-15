@@ -1,6 +1,6 @@
 ---
 name: project-jgc
-description: "Junction Generator Coin — local/private PoUC blockchain, post-quantum node, consensus-committed historical audits"
+description: "Junction Generator Coin — early public JGTC pilot, post-quantum node, consensus-committed historical audits"
 metadata: 
   node_type: memory
   type: project
@@ -8,8 +8,8 @@ metadata:
 ---
 
 JGC is a cryptocurrency with PoUC (Proof of Useful Computation) consensus. The
-protocol and local mining path are implemented; current work is hardening
-verification and public-network preconditions.
+protocol and public testnet path are implemented; current work is collecting
+multi-machine soak evidence and hardening verification for valuable use.
 
 **Codebase:** `packages/jgc-node` (TypeScript consensus/network + Rust→WASM ZK verifier at `packages/jgc-node/rust/`). Branch: `add-jgc-node` (now merged into `junctioning`). Build: `npm run build` (tsc). Run from PowerShell — WSL bash throws fork errors.
 
@@ -46,16 +46,20 @@ first seed; quota, billing safeguards, region, static address, and persistent
 disk must be verified before provisioning. A separate provider or independently
 operated failure domain is still needed for the second seed.
 
-**Next work:** benchmark a local model as an advisory deployment/operations
-copilot, provision the Google Cloud seed, choose the second host, and then add
-TLS/WSS, private monitoring, backups, and adversarial transport tests. The local
-model cannot host a seed or replace durable infrastructure. See
-[[local-model-operations-boundary]].
+**Current status (2026-08-15):** EARLY, VALUELESS PUBLIC JGTC PILOT. Google
+Seed A and independent Fly.io Seed B run Node.js 22.23.2 over WSS. Their old
+`jgc-testnet-v3` state was archived and both were reset onto the frozen,
+zero-premine `jgtc-testnet-v1` genesis. This workstation joined as an ordinary
+participant, and block 1 synchronized across all three nodes. The explorer
+reports height, blocks, health, participation, pending issuance, settlements,
+and balances from canonical state. It never creates or dispenses coins.
 
-**Current status (2026-08-11):** EARLY, VALUELESS TESTNET. Google Seed A is
-reachable over WSS and a fresh external validator/back-checker has joined it;
-Fly.io Seed B, redundant operations, and the multi-machine soak remain
-incomplete. No JGC mainnet has been deployed. The delayed beacon is
+The first block recorded the seed anchor and workstation contributions at equal
+weight. JGTC becomes a spendable output only at 144-block settlement; there is
+no faucet or genesis allocation. The next work is to recruit independent
+runners, observe the first settlement, and complete a multi-day soak with
+restart, seed-loss, hostile-traffic, and recovery evidence. No JGC mainnet has
+been deployed. The delayed beacon is
 implemented; the remaining economic
 gate is a consensus-owned bonded validator registry/stake snapshot. Until that
 exists, verdicts are durable fraud evidence but cannot move funds, reward
