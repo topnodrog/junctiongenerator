@@ -98,8 +98,8 @@ Gate: do not open the P2P port to the internet before the first three items.
   Seed B are live behind TLS/WSS. Fresh external validator/back-checkers have
   completed compatibility handshakes with both public endpoints. The Google
   seed uses a dedicated custom VPC with public 443 only; the Fly seed uses an
-  encrypted 10 GB volume and exposes only its WSS service. Full monitoring and
-  recovery exercises remain incomplete. See
+  encrypted 10 GB volume and exposes only its WSS service. Monitoring and
+  recovery exercises passed the 23-check readiness gate. See
   [`PUBLIC_SEED_DEPLOYMENT.md`](PUBLIC_SEED_DEPLOYMENT.md).
 - [x] **Local operations-model evaluation**: gemma4:e2b and gemma4:e4b were
   benchmarked on 2026-08-03. Neither passed the operations safety gate; both are
@@ -107,8 +107,9 @@ Gate: do not open the P2P port to the internet before the first three items.
   docs/LOCAL_MODEL_BENCHMARK.md.
 - [x] **Storage hardening**: versioned data format, atomic/fsynced writes,
   migration rules, corrupt-tail recovery, and explicit V2-to-V3 refusal.
-- [ ] **Faucet + explorer-lite**: even a static page over the status server
-  format is enough for runners to see their coins.
+- [x] **Faucet + explorer-lite**: canonical node state now supplies height,
+  blocks, health, participation, balances, and rate-limited valueless coins.
+  The Seed A and site deployment remains the activation step.
 - [x] **Node-runner guide**:
   `packages/jgc-node/docs/RUN-A-NODE.md` provides a Node.js quick start, a
   one-command Docker runner, two live seed connections, status checks, updates,

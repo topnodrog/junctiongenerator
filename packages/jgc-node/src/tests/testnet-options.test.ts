@@ -13,6 +13,7 @@ describe("public testnet options", () => {
       advertiseUrl: undefined,
       seeds: [],
       produce: false,
+      participate: false,
       blockIntervalSec: 30,
     });
   });
@@ -27,6 +28,7 @@ describe("public testnet options", () => {
       JGC_ADVERTISE_URL: "wss://seed-b.example.test",
       JGC_SEEDS: "wss://seed-a.example.test, wss://seed-c.example.test",
       JGC_PRODUCE: "yes",
+      JGC_PARTICIPATE: "true",
       JGC_BLOCK_INTERVAL_SEC: "45",
     });
 
@@ -39,6 +41,7 @@ describe("public testnet options", () => {
       advertiseUrl: "wss://seed-b.example.test",
       seeds: ["wss://seed-a.example.test", "wss://seed-c.example.test"],
       produce: true,
+      participate: true,
       blockIntervalSec: 45,
     });
   });
@@ -70,6 +73,7 @@ describe("public testnet options", () => {
     ["JGC_P2P_PORT", "70000"],
     ["JGC_STATUS_PORT", "not-a-port"],
     ["JGC_PRODUCE", "sometimes"],
+    ["JGC_PARTICIPATE", "sometimes"],
     ["JGC_BLOCK_INTERVAL_SEC", "0"],
   ])("rejects invalid %s", (name, value) => {
     expect(() => parseTestnetOptions([], { [name]: value })).toThrow();

@@ -1,9 +1,9 @@
 # Junction Generator Next-Steps Plan
 
-**Status:** Execution approved; Phases 1–2 complete. Phase 3 is active. Google
-Seed A and independent Fly.io Seed B are reachable, and external runner
-onboarding is documented; monitoring, recovery checks, and the multi-host soak
-remain incomplete.
+**Status:** Execution approved; Phases 1–3 complete. Phase 4 is active. Google
+Seed A and independent Fly.io Seed B are reachable, operational readiness
+passed 23/23, and the explorer/faucet/participation upgrade is ready to deploy.
+The multi-host soak remains incomplete.
 
 **Prepared:** 2026-07-30 · **Last updated:** 2026-08-13
 
@@ -17,8 +17,8 @@ marketplace, or promotional features.
 Repository truth/security, versioned crash-safe storage, the local-model
 evaluation, Google Seed A deployment, and independent Fly.io Seed B deployment
 are complete. Neither installed model passed the operations safety gate. The
-active milestone is Phase 3: complete monitoring and recovery exercises for
-the live two-provider TLS/WSS edge.
+active milestone is Phase 4: deploy runner visibility and signed pilot
+participation, then begin the multi-host soak.
 
 ## Verified starting point
 
@@ -221,9 +221,9 @@ Exit criteria:
 
 Planned work:
 
-1. Build an explorer-lite view for height, recent blocks, network identity,
+1. [x] Build an explorer-lite view for height, recent blocks, network identity,
    producer state, and peer-safe aggregate health.
-2. Add a rate-limited testnet faucet service with clear valueless-testnet
+2. [x] Add a rate-limited testnet faucet service with clear valueless-testnet
    labeling and abuse controls.
 3. [x] Publish a node-runner guide with supported platforms, hardware
    expectations, Node.js and Docker quick starts, live-seed status checks,
@@ -231,6 +231,14 @@ Planned work:
    required for the current validator/back-checker role.
 4. Add native ARM64 CI or clearly document it as unsupported until verified.
 5. Publish a release artifact with checksums and a concise changelog.
+
+Implementation update (2026-08-14): the explorer reads canonical node state,
+the faucet broadcasts real testnet transactions with address/IP cooldowns, and
+participant mode persists an ML-DSA identity whose equal-weight pilot receipts
+are committed to blocks and settled by the existing epoch rules. Seed A can run
+one anchor participant so the chain advances without external runners. These
+receipts record testnet presence, not useful-compute proof. Deployment to Seed A
+and the public site is the remaining activation step.
 
 Exit criteria:
 
@@ -311,7 +319,7 @@ Implementation should begin only after the owner approves each checkpoint:
 
 ## Next task
 
-Verify monitoring, snapshots, billing alerts, and recovery evidence for both
-live seeds. Then run the multi-host soak and confirm both private status
-endpoints continue to report the same `jgc-testnet-v3` height and at least one
-peer through restarts and simulated seed loss.
+Deploy the explorer/faucet/anchor-participant upgrade to Seed A and the public
+site. Confirm the chain advances, faucet transactions confirm, balances agree,
+and Seed B follows the same height. Then begin the multi-host soak with external
+participant identities and simulated seed loss.

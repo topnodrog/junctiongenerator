@@ -47,9 +47,9 @@ The node is early, valueless testnet software. Two independent bootstrap seeds
 are reachable: Google Seed A at `wss://seed-a.junctiongenerator.net` and Fly.io
 Seed B at `wss://jgc-testnet-seed-b.fly.dev`. A fresh external runner completed
 the JGC compatibility handshake with Seed B on 2026-08-13. No JGC mainnet has
-been deployed. Runner-facing faucet and explorer services, recovery exercises,
-monitoring, and a multi-day real-network soak remain gates. Rewards and slashing
-remain disabled until mandatory bonded-validator activation and an
+been deployed. Runner-facing explorer, faucet, and signed pilot participation
+are implemented; deployment and a multi-day real-network soak remain gates.
+Pilot coins are valueless. Production rewards and slashing remain disabled until mandatory bonded-validator activation and an
 economics/security review.
 
 To run a node, follow
@@ -121,10 +121,10 @@ material, not the current launch strategy.
 The active plan is [`docs/NEXT_STEPS_PLAN.md`](docs/NEXT_STEPS_PLAN.md). Work is
 sequenced behind explicit gates:
 
-1. finish monitoring, alerting, and recovery checks for both live seeds;
-2. add explorer-lite and a rate-limited testnet faucet;
-3. recruit a small group of external node runners using the two-seed guide;
-4. complete a closed multi-machine soak before any broad public announcement.
+1. deploy the explorer, faucet, and anchor participant upgrade to Seed A;
+2. recruit a small group of external participant nodes using the two-seed guide;
+3. complete a closed multi-machine soak before any broad public announcement;
+4. publish only the participation and reliability claims supported by that evidence.
 
 The local model can help draft configuration, run checks, summarize monitoring,
 and support incident response. It cannot replace the public hosts, persistent
@@ -167,7 +167,7 @@ batch-preparation endpoint and does not submit an on-chain transaction.
 - Consensus V3 and local/container testnet foundation complete
 - Storage hardening and local operations-model evaluation complete; Google
   Seed A and independent Fly.io Seed B are live
-- Explorer/faucet/onboarding and multi-day soak follow
+- Explorer/faucet/participation is ready; deployment and multi-day soak follow
 
 ---
 

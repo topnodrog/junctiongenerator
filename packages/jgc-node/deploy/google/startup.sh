@@ -60,6 +60,7 @@ docker run --detach \
   --env JGC_ADVERTISE_URL="wss://$ADVERTISE_HOST" \
   --env JGC_SEEDS="$SEED_URL" \
   --env JGC_PRODUCE=true \
+  --env JGC_PARTICIPATE=true \
   "$IMAGE_TAG"
 
 mkdir -p /etc/jgc /var/lib/caddy/data /var/lib/caddy/config
@@ -73,6 +74,20 @@ $ADVERTISE_HOST {
 
   handle /healthz {
     respond "ok" 200
+  }
+
+  # Public, deliberately narrow explorer/faucet surface. The operator-only
+  # /status endpoint is not routed and remains reachable only on loopback/IAP.
+  handle /explorer {
+    reverse_proxy 127.0.0.1:7777
+  }
+
+  handle /balance {
+    reverse_proxy 127.0.0.1:7777
+  }
+
+  handle /faucet {
+    reverse_proxy 127.0.0.1:7777
   }
 
   reverse_proxy 127.0.0.1:19444

@@ -19,9 +19,12 @@ provider-independent `wss://jgc-testnet-seed-b.fly.dev` hostname. Each dials
 the other continuously. The status service remains private on both machines.
 Only the WebSocket edge on TCP 443 is public.
 
-The producer will remain healthy but wait at the genesis height until it
-receives enough signed compute contributions. Do not deploy
-`compose.smoke.yml` or the smoke contributor to make the public chain move.
+Seed A runs the designated producer and one persistent anchor participant. The
+anchor submits an equal-weight, signed pilot receipt so the chain continues
+when no external runner is online. External `testnet:participate` nodes are
+recorded alongside it and share valueless epoch payouts. These pilot receipts
+record presence; they are not proof of useful computation. Do not deploy
+`compose.smoke.yml` or the CI-only smoke contributor on the public chain.
 
 ## Expected pilot cost
 
@@ -71,6 +74,16 @@ startup output and then verify:
 gcloud compute instances get-serial-port-output jgc-seed-a --zone us-east1-b
 curl.exe --fail https://seed-a.junctiongenerator.net/healthz
 ```
+
+Seed A also publishes three narrow HTTP endpoints through Caddy while keeping
+the full operator status endpoint private:
+
+- `GET /explorer` — height, recent blocks, aggregate health, and epoch participants;
+- `GET /balance?address=1QGC...` — public UTXO balance for one address;
+- `POST /faucet` — one rate-limited, valueless 100 JGC transfer per address per day.
+
+The faucet ledger and anchor identity live on the persistent data disk. Never
+route `/status` through Caddy or expose port 7777 directly.
 
 ## 2. Provision Fly Seed B
 

@@ -15,7 +15,9 @@ npm run testnet:public
 ```
 
 This starts a safe outbound-only validator/back-checker and connects it to the
-live Seed A pilot. Running a node does not currently earn coins or rewards.
+live two-seed pilot. To add signed participation records and receive valueless
+testnet coins, use `npm run testnet:participate`. Test coins have no cash value
+and do not promise future compensation.
 
 ## Requirements
 
@@ -43,6 +45,18 @@ The public pilot has two reachable bootstrap peers: Google Seed A at
 `wss://seed-a.junctiongenerator.net` and Fly.io Seed B at
 `wss://jgc-testnet-seed-b.fly.dev`. The `testnet:public` command builds before
 starting and dials both seeds.
+
+Run an outbound-only participant with a persistent post-quantum identity:
+
+```text
+npm run testnet:participate
+```
+
+Participant mode submits one equal-weight signed pilot receipt per block slot.
+Receipts and epoch payouts are recorded on-chain, but the current simnet receipt
+is evidence of testnet presence—not proof of useful computation. Back up
+`data/testnet/participant-identity.json` and never reuse it on a valuable
+network. Inspect the chain at `https://junctiongenerator.net/testnet`.
 
 Run a standalone node without contacting a public seed:
 
