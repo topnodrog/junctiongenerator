@@ -6,7 +6,7 @@
 > [`../docs/RUN-A-NODE.md`](../docs/RUN-A-NODE.md); this document is for seed
 > operators.
 
-The target deployment keeps two `jgc-testnet-v3` nodes online in separate
+The target deployment keeps two `jgtc-testnet-v1` nodes online in separate
 provider failure domains:
 
 | Seed | Provider | Region | Role | Persistent data |
@@ -19,7 +19,8 @@ provider-independent `wss://jgc-testnet-seed-b.fly.dev` hostname. Each dials
 the other continuously. The status service remains private on both machines.
 Only the WebSocket edge on TCP 443 is public.
 
-Seed A runs the designated producer and one persistent anchor participant. The
+Seed A runs the designated producer at the JGC ten-minute target and one
+persistent anchor participant. The
 anchor submits an equal-weight, signed pilot receipt so the chain continues
 when no external runner is online. External `testnet:participate` nodes are
 recorded alongside it and share valueless epoch payouts. These pilot receipts
@@ -75,15 +76,15 @@ gcloud compute instances get-serial-port-output jgc-seed-a --zone us-east1-b
 curl.exe --fail https://seed-a.junctiongenerator.net/healthz
 ```
 
-Seed A also publishes three narrow HTTP endpoints through Caddy while keeping
+Seed A also publishes two narrow read-only HTTP endpoints through Caddy while keeping
 the full operator status endpoint private:
 
-- `GET /explorer` — height, recent blocks, aggregate health, and epoch participants;
-- `GET /balance?address=1QGC...` — public UTXO balance for one address;
-- `POST /faucet` — one rate-limited, valueless 100 JGC transfer per address per day.
+- `GET /explorer` — height, recent blocks, aggregate health, JGTC issuance, and epoch participants;
+- `GET /balance?address=1QGC...` — public JGTC UTXO balance for one address.
 
-The faucet ledger and anchor identity live on the persistent data disk. Never
-route `/status` through Caddy or expose port 7777 directly.
+JGTC has no premine or genesis faucet; participants receive newly created test
+coins only through the 144-block settlement. The anchor identity lives on the
+persistent data disk. Never route `/status` through Caddy or expose port 7777 directly.
 
 ## 2. Provision Fly Seed B
 
@@ -109,7 +110,7 @@ gcloud compute ssh jgc-seed-a --zone us-east1-b --tunnel-through-iap --command "
 flyctl ssh console --app jgc-testnet-seed-b --command "node -e fetch(String.fromCharCode(104,116,116,112,58,47,47,49,50,55,46,48,46,48,46,49,58,55,55,55,55,47,115,116,97,116,117,115)).then(r=>r.text()).then(console.log)"
 ```
 
-Both responses must report `network: jgc-testnet-v3` and `peerCount` of at
+Both responses must report `network: jgtc-testnet-v1` and `peerCount` of at
 least one. The heights must agree. Seed A alone must report
 `producer.enabled: true`.
 
@@ -149,6 +150,31 @@ update the instance metadata to a new reviewed commit and rerun the startup
 script, then deploy the same commit to Fly. Upgrade the back-checker first,
 confirm compatibility, then upgrade the producer. Follow
 `../docs/STORAGE-RECOVERY.md` before restoring or resetting either data volume.
+
+### Coordinated `jgtc-testnet-v1` reset
+
+The zero-premine JGTC genesis is intentionally incompatible with the former
+`jgc-testnet-v3` data. Reset in this order so the producer is the last old node
+to stop:
+
+1. deploy the reviewed JGTC commit to Seed B with
+   `JGC_RESET_TO_GENESIS=738588b974ed62ed52e74a946371bc8b6d84508b6c38203f56ada38fce4bab36`;
+   its startup guard moves chain-specific files into `/data/archive/` before
+   opening storage and preserves `participant-identity.json`;
+2. deploy the same commit and reset token to Seed A. Its startup guard makes the
+   same recoverable archive under `/var/lib/jgc/archive/` while retaining the
+   anchor participant identity;
+3. point Seed A's `jgc-repository-ref` metadata at the same reviewed commit,
+   update its startup script, and rerun it;
+4. verify both private status responses report `jgtc-testnet-v1`, genesis
+   `738588b974ed62ed52e74a946371bc8b6d84508b6c38203f56ada38fce4bab36`,
+   height `0`, and the expected producer roles before accepting block 1;
+5. keep the archives and `.reset-to-<hash>.done` markers until the new chain
+   passes restart and settlement checks. The marker makes the reset idempotent.
+
+The new genesis time is 2026-08-15 04:00:00 UTC. Seed A targets one block every
+600 seconds; the first settlement is height 143 because genesis is epoch slot
+zero. No command in this reset creates or allocates JGTC.
 
 Deleting a VM or app does not necessarily delete its address, disk, volume, or
 snapshots. Inventory those separately during teardown to avoid continuing

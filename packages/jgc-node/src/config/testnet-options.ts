@@ -98,7 +98,7 @@ export function parseTestnetOptions(
     ),
     blockIntervalSec: positiveSeconds(
       optionValue(argv, "--block-interval", env, "JGC_BLOCK_INTERVAL_SEC"),
-      30,
+      TESTNET_NETWORK.targetBlockIntervalSec,
       "--block-interval/JGC_BLOCK_INTERVAL_SEC",
     ),
   };

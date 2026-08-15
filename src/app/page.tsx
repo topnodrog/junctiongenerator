@@ -70,7 +70,7 @@ const STATUS_ITEMS = [
   { state: "working", title: "Local inference", body: "Gemma runs through Ollama on a contributor's own machine." },
   { state: "working", title: "Post-quantum node path", body: "ML-DSA signatures, SHA3-256 checksums, and transparent proof foundations are active in the private node." },
   { state: "working", title: "Historical audit consensus", body: "Signed verdict evidence survives mining, peer sync, restart, and chain reorganization." },
-  { state: "working", title: "Public testnet pilot", body: "Two monitored TLS/WSS seeds are live; explorer, faucet, and signed pilot participation are entering the closed soak." },
+  { state: "working", title: "Public JGTC testnet", body: "Two monitored TLS/WSS seeds use zero-premine epoch issuance; the explorer and signed participation path are entering the closed soak." },
   { state: "research", title: "Cross-hardware verification", body: "The central research problem: proving valid work across different processors, runtimes, and quantizations." },
   { state: "later", title: "Economic enforcement", body: "Rewards and slashing stay off until validator identity, bonds, and stake snapshots belong to consensus." },
 ];

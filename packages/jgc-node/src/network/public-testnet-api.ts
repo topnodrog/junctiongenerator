@@ -1,21 +1,12 @@
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "fs";
-import { dirname } from "path";
 import { hashBlockHeader } from "../consensus/block.js";
 import { COINBASE_MATURITY } from "../consensus/utxo.js";
-import { decodeDifficultyBits } from "../consensus/emission.js";
-import {
-  TESTNET_FAUCET_ADDRESS,
-  TESTNET_NETWORK,
-  testnetFaucetKeyPair,
-} from "../config/networks.js";
+import { BLOCKS_PER_EPOCH, decodeDifficultyBits } from "../consensus/emission.js";
+import { TESTNET_NETWORK } from "../config/networks.js";
 import { quantumScriptPubKeyFromAddress } from "../crypto/pq.js";
-import { formatJGC, parseJGC, Wallet } from "../wallet/wallet.js";
+import { formatJGC } from "../wallet/wallet.js";
 import type { DesignatedBlockProducer } from "./designated-producer.js";
 import type { JGCNode } from "./node.js";
 
-export const PUBLIC_FAUCET_AMOUNT_JGC = "100";
-export const PUBLIC_FAUCET_COOLDOWN_MS = 24 * 60 * 60 * 1_000;
-const PUBLIC_FAUCET_FEE_JGC = "0.01";
 const MAX_RECENT_BLOCKS = 12;
 
 export interface ExplorerBlock {
@@ -35,13 +26,15 @@ export interface ExplorerParticipant {
   address: string;
   participationWeight: number;
   sharePercent: number;
-  projectedJGC: string;
+  projectedJGTC: string;
 }
 
 export interface ExplorerSnapshot {
   capturedAt: string;
   network: string;
   proofMode: string;
+  currencySymbol: "JGTC";
+  targetBlockIntervalSec: number;
   genesisHash: string;
   height: number;
   tipHash: string;
@@ -55,43 +48,27 @@ export interface ExplorerSnapshot {
     index: number;
     blockIndex: number;
     totalParticipationWeight: number;
-    pendingRewardPoolJGC: string;
+    pendingRewardPoolJGTC: string;
+    blocksRemaining: number;
+    nextSettlementHeight: number;
     participants: ExplorerParticipant[];
   };
-  faucet: {
-    address: string;
-    amountJGC: string;
-    cooldownHours: number;
+  issuance: {
+    preminedJGTC: "0";
+    genesisSpendableSupplyJGTC: "0";
+    settlementIntervalBlocks: number;
   };
   recentBlocks: ExplorerBlock[];
 }
 
 export interface AddressBalance {
   address: string;
-  balanceJGC: string;
-  pendingJGC: string;
-  totalJGC: string;
+  currencySymbol: "JGTC";
+  balanceJGTC: string;
+  pendingJGTC: string;
+  totalJGTC: string;
   utxoCount: number;
   asOfHeight: number;
-}
-
-export interface FaucetClaim {
-  address: string;
-  amountJGC: string;
-  txid: string;
-  status: "pending";
-  message: string;
-}
-
-interface FaucetLedgerEntry {
-  address: string;
-  txid: string;
-  claimedAt: number;
-}
-
-interface FaucetLedger {
-  version: 1;
-  claims: FaucetLedgerEntry[];
 }
 
 function moneyForAddress(node: JGCNode, address: string): AddressBalance {
@@ -108,16 +85,17 @@ function moneyForAddress(node: JGCNode, address: string): AddressBalance {
   }
   return {
     address,
-    balanceJGC: formatJGC(spendable),
-    pendingJGC: formatJGC(pending),
-    totalJGC: formatJGC(spendable + pending),
+    currencySymbol: "JGTC",
+    balanceJGTC: formatJGC(spendable),
+    pendingJGTC: formatJGC(pending),
+    totalJGTC: formatJGC(spendable + pending),
     utxoCount,
     asOfHeight: height,
   };
 }
 
 export function addressBalance(node: JGCNode, address: string): AddressBalance {
-  if (!/^1QGC[0-9a-f]{40}$/.test(address)) throw new Error("invalid JGC testnet address");
+  if (!/^1QGC[0-9a-f]{40}$/.test(address)) throw new Error("invalid JGTC testnet address");
   return moneyForAddress(node, address);
 }
 
@@ -135,7 +113,7 @@ export function explorerSnapshot(
       address,
       participationWeight: weight,
       sharePercent: total === 0 ? 0 : (weight / total) * 100,
-      projectedJGC: total === 0 ? "0" : formatJGC((pool * BigInt(weight)) / BigInt(total)),
+      projectedJGTC: total === 0 ? "0" : formatJGC((pool * BigInt(weight)) / BigInt(total)),
     }))
     .sort((a, b) => b.participationWeight - a.participationWeight || a.address.localeCompare(b.address));
 
@@ -171,6 +149,8 @@ export function explorerSnapshot(
     capturedAt: new Date().toISOString(),
     network: TESTNET_NETWORK.chainId,
     proofMode: TESTNET_NETWORK.proofMode,
+    currencySymbol: "JGTC",
+    targetBlockIntervalSec: TESTNET_NETWORK.targetBlockIntervalSec,
     genesisHash: hashBlockHeader(node.getBlockAtHeight(0)!.header),
     height: chain.tipHeight,
     tipHash: chain.tipHash,
@@ -181,91 +161,19 @@ export function explorerSnapshot(
     health,
     producer: producerStatus,
     epoch: {
-      index: Math.floor(epoch.epochStartHeight / 144),
+      index: Math.floor(epoch.epochStartHeight / BLOCKS_PER_EPOCH),
       blockIndex: epoch.epochBlockIndex,
       totalParticipationWeight: total,
-      pendingRewardPoolJGC: formatJGC(pool),
+      pendingRewardPoolJGTC: formatJGC(pool),
+      blocksRemaining: BLOCKS_PER_EPOCH - epoch.epochBlockIndex,
+      nextSettlementHeight: chain.tipHeight + (BLOCKS_PER_EPOCH - epoch.epochBlockIndex),
       participants,
     },
-    faucet: {
-      address: TESTNET_FAUCET_ADDRESS,
-      amountJGC: PUBLIC_FAUCET_AMOUNT_JGC,
-      cooldownHours: PUBLIC_FAUCET_COOLDOWN_MS / 3_600_000,
+    issuance: {
+      preminedJGTC: "0",
+      genesisSpendableSupplyJGTC: "0",
+      settlementIntervalBlocks: BLOCKS_PER_EPOCH,
     },
     recentBlocks,
   };
-}
-
-export class TestnetFaucet {
-  private readonly wallet = Wallet.create();
-  private readonly claims = new Map<string, FaucetLedgerEntry>();
-  private claiming = false;
-
-  constructor(
-    private readonly node: JGCNode,
-    private readonly ledgerPath: string,
-  ) {
-    const key = testnetFaucetKeyPair();
-    this.wallet.importKey("testnet-faucet", key.privateKey, key.publicKey);
-    this.load();
-  }
-
-  private load(): void {
-    if (!existsSync(this.ledgerPath)) return;
-    const ledger = JSON.parse(readFileSync(this.ledgerPath, "utf8")) as FaucetLedger;
-    if (ledger.version !== 1 || !Array.isArray(ledger.claims)) {
-      throw new Error("unsupported faucet ledger format");
-    }
-    for (const claim of ledger.claims) this.claims.set(claim.address, claim);
-  }
-
-  private persist(): void {
-    mkdirSync(dirname(this.ledgerPath), { recursive: true });
-    const temp = `${this.ledgerPath}.tmp`;
-    const ledger: FaucetLedger = { version: 1, claims: [...this.claims.values()] };
-    writeFileSync(temp, `${JSON.stringify(ledger, null, 2)}\n`, { encoding: "utf8", mode: 0o600 });
-    renameSync(temp, this.ledgerPath);
-  }
-
-  async claim(address: string): Promise<FaucetClaim> {
-    if (!/^1QGC[0-9a-f]{40}$/.test(address)) throw new Error("invalid JGC testnet address");
-    if (this.claiming) throw new Error("faucet is processing another request; retry shortly");
-    const previous = this.claims.get(address);
-    if (previous && Date.now() - previous.claimedAt < PUBLIC_FAUCET_COOLDOWN_MS) {
-      throw new Error("this address has already used the faucet in the last 24 hours");
-    }
-
-    const faucetScript = quantumScriptPubKeyFromAddress(TESTNET_FAUCET_ADDRESS);
-    const hasPendingFaucetSpend = this.node.getMempool().some((transaction) =>
-      transaction.inputs.some((input) =>
-        this.node.getUTXOSet().get(input.prevOut.txid, input.prevOut.vout)?.scriptPubKey === faucetScript));
-    if (hasPendingFaucetSpend) {
-      throw new Error("a faucet transfer is waiting for the next block; retry after it confirms");
-    }
-
-    this.claiming = true;
-    try {
-      const built = this.wallet.buildSpend({
-        fromLabel: "testnet-faucet",
-        toAddress: address,
-        amount: parseJGC(PUBLIC_FAUCET_AMOUNT_JGC),
-        fee: parseJGC(PUBLIC_FAUCET_FEE_JGC),
-        utxo: this.node.getUTXOSet(),
-        currentHeight: this.node.getChainInfo().tipHeight,
-      });
-      const accepted = await this.node.broadcastTransaction(built.tx);
-      if (!accepted.ok) throw new Error(accepted.error ?? "faucet transaction rejected");
-      this.claims.set(address, { address, txid: built.txid, claimedAt: Date.now() });
-      this.persist();
-      return {
-        address,
-        amountJGC: PUBLIC_FAUCET_AMOUNT_JGC,
-        txid: built.txid,
-        status: "pending",
-        message: "Valueless test JGC queued. It becomes visible after the next block.",
-      };
-    } finally {
-      this.claiming = false;
-    }
-  }
 }

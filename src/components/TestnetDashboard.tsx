@@ -9,7 +9,7 @@ interface ExplorerParticipant {
   address: string;
   participationWeight: number;
   sharePercent: number;
-  projectedJGC: string;
+  projectedJGTC: string;
 }
 interface ExplorerBlock {
   height: number;
@@ -24,6 +24,8 @@ interface ExplorerSnapshot {
   capturedAt: string;
   network: string;
   proofMode: string;
+  currencySymbol: "JGTC";
+  targetBlockIntervalSec: number;
   genesisHash: string;
   height: number;
   tipHash: string;
@@ -42,18 +44,25 @@ interface ExplorerSnapshot {
     index: number;
     blockIndex: number;
     totalParticipationWeight: number;
-    pendingRewardPoolJGC: string;
+    pendingRewardPoolJGTC: string;
+    blocksRemaining: number;
+    nextSettlementHeight: number;
     participants: ExplorerParticipant[];
   };
-  faucet: { amountJGC: string; cooldownHours: number };
+  issuance: {
+    preminedJGTC: "0";
+    genesisSpendableSupplyJGTC: "0";
+    settlementIntervalBlocks: number;
+  };
   recentBlocks: ExplorerBlock[];
 }
 
 interface AddressBalance {
   address: string;
-  balanceJGC: string;
-  pendingJGC: string;
-  totalJGC: string;
+  currencySymbol: "JGTC";
+  balanceJGTC: string;
+  pendingJGTC: string;
+  totalJGTC: string;
   asOfHeight: number;
 }
 
@@ -74,7 +83,7 @@ export default function TestnetDashboard() {
   const [networkError, setNetworkError] = useState("");
   const [address, setAddress] = useState("");
   const [balance, setBalance] = useState<AddressBalance | null>(null);
-  const [action, setAction] = useState<"idle" | "balance" | "faucet">("idle");
+  const [action, setAction] = useState<"idle" | "balance">("idle");
   const [message, setMessage] = useState("");
 
   const refresh = useCallback(async () => {
@@ -113,26 +122,6 @@ export default function TestnetDashboard() {
     }
   }
 
-  async function requestCoins() {
-    setAction("faucet");
-    setMessage("");
-    try {
-      const response = await fetch(`${API_BASE}/faucet`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ address: address.trim() }),
-      });
-      const body = await response.json() as { message?: string; error?: string; txid?: string };
-      if (!response.ok) throw new Error(body.error || "Faucet request failed.");
-      setMessage(`${body.message} Transaction ${short(body.txid ?? "")}`);
-      await refresh();
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Faucet request failed.");
-    } finally {
-      setAction("idle");
-    }
-  }
-
   const healthLabel = snapshot?.health === "healthy"
     ? "Producing blocks"
     : snapshot?.health === "waiting"
@@ -147,7 +136,7 @@ export default function TestnetDashboard() {
         <article><span>Block height</span><strong>{snapshot ? snapshot.height.toLocaleString() : "—"}</strong><small>{snapshot ? short(snapshot.tipHash) : "Awaiting live data"}</small></article>
         <article><span>Network health</span><strong className={`jg-health-${snapshot?.health ?? "unknown"}`}>{healthLabel}</strong><small>{snapshot ? `${snapshot.peerCount} connected peer${snapshot.peerCount === 1 ? "" : "s"}` : networkError}</small></article>
         <article><span>Current epoch</span><strong>{snapshot ? `${snapshot.epoch.blockIndex} / 144` : "—"}</strong><small>{snapshot ? `${snapshot.epoch.participants.length} recorded participant${snapshot.epoch.participants.length === 1 ? "" : "s"}` : "No live epoch yet"}</small></article>
-        <article><span>Test reward pool</span><strong>{snapshot ? decimal(snapshot.epoch.pendingRewardPoolJGC) : "—"} JGC</strong><small>Valueless test coins only</small></article>
+        <article><span>Unsettled emission</span><strong>{snapshot ? decimal(snapshot.epoch.pendingRewardPoolJGTC) : "—"} JGTC</strong><small>{snapshot ? `${snapshot.epoch.blocksRemaining} blocks until settlement` : "Zero-premine test coins"}</small></article>
       </section>
 
       <section className="jg-testnet-grid">
@@ -155,13 +144,13 @@ export default function TestnetDashboard() {
           <div className="jg-testnet-card-heading"><div><span>On-chain participation</span><h2>Who is helping this epoch</h2></div><small>Equal pilot weight per active block</small></div>
           {snapshot?.epoch.participants.length ? (
             <div className="jg-testnet-table" role="table" aria-label="Current epoch participants">
-              <div className="jg-testnet-table-row jg-testnet-table-head" role="row"><span>Address</span><span>Blocks / weight</span><span>Share</span><span>Projected test JGC</span></div>
+              <div className="jg-testnet-table-row jg-testnet-table-head" role="row"><span>Address</span><span>Blocks / weight</span><span>Share</span><span>Projected JGTC</span></div>
               {snapshot.epoch.participants.map((participant) => (
                 <div className="jg-testnet-table-row" role="row" key={participant.address}>
                   <code title={participant.address}>{short(participant.address, 12, 8)}</code>
                   <span>{participant.participationWeight.toLocaleString()}</span>
                   <span>{participant.sharePercent.toFixed(2)}%</span>
-                  <span>{decimal(participant.projectedJGC)} JGC</span>
+                  <span>{decimal(participant.projectedJGTC)} JGTC</span>
                 </div>
               ))}
             </div>
@@ -169,13 +158,13 @@ export default function TestnetDashboard() {
         </article>
 
         <article className="jg-testnet-card jg-testnet-wallet">
-          <div className="jg-testnet-card-heading"><div><span>Wallet and faucet</span><h2>Fund a test wallet</h2></div></div>
-          <p>Enter the <code>1QGC…</code> address printed by your participant node. Each address can request {snapshot?.faucet.amountJGC ?? "100"} valueless test JGC every {snapshot?.faucet.cooldownHours ?? 24} hours.</p>
+          <div className="jg-testnet-card-heading"><div><span>Participant wallet</span><h2>Track earned test coins</h2></div></div>
+          <p>JGTC has no premine and no genesis faucet. New test coins become outputs only at each 144-block settlement and are paid directly to recorded participant addresses.</p>
           <form onSubmit={lookupBalance}>
-            <label>JGC testnet address<input required value={address} onChange={(event) => setAddress(event.target.value)} placeholder="1QGC…" pattern="1QGC[0-9a-f]{40}" /></label>
-            <div><button className="jg-button jg-button-secondary" disabled={action !== "idle"}>{action === "balance" ? "Looking up…" : "Check balance"}</button><button type="button" className="jg-button jg-button-primary" onClick={requestCoins} disabled={action !== "idle" || !address}>Request test JGC</button></div>
+            <label>JGTC participant address<input required value={address} onChange={(event) => setAddress(event.target.value)} placeholder="1QGC…" pattern="1QGC[0-9a-f]{40}" /></label>
+            <div><button className="jg-button jg-button-secondary" disabled={action !== "idle"}>{action === "balance" ? "Looking up…" : "Check balance"}</button></div>
           </form>
-          {balance && <div className="jg-testnet-balance"><div><span>Spendable</span><strong>{decimal(balance.balanceJGC)} JGC</strong></div><div><span>Pending maturity</span><strong>{decimal(balance.pendingJGC)} JGC</strong></div><small>Recorded at height {balance.asOfHeight}</small></div>}
+          {balance && <div className="jg-testnet-balance"><div><span>Spendable</span><strong>{decimal(balance.balanceJGTC)} JGTC</strong></div><div><span>Pending maturity</span><strong>{decimal(balance.pendingJGTC)} JGTC</strong></div><small>Recorded at height {balance.asOfHeight}</small></div>}
           {message && <p className="jg-testnet-message" role="status">{message}</p>}
         </article>
       </section>
@@ -193,11 +182,11 @@ export default function TestnetDashboard() {
       </section>
 
       <section className="jg-testnet-join">
-        <div><span className="jg-eyebrow">Join the running chain</span><h2>Your uptime can become a public record.</h2><p>The participant command creates a local post-quantum identity, connects to both seeds, and submits one signed pilot receipt per block. Those receipts determine the valueless epoch payout and provide an auditable participation history.</p></div>
+        <div><span className="jg-eyebrow">Join the running chain</span><h2>Your participation becomes a public record.</h2><p>The participant command creates a local post-quantum identity, connects to both seeds, and submits one signed testnet receipt per block. At the 144-block boundary, the settlement transaction creates and distributes JGTC according to the recorded shares.</p></div>
         <div><code>cd packages/jgc-node</code><code>npm ci</code><code>npm run testnet:participate</code><small>Back up <b>data/testnet/participant-identity.json</b>. It proves control of your testnet participation address. Never reuse it on a valuable network.</small></div>
       </section>
 
-      <p className="jg-testnet-disclaimer">Pilot receipts prove that a specific testnet identity signed and joined a block slot. They do not yet prove useful computation, have no cash value, and do not create a promise of future payment. They establish the evidence needed for transparent compensation decisions.</p>
+      <p className="jg-testnet-disclaimer">JGTC follows the JGC monetary path: zero premine, ten-minute block targets, 144-block settlement, coinbase maturity, and proportional issuance. JGTC has no cash value. The current testnet proof adapter records signed participation but is not yet production-sound proof of useful computation.</p>
     </div>
   );
 }

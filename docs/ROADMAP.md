@@ -87,9 +87,9 @@ Gate: do not open the P2P port to the internet before the first three items.
   reject every compatibility mismatch before exchanging chain data.
 - [x] **Persistent block producer**: a designated producer assembles and
   broadcasts blocks continuously, survives restart, and exposes health state.
-- [x] **Network-aware wallet + faucet**: mainnet-magic assumptions are removed,
-  test accounts can be funded from the testnet-only genesis allocation before
-  the first epoch payout matures, with safe testnet send/receive commands.
+- [x] **Network-aware wallet + JGTC issuance**: mainnet-magic assumptions are
+  removed, genesis has zero spendable supply, and test coins are created only
+  by the same 144-block settlement path used by JGC monetary consensus.
 - [x] **Public node packaging and CI foundation**: a two-node container preset,
   pinned Node/Rust/WASM toolchains, Windows/Linux/macOS builds, Node 20/22, and
   deterministic consensus-vector checks. Native ARM execution remains an
@@ -107,9 +107,9 @@ Gate: do not open the P2P port to the internet before the first three items.
   docs/LOCAL_MODEL_BENCHMARK.md.
 - [x] **Storage hardening**: versioned data format, atomic/fsynced writes,
   migration rules, corrupt-tail recovery, and explicit V2-to-V3 refusal.
-- [x] **Faucet + explorer-lite**: canonical node state now supplies height,
-  blocks, health, participation, balances, and rate-limited valueless coins.
-  The Seed A and site deployment remains the activation step.
+- [x] **JGTC explorer-lite**: canonical node state supplies height, blocks,
+  health, participation, balances, pending issuance, and the next settlement.
+  There is no genesis faucet or premine. Seed reset and site deployment remain.
 - [x] **Node-runner guide**:
   `packages/jgc-node/docs/RUN-A-NODE.md` provides a Node.js quick start, a
   one-command Docker runner, two live seed connections, status checks, updates,

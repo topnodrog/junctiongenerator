@@ -3,16 +3,14 @@ import { mkdtempSync, rmSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 import { TESTNET_NETWORK, createNetworkGenesis } from "../config/networks.js";
-import { quantumGenerateKeyPair } from "../crypto/pq.js";
+import { quantumAddressFromPublicKey, quantumGenerateKeyPair } from "../crypto/pq.js";
 import { DesignatedBlockProducer } from "../network/designated-producer.js";
 import { JGCNode } from "../network/node.js";
 import {
   addressBalance,
   explorerSnapshot,
-  TestnetFaucet,
 } from "../network/public-testnet-api.js";
 import { startStatusServer } from "../network/status-server.js";
-import { Wallet } from "../wallet/wallet.js";
 import {
   loadOrCreateTestnetParticipantIdentity,
   TestnetParticipant,
@@ -45,7 +43,7 @@ afterEach(() => {
   for (const path of tempDirs.splice(0)) rmSync(path, { recursive: true, force: true });
 });
 
-describe("public testnet explorer and faucet", () => {
+describe("public JGTC testnet explorer", () => {
   it("keeps one persistent participation identity across restarts", () => {
     const path = join(tempDir(), "participant.json");
     const first = loadOrCreateTestnetParticipantIdentity(path);
@@ -69,40 +67,31 @@ describe("public testnet explorer and faucet", () => {
     });
   });
 
-  it("derives explorer and faucet balances from canonical chain state", () => {
+  it("reports zero-premine issuance and balances from canonical chain state", () => {
     const testNode = node();
     const producer = new DesignatedBlockProducer(testNode);
     const snapshot = explorerSnapshot(testNode, producer);
 
-    expect(snapshot.network).toBe("jgc-testnet-v3");
+    expect(snapshot.network).toBe("jgtc-testnet-v1");
+    expect(snapshot.currencySymbol).toBe("JGTC");
+    expect(snapshot.targetBlockIntervalSec).toBe(600);
     expect(snapshot.height).toBe(0);
     expect(snapshot.recentBlocks).toHaveLength(1);
     expect(snapshot.recentBlocks[0]?.height).toBe(0);
     expect(snapshot.health).toBe("waiting");
-    expect(addressBalance(testNode, snapshot.faucet.address)).toMatchObject({
-      balanceJGC: "1000000",
-      pendingJGC: "0",
+    expect(snapshot.issuance).toEqual({
+      preminedJGTC: "0",
+      genesisSpendableSupplyJGTC: "0",
+      settlementIntervalBlocks: 144,
+    });
+    expect(snapshot.epoch).toMatchObject({ blocksRemaining: 143, nextSettlementHeight: 143 });
+    const key = quantumGenerateKeyPair("91".repeat(32));
+    expect(addressBalance(testNode, quantumAddressFromPublicKey(key.publicKey))).toMatchObject({
+      currencySymbol: "JGTC",
+      balanceJGTC: "0",
+      pendingJGTC: "0",
       asOfHeight: 0,
     });
-  });
-
-  it("queues a real testnet transaction and persists the faucet cooldown", async () => {
-    const testNode = node();
-    const recipient = Wallet.create();
-    const address = recipient.importKey(
-      "recipient",
-      quantumGenerateKeyPair("91".repeat(32)).privateKey,
-      quantumGenerateKeyPair("91".repeat(32)).publicKey,
-    );
-    const path = join(tempDir(), "faucet.json");
-    const faucet = new TestnetFaucet(testNode, path);
-
-    const claim = await faucet.claim(address);
-    expect(claim).toMatchObject({ address, amountJGC: "100", status: "pending" });
-    expect(testNode.getMempool()).toHaveLength(1);
-
-    const restored = new TestnetFaucet(testNode, path);
-    await expect(restored.claim(address)).rejects.toThrow("last 24 hours");
   });
 
   it("serves only the narrow public routes alongside private status", async () => {
@@ -128,7 +117,6 @@ describe("public testnet explorer and faucet", () => {
       publicApi: {
         explorer: () => explorerSnapshot(testNode, producer),
         balance: (address) => addressBalance(testNode, address),
-        faucet: async () => { throw new Error("disabled in route test"); },
       },
     });
 

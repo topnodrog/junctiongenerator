@@ -45,12 +45,17 @@ Consensus V2, early Consensus V3, and unversioned block stores are deliberately
 unsupported. There is no automatic migration because those development stores
 may use a different genesis or commitment interpretation.
 
-Before starting `jgc-testnet-v3` with an old data directory:
+Before starting `jgtc-testnet-v1` with an old or `jgc-testnet-v3` data directory,
+the public-seed deployment uses an explicit reset token:
 
 1. stop every process using the directory;
-2. archive the directory if it has research value;
-3. start the node with a new empty directory; and
-4. resync or use only the valueless testnet faucet allocation.
+2. set `JGC_RESET_TO_GENESIS` to the reviewed JGTC genesis hash;
+3. start the node, which moves only chain state into `archive/`, preserves
+   `participant-identity.json`, and writes an idempotent reset marker; and
+4. resync and earn valueless JGTC only through the 144-block settlement path.
+
+The node refuses a reset token that does not exactly match its compiled genesis.
+Without the token it retains the normal fail-closed manifest behavior.
 
 Never copy a manifest from another directory to bypass a mismatch.
 

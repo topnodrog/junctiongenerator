@@ -25,7 +25,7 @@ export class DesignatedBlockProducer extends EventEmitter {
 
   constructor(
     private readonly node: JGCNode,
-    intervalSec = 30,
+    intervalSec = 600,
   ) {
     super();
     if (!Number.isInteger(intervalSec) || intervalSec < 1) {

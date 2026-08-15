@@ -2,7 +2,7 @@
 
 **Status:** Execution approved; Phases 1–3 complete. Phase 4 is active. Google
 Seed A and independent Fly.io Seed B are reachable, operational readiness
-passed 23/23, and the explorer/faucet/participation upgrade is ready to deploy.
+passed 23/23, and the zero-premine JGTC explorer/participation upgrade is ready to deploy.
 The multi-host soak remains incomplete.
 
 **Prepared:** 2026-07-30 · **Last updated:** 2026-08-13
@@ -23,7 +23,7 @@ participation, then begin the multi-host soak.
 ## Verified starting point
 
 - Consensus V3, the designated producer, network compatibility checks,
-  testnet wallet/faucet support, container packaging, and the two-node smoke
+  testnet wallet support, container packaging, and the two-node smoke
   test are merged into `main`.
 - Node CI covers Node 20/22, Linux, Windows, macOS, the Rust/WASM verifier, and
   the Docker Compose testnet smoke path.
@@ -113,7 +113,7 @@ Exit criteria:
 
 - A killed node restarts to the last fully committed state.
 - Corruption is detected deterministically and never silently accepted.
-- Incompatible data cannot join `jgc-testnet-v3`.
+- Incompatible data cannot join the active public network identity.
 - Recovery and reset procedures are documented and exercised in CI.
 
 ## Phase 3 — Public seed and transport operations
@@ -223,8 +223,8 @@ Planned work:
 
 1. [x] Build an explorer-lite view for height, recent blocks, network identity,
    producer state, and peer-safe aggregate health.
-2. [x] Add a rate-limited testnet faucet service with clear valueless-testnet
-   labeling and abuse controls.
+2. [x] Use zero-premine JGTC and direct 144-block epoch settlement instead of
+   a genesis-funded faucet. Public balance queries remain read-only.
 3. [x] Publish a node-runner guide with supported platforms, hardware
    expectations, Node.js and Docker quick starts, live-seed status checks,
    upgrades, safe defaults, troubleshooting, and recovery links. Ollama is not
@@ -232,19 +232,21 @@ Planned work:
 4. Add native ARM64 CI or clearly document it as unsupported until verified.
 5. Publish a release artifact with checksums and a concise changelog.
 
-Implementation update (2026-08-14): the explorer reads canonical node state,
-the faucet broadcasts real testnet transactions with address/IP cooldowns, and
-participant mode persists an ML-DSA identity whose equal-weight pilot receipts
+Implementation update (2026-08-15): the explorer reads canonical node state,
+reports JGTC pending issuance and settlement height, and participant mode
+persists an ML-DSA identity whose equal-weight pilot receipts
 are committed to blocks and settled by the existing epoch rules. Seed A can run
 one anchor participant so the chain advances without external runners. These
-receipts record testnet presence, not useful-compute proof. Deployment to Seed A
-and the public site is the remaining activation step.
+receipts record testnet presence, not useful-compute proof. JGTC has a distinct
+zero-value genesis, a ten-minute block target, no faucet allocation, and no
+spendable supply before settlement. Coordinated seed reset and site deployment
+are the remaining activation steps.
 
 Exit criteria:
 
-- A new tester can install, fund a test wallet, sync, and diagnose basic
+- A new tester can install, earn JGTC through participation, sync, and diagnose basic
   failures from public documentation.
-- Faucet and explorer traffic cannot mutate privileged node state.
+- Explorer and balance traffic cannot mutate node state.
 - Supported operating systems and architectures are evidenced by CI.
 
 **Protocol experiment (2026-08-13):** The repository includes a repeatable,
@@ -319,7 +321,7 @@ Implementation should begin only after the owner approves each checkpoint:
 
 ## Next task
 
-Deploy the explorer/faucet/anchor-participant upgrade to Seed A and the public
-site. Confirm the chain advances, faucet transactions confirm, balances agree,
-and Seed B follows the same height. Then begin the multi-host soak with external
+Reset both seeds onto `jgtc-testnet-v1`, deploy the explorer/anchor-participant
+upgrade and public site, then confirm ten-minute block timing, zero premine,
+144-block settlement, balances, and Seed B height convergence. Begin the multi-host soak with external
 participant identities and simulated seed loss.

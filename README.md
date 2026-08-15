@@ -27,14 +27,14 @@ the legacy JGT token on Base.
 
 Current node milestone (2026-08-13):
 
-- Consensus V3 freezes the `jgc-testnet-v3` identity and rejects incompatible
+- Consensus V3 underlies the zero-premine `jgtc-testnet-v1` identity and rejects incompatible
   peers before chain data is exchanged;
 - canonical encodings, bounded integer work, execution profiles, and
   fail-closed verification provide the portability foundation;
 - historical compute is selected through delayed-beacon audit windows and
   verified by ML-DSA-signed committees derived from consensus-owned bonds when
   a bonded roster exists;
-- a persistent designated producer, network-aware wallet/faucet path, and
+- a persistent designated producer, network-aware wallet/explorer path, and
   two-node container topology are implemented;
 - an external runner can join the live two-provider pilot with one npm command
   or a one-command Docker Compose setup;
@@ -47,9 +47,9 @@ The node is early, valueless testnet software. Two independent bootstrap seeds
 are reachable: Google Seed A at `wss://seed-a.junctiongenerator.net` and Fly.io
 Seed B at `wss://jgc-testnet-seed-b.fly.dev`. A fresh external runner completed
 the JGC compatibility handshake with Seed B on 2026-08-13. No JGC mainnet has
-been deployed. Runner-facing explorer, faucet, and signed pilot participation
-are implemented; deployment and a multi-day real-network soak remain gates.
-Pilot coins are valueless. Production rewards and slashing remain disabled until mandatory bonded-validator activation and an
+been deployed. Runner-facing explorer and signed pilot participation are
+implemented with zero-premine JGTC epoch issuance; deployment and a multi-day
+real-network soak remain gates. JGTC is valueless. Production rewards and slashing remain disabled until mandatory bonded-validator activation and an
 economics/security review.
 
 To run a node, follow
@@ -121,7 +121,7 @@ material, not the current launch strategy.
 The active plan is [`docs/NEXT_STEPS_PLAN.md`](docs/NEXT_STEPS_PLAN.md). Work is
 sequenced behind explicit gates:
 
-1. deploy the explorer, faucet, and anchor participant upgrade to Seed A;
+1. reset both seeds onto the zero-premine JGTC genesis and deploy the explorer;
 2. recruit a small group of external participant nodes using the two-seed guide;
 3. complete a closed multi-machine soak before any broad public announcement;
 4. publish only the participation and reliability claims supported by that evidence.
@@ -167,7 +167,7 @@ batch-preparation endpoint and does not submit an on-chain transaction.
 - Consensus V3 and local/container testnet foundation complete
 - Storage hardening and local operations-model evaluation complete; Google
   Seed A and independent Fly.io Seed B are live
-- Explorer/faucet/participation is ready; deployment and multi-day soak follow
+- Zero-premine JGTC explorer/participation is ready; seed reset and multi-day soak follow
 
 ---
 

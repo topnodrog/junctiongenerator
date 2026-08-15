@@ -14,7 +14,7 @@ describe("public testnet options", () => {
       seeds: [],
       produce: false,
       participate: false,
-      blockIntervalSec: 30,
+      blockIntervalSec: 600,
     });
   });
 

@@ -61,6 +61,8 @@ docker run --detach \
   --env JGC_SEEDS="$SEED_URL" \
   --env JGC_PRODUCE=true \
   --env JGC_PARTICIPATE=true \
+  --env JGC_BLOCK_INTERVAL_SEC=600 \
+  --env JGC_RESET_TO_GENESIS=738588b974ed62ed52e74a946371bc8b6d84508b6c38203f56ada38fce4bab36 \
   "$IMAGE_TAG"
 
 mkdir -p /etc/jgc /var/lib/caddy/data /var/lib/caddy/config
@@ -76,17 +78,13 @@ $ADVERTISE_HOST {
     respond "ok" 200
   }
 
-  # Public, deliberately narrow explorer/faucet surface. The operator-only
+  # Public, deliberately narrow read-only explorer surface. The operator-only
   # /status endpoint is not routed and remains reachable only on loopback/IAP.
   handle /explorer {
     reverse_proxy 127.0.0.1:7777
   }
 
   handle /balance {
-    reverse_proxy 127.0.0.1:7777
-  }
-
-  handle /faucet {
     reverse_proxy 127.0.0.1:7777
   }
 

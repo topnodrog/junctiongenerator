@@ -1,16 +1,11 @@
 import {
   CONSENSUS_BLOCK_VERSION,
-  computeTransactionMerkleRoot,
   createGenesisBlock,
+  GENESIS_DIFFICULTY_BITS,
   hashBlockHeader,
 } from "../consensus/block.js";
-import { BASE_UNITS_PER_JGC } from "../consensus/emission.js";
-import {
-  pqAddressFromPublicKey,
-  pqGenerateKeyPair,
-  pqScriptPubKeyFromAddress,
-} from "../crypto/pq-signatures.js";
-import type { Block, Transaction } from "../types/index.js";
+import type { Block } from "../types/index.js";
+import { TARGET_BLOCK_INTERVAL_SECONDS } from "../consensus/emission.js";
 
 export type ProofModeId = "simnet-receipts-v1" | "strict-groth16-v1";
 
@@ -19,59 +14,46 @@ export interface NetworkDefinition {
   readonly networkMagic: number;
   readonly consensusVersion: number;
   readonly proofMode: ProofModeId;
+  readonly currencySymbol: "JGTC" | "JGC";
+  readonly targetBlockIntervalSec: number;
   readonly defaultP2PPort: number;
   readonly defaultStatusPort: number;
 }
 
 export const TESTNET_NETWORK: NetworkDefinition = Object.freeze({
-  chainId: "jgc-testnet-v3",
+  chainId: "jgtc-testnet-v1",
   networkMagic: 0x4a474354, // ASCII "JGCT"
   consensusVersion: CONSENSUS_BLOCK_VERSION,
   proofMode: "simnet-receipts-v1",
+  currencySymbol: "JGTC",
+  targetBlockIntervalSec: TARGET_BLOCK_INTERVAL_SECONDS,
   defaultP2PPort: 19444,
   defaultStatusPort: 7777,
 });
 
-/** Public and intentionally insecure: these are valueless testnet funds. */
-export const TESTNET_FAUCET_SEED = "f3".repeat(32);
-export const TESTNET_FAUCET_ALLOCATION = 1_000_000n * BASE_UNITS_PER_JGC;
-
-export function testnetFaucetKeyPair(): { privateKey: string; publicKey: string } {
-  return pqGenerateKeyPair(TESTNET_FAUCET_SEED);
-}
-
-export const TESTNET_FAUCET_ADDRESS = pqAddressFromPublicKey(testnetFaucetKeyPair().publicKey);
-export const TESTNET_GENESIS_HASH = "df5d37d6a1e7799621bba84580c9cf94ddd37ae4fec008bb3356ea990b77b485";
-
-function createTestnetFaucetTransaction(): Transaction {
-  return {
-    version: 1,
-    inputs: [],
-    outputs: [{
-      value: TESTNET_FAUCET_ALLOCATION,
-      scriptPubKey: pqScriptPubKeyFromAddress(TESTNET_FAUCET_ADDRESS),
-    }],
-    locktime: 0,
-    brokerTaskRef: "jgc-testnet-v3/faucet-allocation",
-  };
-}
+/** Distinct zero-value JGTC genesis. No spendable test coins exist before epoch settlement. */
+export const TESTNET_GENESIS_TIMESTAMP = Date.UTC(2026, 7, 15, 4, 0, 0) / 1000;
+export const TESTNET_GENESIS_MESSAGE = "JGTC 2026-08-15: No premine; earned by compute every 144 blocks";
+export const TESTNET_GENESIS_HASH = "738588b974ed62ed52e74a946371bc8b6d84508b6c38203f56ada38fce4bab36";
 
 export const MAINNET_NETWORK: NetworkDefinition = Object.freeze({
   chainId: "jgc-mainnet-v3",
   networkMagic: 0xd9b4bef9,
   consensusVersion: CONSENSUS_BLOCK_VERSION,
   proofMode: "strict-groth16-v1",
+  currencySymbol: "JGC",
+  targetBlockIntervalSec: TARGET_BLOCK_INTERVAL_SECONDS,
   defaultP2PPort: 9444,
   defaultStatusPort: 7777,
 });
 
 export function createNetworkGenesis(network: NetworkDefinition): Block {
-  const genesis = createGenesisBlock();
-  if (network.chainId !== TESTNET_NETWORK.chainId) return genesis;
-
-  genesis.transactions.push(createTestnetFaucetTransaction());
-  genesis.header.merkleRoot = computeTransactionMerkleRoot(genesis.transactions);
-  return genesis;
+  if (network.chainId !== TESTNET_NETWORK.chainId) return createGenesisBlock();
+  return createGenesisBlock(
+    GENESIS_DIFFICULTY_BITS,
+    TESTNET_GENESIS_TIMESTAMP,
+    TESTNET_GENESIS_MESSAGE,
+  );
 }
 
 export function networkGenesisHash(network: NetworkDefinition): string {

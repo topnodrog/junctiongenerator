@@ -5,7 +5,7 @@
  * WHY THIS EXISTS
  * ───────────────
  * The public site (junctiongenerator.net) wants to show a live "node is running"
- * panel — wallet address, mature ("current") JGC, and immature ("pending") JGC —
+ * panel — chain height, public balances, and epoch participation —
  * sourced from the operator's OWN node rather than re-simulated. A node has no
  * UI, so it exposes a single JSON snapshot a browser can poll.
  *
@@ -13,9 +13,8 @@
  * ────────────────
  *  - Loopback only by default (127.0.0.1). Wallet balances must never be served
  *    to the LAN; bind elsewhere only with deliberate intent.
- *  - `/status` remains read-only and loopback-only by default. The optional public
- *    API adds explorer reads and one tightly bounded faucet mutation; its signing
- *    key and claims ledger never appear in a response.
+ *  - `/status` remains loopback-only by default. The optional public API is also
+ *    read-only: explorer and public-address balance queries expose no key material.
  *  - CORS + Private-Network-Access headers are set so an HTTPS page may fetch the
  *    loopback endpoint. Chrome/Edge/Firefox treat http://127.0.0.1 as potentially
  *    trustworthy (not mixed content) and gate it behind a PNA preflight, which we
@@ -26,7 +25,7 @@
  */
 
 import { createServer, type Server, type IncomingMessage, type ServerResponse } from "http";
-import type { AddressBalance, ExplorerSnapshot, FaucetClaim } from "./public-testnet-api.js";
+import type { AddressBalance, ExplorerSnapshot } from "./public-testnet-api.js";
 
 /**
  * The snapshot served at GET /status. All money fields are pre-formatted decimal
@@ -79,7 +78,6 @@ export interface StatusServerOptions {
   publicApi?: {
     explorer(): ExplorerSnapshot | Promise<ExplorerSnapshot>;
     balance(address: string): AddressBalance | Promise<AddressBalance>;
-    faucet(address: string): FaucetClaim | Promise<FaucetClaim>;
   };
 }
 
@@ -98,40 +96,13 @@ function setCorsHeaders(req: IncomingMessage, res: ServerResponse): void {
   // No credentials are ever used, so echoing the origin (or "*") is safe.
   res.setHeader("Access-Control-Allow-Origin", origin ?? "*");
   res.setHeader("Vary", "Origin");
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "*");
   // Answer the PNA preflight so an HTTPS page may reach this loopback server.
   if (req.headers["access-control-request-private-network"] === "true") {
     res.setHeader("Access-Control-Allow-Private-Network", "true");
   }
   res.setHeader("Access-Control-Max-Age", "600");
-}
-
-function readJsonBody(req: IncomingMessage, maxBytes = 4096): Promise<Record<string, unknown>> {
-  return new Promise((resolve, reject) => {
-    const chunks: Buffer[] = [];
-    let size = 0;
-    let failed = false;
-    req.on("data", (chunk: Buffer) => {
-      if (failed) return;
-      size += chunk.length;
-      if (size > maxBytes) {
-        failed = true;
-        reject(new Error("request body too large"));
-        return;
-      }
-      chunks.push(chunk);
-    });
-    req.on("end", () => {
-      if (failed) return;
-      try {
-        resolve(JSON.parse(Buffer.concat(chunks).toString("utf8")) as Record<string, unknown>);
-      } catch {
-        reject(new Error("invalid JSON body"));
-      }
-    });
-    req.on("error", reject);
-  });
 }
 
 function sendJson(res: ServerResponse, status: number, body: unknown): void {
@@ -151,7 +122,6 @@ function sendJson(res: ServerResponse, status: number, body: unknown): void {
  *   GET  /healthz  → { ok: true }   (liveness, no wallet data)
  *   GET  /explorer → public chain snapshot (when configured)
  *   GET  /balance  → public address balance (when configured)
- *   POST /faucet   → rate-limited test-coin request (when configured)
  *   OPTIONS *      → 204 (CORS/PNA preflight)
  */
 export function startStatusServer(
@@ -160,8 +130,6 @@ export function startStatusServer(
 ): Promise<StatusServerHandle> {
   const port = opts.port ?? (Number(process.env.JGC_STATUS_PORT) || DEFAULT_PORT);
   const host = opts.host ?? DEFAULT_HOST;
-  const faucetRequests = new Map<string, number>();
-
   const server: Server = createServer((req, res) => {
     setCorsHeaders(req, res);
 
@@ -193,35 +161,6 @@ export function startStatusServer(
       Promise.resolve()
         .then(() => opts.publicApi!.balance(address))
         .then((balance) => sendJson(res, 200, balance))
-        .catch((err: unknown) => sendJson(res, 400, {
-          error: err instanceof Error ? err.message : String(err),
-        }));
-      return;
-    }
-
-    if (opts.publicApi && path === "/faucet" && req.method === "POST") {
-      const now = Date.now();
-      if (faucetRequests.size > 10_000) {
-        for (const [client, requestedAt] of faucetRequests) {
-          if (now - requestedAt >= 60_000) faucetRequests.delete(client);
-        }
-      }
-      const forwarded = req.headers["x-forwarded-for"];
-      const remote = (Array.isArray(forwarded) ? forwarded[0] : forwarded)?.split(",")[0]?.trim()
-        || req.socket.remoteAddress
-        || "unknown";
-      const lastRequest = faucetRequests.get(remote) ?? 0;
-      if (now - lastRequest < 60_000) {
-        sendJson(res, 429, { error: "please wait one minute before another faucet request" });
-        return;
-      }
-      faucetRequests.set(remote, now);
-      void readJsonBody(req)
-        .then((body) => {
-          if (typeof body.address !== "string") throw new Error("address is required");
-          return opts.publicApi!.faucet(body.address);
-        })
-        .then((claim) => sendJson(res, 202, claim))
         .catch((err: unknown) => sendJson(res, 400, {
           error: err instanceof Error ? err.message : String(err),
         }));
