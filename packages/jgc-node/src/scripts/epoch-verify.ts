@@ -29,11 +29,12 @@
 
 import type { Block, EpochState } from "../types/index.js";
 import { loadVerifierWasm } from "../crypto/zkp.js";
+import { quantumScriptPubKeyFromAddress, setQuantumVerifierMode } from "../crypto/pq.js";
 import { JGCNode } from "../network/node.js";
 import { BLOCKS_PER_EPOCH, getBlockReward } from "../consensus/emission.js";
 import { applyBlockToEpoch, computeEpochSettlement } from "../consensus/epoch.js";
 import {
-  BlockProducer, mineBlocks, makePeer, makeGenesisBlock, cloneEpochState, sha256d,
+  BlockProducer, mineBlocks, makePeer, makeGenesisBlock, cloneEpochState,
   DEFAULT_MINERS,
 } from "../sim/harness.js";
 import type { NodeConfig } from "../types/index.js";
@@ -46,14 +47,17 @@ function makeConfig(): NodeConfig {
     rpcPort:               0,
     networkMagic:          0xD9B4BEF9,
     maxPeers:              8,
+    // This deterministic in-process verifier submits a full day of messages in
+    // seconds; production retains the normal anti-flood window.
+    peerMessagesPerWindow: 10_000,
     enableBroker:          false,
     junctionGeneratorMode: false,
   };
 }
 
-/** P2PKH scriptPubKey the producer assigns to a miner address (see harness). */
+/** Quantum-safe scriptPubKey the producer assigns to a miner address. */
 function expectedScriptForAddr(addr: string): string {
-  return "76a914" + sha256d(Buffer.from(addr)).slice(0, 40) + "88ac";
+  return quantumScriptPubKeyFromAddress(addr);
 }
 
 const JGC = (sats: bigint): string => (Number(sats) / 1e16).toFixed(8).padStart(16);
@@ -70,13 +74,19 @@ async function main(): Promise<void> {
 
   // Simnet harness mines with placeholder proofs (no valid pairing) — use the
   // structural verifier path. Mainnet nodes load in the default "strict" mode.
+  setQuantumVerifierMode("simnet");
   await loadVerifierWasm({ mode: "simnet" });
 
   const node = new JGCNode(makeConfig(), makeGenesisBlock());
   const miner = makePeer("local-miner", "inproc");
   node.connectPeer(miner.conn);
 
-  const producer = new BlockProducer(makeGenesisBlock());
+  // The full epoch is generated quickly in-process. Offset its 30-second
+  // synthetic cadence into the recent past so later blocks do not trip the
+  // normal future-timestamp guard while the loop runs in a few seconds.
+  const producer = new BlockProducer(makeGenesisBlock(), {
+    timeOffsetSec: -BOUNDARY * 30,
+  });
 
   // Capture, during mining, the two artifacts we need for an out-of-band check:
   //   1. preBoundaryEpoch — the accumulator AFTER block 142, i.e. PRE-apply of
@@ -99,7 +109,9 @@ async function main(): Promise<void> {
   console.log(`[EpochVerify] Mining a full epoch (genesis + blocks 1..${BOUNDARY})…`);
   // Quiet the per-block node chatter so the verdict table is readable.
   const origLog = console.log;
-  console.log = () => {};
+  console.log = (...args: unknown[]) => {
+    if (args.some(arg => String(arg).includes("REJECTED"))) origLog(...args);
+  };
   await mineBlocks(node, "local-miner", producer, BOUNDARY, DEFAULT_MINERS, onBlock);
   console.log = origLog;
 
@@ -131,6 +143,9 @@ async function main(): Promise<void> {
   const coinbase = block.transactions[0];
   if (!coinbase) fail("boundary block has no coinbase transaction");
   if (coinbase.inputs.length !== 0) fail("settlement coinbase must have no inputs");
+  if (coinbase.locktime !== BOUNDARY) {
+    fail(`settlement height commitment ${coinbase.locktime} != boundary height ${BOUNDARY}`);
+  }
   if (coinbase.outputs.length !== settlement.payouts.length) {
     fail(`coinbase has ${coinbase.outputs.length} outputs, settlement has ${settlement.payouts.length}`);
   }

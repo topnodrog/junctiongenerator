@@ -17,9 +17,10 @@ import { loadVerifierWasm, verifyComputeProof } from "../crypto/zkp.js";
 import { setQuantumVerifierMode } from "../crypto/pq.js";
 import { makeGenesisBlock, makeContribution, DEFAULT_MINERS } from "../sim/harness.js";
 import { assembleBlock, createGenesisHeader, hashBlockHeader, GENESIS_DIFFICULTY_BITS } from "../consensus/block.js";
-import { initEpochState, applyBlockToEpoch } from "../consensus/epoch.js";
+import { initEpochState, applyBlockToEpoch, computeEpochSettlement } from "../consensus/epoch.js";
 import { UTXOSet } from "../consensus/utxo.js";
-import { BASE_UNITS_PER_JGC } from "../consensus/emission.js";
+import { BASE_UNITS_PER_JGC, BLOCKS_PER_EPOCH } from "../consensus/emission.js";
+import { quantumScriptPubKeyFromAddress } from "../crypto/pq.js";
 
 beforeAll(async () => {
   setQuantumVerifierMode("simnet");
@@ -52,6 +53,61 @@ function heightOneBlock(coinbaseValue: bigint): { block: ReturnType<typeof assem
     utxos: new UTXOSet(),
   };
   return { block, context };
+}
+
+function boundaryBlock(locktime = BLOCKS_PER_EPOCH - 1): {
+  block: ReturnType<typeof assembleBlock>;
+  context: BlockValidationContext;
+} {
+  const genesis = makeGenesisBlock();
+  const epoch = initEpochState(0, genesis.header.timestamp);
+  applyBlockToEpoch(epoch, [], 0, 0n);
+  const historicalContributions = DEFAULT_MINERS.map(miner => makeContribution(miner, 1));
+  for (let height = 1; height < BLOCKS_PER_EPOCH - 1; height++) {
+    applyBlockToEpoch(epoch, historicalContributions, height, 0n);
+  }
+  const height = BLOCKS_PER_EPOCH - 1;
+  const contributions = DEFAULT_MINERS.map(miner => makeContribution(miner, height));
+  const settled = {
+    ...epoch,
+    minerContributions: new Map(epoch.minerContributions),
+  };
+  applyBlockToEpoch(settled, contributions, height, 0n);
+  const settlement = computeEpochSettlement(settled, 0);
+  const coinbase: Transaction = {
+    version: 1,
+    inputs: [],
+    outputs: settlement.payouts.map(payout => ({
+      value: payout.satoshis,
+      scriptPubKey: quantumScriptPubKeyFromAddress(payout.minerAddress),
+    })),
+    locktime,
+  };
+  const previousHeader = { ...genesis.header, height: height - 1 };
+  const block = assembleBlock(
+    previousHeader,
+    [coinbase],
+    contributions,
+    epoch,
+    GENESIS_DIFFICULTY_BITS,
+    0,
+    genesis.header.timestamp + 600,
+  );
+  return {
+    block,
+    context: {
+      prevHash: hashBlockHeader(previousHeader),
+      expectedHeight: height,
+      nowUnix: genesis.header.timestamp + 100_000,
+      medianPastTime: genesis.header.timestamp - 1,
+      expectedDifficultyBits: GENESIS_DIFFICULTY_BITS,
+      epochState: epoch,
+      blockFees: 0n,
+      epochBlockIndex: height,
+      epochFees: 0n,
+      utxos: new UTXOSet(),
+    },
+  };
 }
 
 describe("security regressions", () => {
@@ -115,5 +171,26 @@ describe("security regressions", () => {
     const result = await validateComputeProofs([contribution], createGenesisHeader(), 1, 1);
     expect(result.valid).toBe(false);
     expect(result.errors).toContain(ValidationError.INVALID_SIGNATURE);
+  });
+
+  test("#7 settlement coinbase commits its boundary height", async () => {
+    const valid = boundaryBlock();
+    await expect(validateBlock(valid.block, valid.context)).resolves.toMatchObject({ valid: true });
+
+    const missingCommitment = boundaryBlock(0);
+    const result = await validateBlock(missingCommitment.block, missingCommitment.context);
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContain(ValidationError.INVALID_EPOCH_SETTLEMENT);
+    expect(result.warnings.join(" ")).toMatch(/height commitment/i);
+  });
+
+  test("#8 settlement coinbase cannot overwrite an unspent outpoint", async () => {
+    const candidate = boundaryBlock();
+    candidate.context.utxos!.applyTransaction(candidate.block.transactions[0]!, 1, true);
+
+    const result = await validateBlock(candidate.block, candidate.context);
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContain(ValidationError.INVALID_COINBASE);
+    expect(result.warnings.join(" ")).toMatch(/overwrite unspent outpoint/i);
   });
 });

@@ -153,6 +153,21 @@ script, then deploy the same commit to Fly. Upgrade the back-checker first,
 confirm compatibility, then upgrade the producer. Follow
 `../docs/STORAGE-RECOVERY.md` before restoring or resetting either data volume.
 
+### Settlement transaction-ID recovery reset
+
+The public soak accounting rollout on 2026-08-20 detected that settlement
+blocks 431 and 575 had identical transaction IDs. The later UTXO replaced the
+earlier unspent outpoint, leaving canonical accounting 7,200 JGTC below the
+emission schedule. No ordinary transactions had occurred.
+
+The recovery release commits every settlement boundary height in the
+transaction locktime, rejects overwriting an unspent coinbase outpoint, and sets
+`JGC_RESET_ID=settlement-txid-v1`. Deploy/reset the non-producing Seed B first,
+verify its previous state is present in a reset-specific archive and its
+participant identity remains present, then deploy/reset producing Seed A. Do
+not accept the reset as complete until both nodes agree from genesis, Seed A
+produces a new block, and public soak evidence reports conserved supply.
+
 ### Completed coordinated `jgtc-testnet-v1` reset
 
 The reset completed on 2026-08-15. The zero-premine JGTC genesis is
