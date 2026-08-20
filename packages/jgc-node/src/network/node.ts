@@ -46,6 +46,7 @@ import {
   computeEpochRoot,
   computeEpochSettlement,
 } from "../consensus/epoch.js";
+import { createEpochSettlementTransaction } from "../consensus/settlement-transaction.js";
 import { UTXOSet, validateSpend, txid } from "../consensus/utxo.js";
 import { BlockStore, SnapshotStore, StorageManifest, type ChainSnapshot } from "../storage/persistence.js";
 import { calculateNextDifficultyTarget, BLOCKS_PER_EPOCH, RETARGET_WINDOW_BLOCKS, encodeDifficultyBits, decodeDifficultyBits } from "../consensus/emission.js";
@@ -63,7 +64,6 @@ import { AuditStore } from "../storage/audit-store.js";
 import { PeerGuard, DEFAULT_PEER_GUARD_POLICY, type PeerViolation } from "./peer-guard.js";
 import { validatorStakeSnapshot } from "../consensus/validator-bonds.js";
 import {
-  quantumScriptPubKeyFromAddress,
   quantumVerifyContributionSignature,
   quantumVerifyProofForConsensus,
 } from "../crypto/pq.js";
@@ -1200,7 +1200,14 @@ export class JGCNode extends EventEmitter {
     if (block.header.prevHash !== chain.tipHash) return false;
     if (!this.committedBodyIntegrityCheck(chain, block)) return false;
     if (computeEpochRoot(chain.epochState) !== block.header.epochRoot) return false;
-    if (h % BLOCKS_PER_EPOCH !== BLOCKS_PER_EPOCH - 1) {
+    if (h % BLOCKS_PER_EPOCH === BLOCKS_PER_EPOCH - 1) {
+      const coinbase = block.transactions[0];
+      if (!coinbase) return false;
+      const coinbaseId = txid(coinbase);
+      for (let vout = 0; vout < coinbase.outputs.length; vout++) {
+        if (coinbase.outputs[vout]!.value > 0n && chain.utxos.has(coinbaseId, vout)) return false;
+      }
+    } else {
       const minted = block.transactions[0]?.outputs.reduce((s, o) => s + o.value, 0n) ?? 0n;
       if (minted > 0n) return false;
     }
@@ -1215,6 +1222,10 @@ export class JGCNode extends EventEmitter {
     if (computeTransactionMerkleRoot(block.transactions) !== block.header.merkleRoot) return false;
     if (computeContributionsMerkleRoot(block.computeProofs) !== block.header.computeRoot) return false;
     if (computeAuditVerdictsMerkleRoot(block.auditVerdicts) !== block.header.auditRoot) return false;
+    if (block.header.height % BLOCKS_PER_EPOCH === BLOCKS_PER_EPOCH - 1) {
+      const coinbase = block.transactions[0];
+      if (!coinbase || coinbase.inputs.length !== 0 || coinbase.locktime !== block.header.height) return false;
+    }
     return validateAuditVerdicts(block, {
       getActiveBlock: (height) => this.activeBlockAt(chain, height),
       hasCommittedAudit: (auditId) =>
@@ -1662,15 +1673,7 @@ export class JGCNode extends EventEmitter {
       };
       applyBlockToEpoch(settled, contributions, height, blockFees);
       const settlement = computeEpochSettlement(settled, Math.floor(height / BLOCKS_PER_EPOCH));
-      coinbase = {
-        version: 1,
-        inputs: [],
-        outputs: settlement.payouts.map(payout => ({
-          value: payout.satoshis,
-          scriptPubKey: quantumScriptPubKeyFromAddress(payout.minerAddress),
-        })),
-        locktime: 0,
-      };
+      coinbase = createEpochSettlementTransaction(settlement, height);
     } else {
       coinbase = {
         version: 1,

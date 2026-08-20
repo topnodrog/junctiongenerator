@@ -25,6 +25,7 @@ import {
   createGenesisBlock, assembleBlock,
 } from "../consensus/block.js";
 import { initEpochState, applyBlockToEpoch, computeEpochSettlement } from "../consensus/epoch.js";
+import { createEpochSettlementTransaction } from "../consensus/settlement-transaction.js";
 import { BLOCKS_PER_EPOCH } from "../consensus/emission.js";
 import {
   pqGenerateKeyPair, pqAddressFromPublicKey, pqSignContribution,
@@ -177,9 +178,9 @@ export class BlockProducer {
   private tipHeader: BlockHeader;
   private height = 0;
   private readonly baseTime: number;
-  // Difficulty is taken from the genesis the node booted from, so producer and
-  // node always agree (the strict demo boots both from a low-difficulty genesis).
-  private readonly difficultyBits: number;
+  // Starts from genesis and follows the node's accepted retarget state when the
+  // shared mining loop confirms each block.
+  private difficultyBits: number;
 
   /**
    * @param opts.timeOffsetSec  Shifts this producer's block timestamps. A second
@@ -214,16 +215,7 @@ export class BlockProducer {
       const settled = cloneEpochState(this.mirror);
       applyBlockToEpoch(settled, contributions, height, 0n);
       const settlement = computeEpochSettlement(settled, Math.floor(height / BLOCKS_PER_EPOCH));
-      transactions = [{
-        version:  1,
-        inputs:   [],   // coinbase convention: no inputs
-        outputs:  settlement.payouts.map(p => ({
-          value:        p.satoshis,
-          // QUANTUM-READY: settlement pays to the PQ script for the miner's 1QGC address.
-          scriptPubKey: "5114" + p.minerAddress.slice(4) + "63ac",
-        })),
-        locktime: 0,
-      }];
+      transactions = [createEpochSettlementTransaction(settlement, height)];
     } else {
       transactions = [makeDummyTx(height)];
     }
@@ -244,7 +236,7 @@ export class BlockProducer {
   }
 
   /** Advance the mirror after the node accepted the block (mirrors acceptBlock). */
-  confirmBlock(block: Block): void {
+  confirmBlock(block: Block, nextDifficultyBits = this.difficultyBits): void {
     const height = block.header.height;
     applyBlockToEpoch(this.mirror, block.computeProofs, height, 0n);
     if (height % BLOCKS_PER_EPOCH === BLOCKS_PER_EPOCH - 1) {
@@ -252,6 +244,7 @@ export class BlockProducer {
     }
     this.tipHeader = block.header;
     this.height    = height;
+    this.difficultyBits = nextDifficultyBits;
   }
 }
 
@@ -294,7 +287,7 @@ export async function mineBlocks(
     if (node.getChainInfo().tipHeight !== height) {
       throw new Error(`Block at height ${height} was rejected by the node`);
     }
-    producer.confirmBlock(block);
+    producer.confirmBlock(block, node.getCurrentDifficultyBits());
     onBlock?.(block);
   }
 }

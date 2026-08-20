@@ -60,6 +60,13 @@ Public chain and supply-conservation snapshot:
 npm run collect-soak-evidence -- --append .tmp/pilot-evidence/public-soak.jsonl
 ```
 
+After an approved recoverable reset, retain the pre-reset failed snapshot and
+append a new post-reset record. Confirm the same genesis hash, zero premine,
+exact `accountedSupplyJGTC === expectedSupplyJGTC`, preserved participant
+identities, correct producer roles, and a newly produced block before resuming
+the measured soak window. A fresh chain may initially warn that there are not
+enough recent blocks to measure timing; that warning clears as the window fills.
+
 This read-only collector records the canonical explorer snapshot and checks the
 frozen network identity, ten-minute target, 144-block settlement cadence,
 recent tip continuity, epoch progress, participation totals, zero-premine

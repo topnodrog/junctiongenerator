@@ -58,17 +58,15 @@ import {
 } from "./block.js";
 import { computeContributionsMerkleRoot, computeEpochRoot, computeEpochSettlement, applyBlockToEpoch } from "./epoch.js";
 import { decodeDifficultyBits, BLOCKS_PER_EPOCH, HARD_CAP_SATOSHIS } from "./emission.js";
-import {
-  quantumVerifyContributionSignature,
-  quantumScriptPubKeyFromAddress,
-} from "../crypto/pq.js";
+import { quantumVerifyContributionSignature } from "../crypto/pq.js";
 import { verifyPortableComputeProof } from "../crypto/compute-proof.js";
-import { UTXOSet, validateSpend } from "./utxo.js";
+import { txid, UTXOSet, validateSpend } from "./utxo.js";
 import { verifyMerkleProof, getMerkleProof, buildMerkleTree, hashComputeProof } from "../crypto/merkle.js";
 import { validateAuditVerdictRecord } from "../broker/audit-protocol.js";
 import { auditWindow, buildAuditSchedule, computeAuditClaimId } from "../broker/audit-schedule.js";
 import { auditValidatorsFromSnapshot, validatorStakeSnapshot } from "./validator-bonds.js";
 import { compareCanonicalBytes } from "../protocol/canonical.js";
+import { createEpochSettlementTransaction } from "./settlement-transaction.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Validation Result Types
@@ -438,6 +436,7 @@ export function validateTransaction(
  *
  * JGC coinbase rules:
  *   - Epoch settlement tx has no inputs (coinbase convention).
+ *   - Locktime commits the boundary height, making the transaction ID unique.
  *   - Total output value = epochRewardPool + epochFees.
  *   - Each output address must match a miner in the epoch accumulator.
  *   - Amounts must match the proportional settlement calculation.
@@ -446,14 +445,31 @@ export function validateTransaction(
  * @param epochState       Completed epoch state.
  * @param epochFees        Total fees from all transactions in the epoch.
  * @param epochIndex       Epoch sequence number.
+ * @param blockHeight      Boundary height committed in the transaction ID.
  */
 export function validateCoinbaseTx(
   coinbaseTx:  Transaction,
   epochState:  EpochState,
   _epochFees:  JGCSatoshis,
   epochIndex:  number,
+  blockHeight: BlockHeight,
 ): ValidationResult {
   const settlement = computeEpochSettlement(epochState, epochIndex);
+  const expectedCoinbase = createEpochSettlementTransaction(settlement, blockHeight);
+
+  if (coinbaseTx.inputs.length !== 0) {
+    return fail(
+      ValidationError.INVALID_EPOCH_SETTLEMENT,
+      "Settlement coinbase must not have inputs",
+    );
+  }
+
+  if (coinbaseTx.locktime !== expectedCoinbase.locktime) {
+    return fail(
+      ValidationError.INVALID_EPOCH_SETTLEMENT,
+      `Settlement height commitment ${coinbaseTx.locktime} != boundary height ${blockHeight}`,
+    );
+  }
 
   if (coinbaseTx.outputs.length !== settlement.payouts.length) {
     return fail(
@@ -469,16 +485,16 @@ export function validateCoinbaseTx(
   for (let i = 0; i < settlement.payouts.length; i++) {
     const payout = settlement.payouts[i]!;
     const output = coinbaseTx.outputs[i]!;
-    const expectedScript = quantumScriptPubKeyFromAddress(payout.minerAddress);
+    const expectedOutput = expectedCoinbase.outputs[i]!;
 
-    if (output.scriptPubKey !== expectedScript) {
+    if (output.scriptPubKey !== expectedOutput.scriptPubKey) {
       return fail(
         ValidationError.INVALID_EPOCH_SETTLEMENT,
         `Coinbase output ${i}: scriptPubKey ${output.scriptPubKey} does not match miner ${payout.minerAddress}`
       );
     }
 
-    if (output.value !== payout.satoshis) {
+    if (output.value !== expectedOutput.value) {
       return fail(
         ValidationError.INVALID_EPOCH_SETTLEMENT,
         `Coinbase output ${i}: value ${output.value} != expected ${payout.satoshis} for miner ${payout.minerAddress}`
@@ -784,6 +800,17 @@ export async function validateBlock(
   // updated by the node on accept. (No-op for coinbase-only blocks, e.g. simnet.)
   if (context.utxos) {
     const view = context.utxos.clone();
+    const coinbase = block.transactions[0]!;
+    const coinbaseId = txid(coinbase);
+    for (let vout = 0; vout < coinbase.outputs.length; vout++) {
+      const output = coinbase.outputs[vout]!;
+      if (output.value > 0n && view.has(coinbaseId, vout)) {
+        return fail(
+          ValidationError.INVALID_COINBASE,
+          `Coinbase would overwrite unspent outpoint ${coinbaseId}:${vout}`,
+        );
+      }
+    }
     for (let i = 1; i < block.transactions.length; i++) {
       const tx = block.transactions[i]!;
       const spend = validateSpend(tx, view, context.expectedHeight);
@@ -854,6 +881,7 @@ export async function validateBlock(
       settledState,
       context.epochFees,
       Math.floor(context.expectedHeight / BLOCKS_PER_EPOCH),
+      context.expectedHeight,
     );
     if (!coinbaseResult.valid) return coinbaseResult;
   } else {
