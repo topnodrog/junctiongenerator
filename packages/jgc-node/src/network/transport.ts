@@ -66,10 +66,29 @@ function attachSocket(
       bytesReceived: 0,
       inbound,
     },
-    send: (msg) => new Promise<void>((resolve, reject) => {
+    send: (msg) => new Promise<void>((resolve) => {
       const data = encodePeerMessage(msg, node.config.networkMagic);
-      conn.info.bytesSent += data.length;
-      ws.send(data, err => (err ? reject(err) : resolve()));
+      const finish = (error?: Error): void => {
+        if (error) {
+          console.warn(`[Transport] ${peerId}: send failed: ${error.message}`);
+          node.disconnectPeer(peerId);
+          if (ws.readyState !== WebSocket.CLOSED) ws.terminate();
+        } else {
+          conn.info.bytesSent += data.length;
+        }
+        resolve();
+      };
+
+      if (ws.readyState !== WebSocket.OPEN) {
+        finish(new Error(`socket is not open (readyState ${ws.readyState})`));
+        return;
+      }
+
+      try {
+        ws.send(data, error => finish(error ?? undefined));
+      } catch (error) {
+        finish(error instanceof Error ? error : new Error(String(error)));
+      }
     }),
     disconnect: () => ws.close(),
   };
