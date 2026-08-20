@@ -54,6 +54,22 @@ The probe opens each public WSS endpoint and records reachability and latency.
 It does not claim that private status, chain height, backups, or billing are
 healthy.
 
+Public chain and supply-conservation snapshot:
+
+```powershell
+npm run collect-soak-evidence -- --append .tmp/pilot-evidence/public-soak.jsonl
+```
+
+This read-only collector records the canonical explorer snapshot and checks the
+frozen network identity, ten-minute target, 144-block settlement cadence,
+recent tip continuity, epoch progress, participation totals, zero-premine
+claims, and supply conservation. Supply conservation compares all canonical
+UTXO value plus the pending reward pool against consensus-scheduled emission at
+the current height. Keep the JSON Lines history for the full soak so block
+timing, settlements, participant growth, and any warning or failure remain
+auditable. The output is sanitized public chain data, but it still belongs in
+`.tmp` unless a reviewed evidence excerpt is deliberately published.
+
 For a manual or offline fallback, copy
 `deploy/ops/pilot-readiness.template.json` to a private working location,
 replace the placeholders with current authenticated observations, then run:

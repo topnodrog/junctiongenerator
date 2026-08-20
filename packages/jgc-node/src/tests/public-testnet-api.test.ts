@@ -83,6 +83,12 @@ describe("public JGTC testnet explorer", () => {
       preminedJGTC: "0",
       genesisSpendableSupplyJGTC: "0",
       settlementIntervalBlocks: 144,
+      settlementsCompleted: 0,
+      utxoSupplyJGTC: "0",
+      pendingEmissionJGTC: "50",
+      accountedSupplyJGTC: "50",
+      expectedSupplyJGTC: "50",
+      supplyConserved: true,
     });
     expect(snapshot.epoch).toMatchObject({ blocksRemaining: 143, nextSettlementHeight: 143 });
     const key = quantumGenerateKeyPair("91".repeat(32));

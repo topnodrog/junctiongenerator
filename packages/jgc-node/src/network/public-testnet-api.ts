@@ -1,6 +1,10 @@
 import { hashBlockHeader } from "../consensus/block.js";
 import { COINBASE_MATURITY } from "../consensus/utxo.js";
-import { BLOCKS_PER_EPOCH, decodeDifficultyBits } from "../consensus/emission.js";
+import {
+  BLOCKS_PER_EPOCH,
+  decodeDifficultyBits,
+  getCumulativeSupply,
+} from "../consensus/emission.js";
 import { TESTNET_NETWORK } from "../config/networks.js";
 import { quantumScriptPubKeyFromAddress } from "../crypto/pq.js";
 import { formatJGC } from "../wallet/wallet.js";
@@ -57,6 +61,12 @@ export interface ExplorerSnapshot {
     preminedJGTC: "0";
     genesisSpendableSupplyJGTC: "0";
     settlementIntervalBlocks: number;
+    settlementsCompleted: number;
+    utxoSupplyJGTC: string;
+    pendingEmissionJGTC: string;
+    accountedSupplyJGTC: string;
+    expectedSupplyJGTC: string;
+    supplyConserved: boolean;
   };
   recentBlocks: ExplorerBlock[];
 }
@@ -108,6 +118,10 @@ export function explorerSnapshot(
   const epoch = node.getEpochState();
   const total = epoch.totalEpochTFLOPS;
   const pool = epoch.pendingRewardPool;
+  const utxoSupply = [...node.getUTXOSet().entries()]
+    .reduce((sum, { entry }) => sum + entry.value, 0n);
+  const accountedSupply = utxoSupply + pool;
+  const expectedSupply = getCumulativeSupply(chain.tipHeight + 1);
   const participants = [...epoch.minerContributions.entries()]
     .map(([address, weight]) => ({
       address,
@@ -173,6 +187,12 @@ export function explorerSnapshot(
       preminedJGTC: "0",
       genesisSpendableSupplyJGTC: "0",
       settlementIntervalBlocks: BLOCKS_PER_EPOCH,
+      settlementsCompleted: Math.floor((chain.tipHeight + 1) / BLOCKS_PER_EPOCH),
+      utxoSupplyJGTC: formatJGC(utxoSupply),
+      pendingEmissionJGTC: formatJGC(pool),
+      accountedSupplyJGTC: formatJGC(accountedSupply),
+      expectedSupplyJGTC: formatJGC(expectedSupply),
+      supplyConserved: accountedSupply === expectedSupply,
     },
     recentBlocks,
   };

@@ -44,6 +44,7 @@
     "node-status": "node dist/scripts/node-status-server.js",
     "fly-cost-guard": "node dist/scripts/fly-cost-guard.js",
     "collect-pilot-evidence": "node dist/scripts/collect-pilot-evidence.js",
+    "collect-soak-evidence": "node dist/scripts/collect-soak-evidence.js",
     "pilot-readiness": "node dist/scripts/pilot-readiness.js",
     "public-seed-probe": "node dist/scripts/public-seed-probe.js",
     "ten-day-ledger": "node dist/scripts/ten-day-ledger.js"
