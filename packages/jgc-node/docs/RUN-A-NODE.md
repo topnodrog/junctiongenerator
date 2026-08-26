@@ -47,7 +47,7 @@ The last command builds the node automatically and starts it. A successful
 startup prints lines like these:
 
 ```text
-[testnet] network: jgtc-testnet-v1 (simnet-receipts-v1)
+[testnet] network: jgtc-testnet-v2 (simnet-receipts-v1)
 [testnet] seeds:   wss://seed-a.junctiongenerator.net, wss://jgc-testnet-seed-b.fly.dev
 [testnet] role:    validator/back-checker
 ```
@@ -92,7 +92,7 @@ While the node is running, open
 Look for:
 
 - `"running": true`
-- `"network": "jgtc-testnet-v1"`
+- `"network": "jgtc-testnet-v2"`
 - `"peerCount": 1` or higher
 - `"producer": { "enabled": false, ... }`
 

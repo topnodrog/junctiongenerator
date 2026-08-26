@@ -62,7 +62,7 @@ docker run --detach \
   --env JGC_PRODUCE=true \
   --env JGC_PARTICIPATE=true \
   --env JGC_BLOCK_INTERVAL_SEC=600 \
-  --env JGC_RESET_TO_GENESIS=738588b974ed62ed52e74a946371bc8b6d84508b6c38203f56ada38fce4bab36 \
+  --env JGC_RESET_TO_GENESIS=da5c0c28e076211e13e75f8cd28fe98f81080dafefc5ad803620961d16ee1d77 \
   --env JGC_RESET_ID=settlement-txid-v1 \
   "$IMAGE_TAG"
 

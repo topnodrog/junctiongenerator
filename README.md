@@ -27,7 +27,7 @@ the legacy JGT token on Base.
 
 Current node milestone (2026-08-15):
 
-- Consensus V3 underlies the zero-premine `jgtc-testnet-v1` identity and rejects incompatible
+- Consensus V3 underlies the zero-premine `jgtc-testnet-v2` identity and rejects incompatible
   peers before chain data is exchanged;
 - canonical encodings, bounded integer work, execution profiles, and
   fail-closed verification provide the portability foundation;

@@ -57,6 +57,9 @@ describe("canonical genesis", () => {
 
   test("freezes a distinct zero-premine JGTC testnet genesis", () => {
     const testnetGenesis = createNetworkGenesis(TESTNET_NETWORK);
+    expect(TESTNET_NETWORK.chainId).toBe("jgtc-testnet-v2");
+    expect(TESTNET_NETWORK.networkMagic).toBe(0x4a474332);
+    expect(TESTNET_GENESIS_TIMESTAMP).toBe(Date.UTC(2026, 7, 20, 20, 0, 0) / 1000);
     expect(networkGenesisHash(TESTNET_NETWORK)).toBe(TESTNET_GENESIS_HASH);
     expect(testnetGenesis.header.timestamp).toBe(TESTNET_GENESIS_TIMESTAMP);
     expect(testnetGenesis.header.merkleRoot)

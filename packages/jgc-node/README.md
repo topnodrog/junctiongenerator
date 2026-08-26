@@ -72,7 +72,7 @@ Both safe presets:
 - listens for peers at `ws://127.0.0.1:19444`;
 - exposes read-only status at `http://127.0.0.1:7777/status`;
 - bind P2P and status to loopback, so they are not exposed to the internet;
-- identifies itself as `jgtc-testnet-v1` and rejects peers with a different
+- identifies itself as `jgtc-testnet-v2` and rejects peers with a different
   genesis hash, consensus version, or proof mode before accepting chain data.
 
 The standalone preset starts with no seed peers. The public preset makes only

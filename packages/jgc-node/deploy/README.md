@@ -8,7 +8,11 @@
 > [`../docs/RUN-A-NODE.md`](../docs/RUN-A-NODE.md); this document is for seed
 > operators.
 
-The target deployment keeps two `jgtc-testnet-v1` nodes online in separate
+> Recovery target, 2026-08-20: `jgtc-testnet-v2` with genesis
+> `da5c0c28e076211e13e75f8cd28fe98f81080dafefc5ad803620961d16ee1d77`
+> isolates the settlement-ID recovery from every v1 peer and archive.
+
+The target deployment keeps two `jgtc-testnet-v2` nodes online in separate
 provider failure domains:
 
 | Seed | Provider | Region | Role | Persistent data |
@@ -112,7 +116,7 @@ gcloud compute ssh jgc-seed-a --zone us-east1-b --tunnel-through-iap --command "
 flyctl ssh console --app jgc-testnet-seed-b --command "node -e fetch(String.fromCharCode(104,116,116,112,58,47,47,49,50,55,46,48,46,48,46,49,58,55,55,55,55,47,115,116,97,116,117,115)).then(r=>r.text()).then(console.log)"
 ```
 
-Both responses must report `network: jgtc-testnet-v1` and `peerCount` of at
+Both responses must report `network: jgtc-testnet-v2` and `peerCount` of at
 least one. The heights must agree. Seed A alone must report
 `producer.enabled: true`.
 
@@ -162,7 +166,11 @@ emission schedule. No ordinary transactions had occurred.
 
 The recovery release commits every settlement boundary height in the
 transaction locktime, rejects overwriting an unspent coinbase outpoint, and sets
-`JGC_RESET_ID=settlement-txid-v1`. Deploy/reset the non-producing Seed B first,
+`JGC_RESET_ID=settlement-txid-v1`. It also freezes the isolated
+`jgtc-testnet-v2` genesis at
+`da5c0c28e076211e13e75f8cd28fe98f81080dafefc5ad803620961d16ee1d77`,
+so no v1 peer can repopulate the reset volume. Deploy/reset the non-producing
+Seed B first,
 verify its previous state is present in a reset-specific archive and its
 participant identity remains present, then deploy/reset producing Seed A. Do
 not accept the reset as complete until both nodes agree from genesis, Seed A
