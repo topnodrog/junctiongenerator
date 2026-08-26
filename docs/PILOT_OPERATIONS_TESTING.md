@@ -88,7 +88,7 @@ npm run pilot-readiness -- --input <snapshot.json> --append .tmp/pilot-evidence/
 The evaluator checks:
 
 - both expected provider failure domains;
-- `jgtc-testnet-v1` identity and no more than one block of height difference;
+- `jgtc-testnet-v2` identity and no more than one block of height difference;
 - at least one peer per active seed;
 - Seed A producer enabled and Seed B producer disabled;
 - disk thresholds, corruption errors, and repeated peer bans;
@@ -120,7 +120,7 @@ For each provider independently:
 1. preserve the failed volume and logs rather than repairing them in place;
 2. create a disposable replacement from the pinned deployment configuration;
 3. restore an encrypted snapshot or resync from the surviving seed;
-4. verify `jgtc-testnet-v1`, expected producer role, height convergence, and at
+4. verify `jgtc-testnet-v2`, expected producer role, height convergence, and at
    least one peer;
 5. record `lastRestoreTestAt`, snapshot age, disk use, and any incident notes;
 6. destroy the disposable replacement after the evidence is reviewed.

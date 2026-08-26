@@ -74,7 +74,7 @@ describe("public soak evidence", () => {
   });
 
   test("rejects incomplete public responses before recording evidence", () => {
-    expect(() => parseExplorerEvidence({ network: "jgtc-testnet-v1" }))
+    expect(() => parseExplorerEvidence({ network: TESTNET_NETWORK.chainId }))
       .toThrow("explorer.epoch must be a JSON object");
   });
 });

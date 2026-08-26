@@ -2,6 +2,7 @@ import {
   evaluatePilotReadiness,
   type PilotReadinessSnapshot,
 } from "../ops/pilot-readiness.js";
+import { TESTNET_NETWORK } from "../config/networks.js";
 
 const capturedAt = "2026-08-13T12:00:00.000Z";
 
@@ -14,7 +15,7 @@ function healthySnapshot(): PilotReadinessSnapshot {
         id: "seed-a",
         provider: "Google Cloud",
         reachable: true,
-        network: "jgtc-testnet-v1",
+        network: TESTNET_NETWORK.chainId,
         height: 400,
         peerCount: 2,
         producerEnabled: true,
@@ -30,7 +31,7 @@ function healthySnapshot(): PilotReadinessSnapshot {
         id: "seed-b",
         provider: "Fly.io",
         reachable: true,
-        network: "jgtc-testnet-v1",
+        network: TESTNET_NETWORK.chainId,
         height: 399,
         peerCount: 2,
         producerEnabled: false,

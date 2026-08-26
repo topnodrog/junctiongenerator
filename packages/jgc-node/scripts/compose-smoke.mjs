@@ -19,7 +19,7 @@ async function main() {
         readStatus(endpoints.producer),
         readStatus(endpoints.backchecker),
       ]);
-      const sameNetwork = producer.network === "jgtc-testnet-v1" && backchecker.network === producer.network;
+      const sameNetwork = producer.network === "jgtc-testnet-v2" && backchecker.network === producer.network;
       const connected = producer.peerCount >= 1 && backchecker.peerCount >= 1;
       const advanced = producer.height >= 1 && backchecker.height === producer.height;
       const produced = producer.producer?.producedBlocks >= 1 && producer.producer?.lastError === null;

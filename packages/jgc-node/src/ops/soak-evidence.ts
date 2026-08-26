@@ -1,5 +1,6 @@
 import type { ExplorerSnapshot } from "../network/public-testnet-api.js";
 import { parseJGC } from "../wallet/wallet.js";
+import { TESTNET_GENESIS_HASH, TESTNET_NETWORK } from "../config/networks.js";
 
 export type SoakEvidenceSeverity = "pass" | "warn" | "fail";
 
@@ -23,9 +24,9 @@ export interface SoakEvidenceReport {
   summary: { passed: number; warnings: number; failures: number };
 }
 
-const EXPECTED_NETWORK = "jgtc-testnet-v1";
+const EXPECTED_NETWORK = TESTNET_NETWORK.chainId;
 const EXPECTED_PROOF_MODE = "simnet-receipts-v1";
-const EXPECTED_GENESIS = "738588b974ed62ed52e74a946371bc8b6d84508b6c38203f56ada38fce4bab36";
+const EXPECTED_GENESIS = TESTNET_GENESIS_HASH;
 const EXPECTED_BLOCK_INTERVAL_SEC = 600;
 const EXPECTED_SETTLEMENT_INTERVAL = 144;
 

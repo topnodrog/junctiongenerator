@@ -1,3 +1,5 @@
+import { TESTNET_NETWORK } from "../config/networks.js";
+
 export type SeedId = "seed-a" | "seed-b";
 export type ReadinessSeverity = "pass" | "warn" | "fail";
 
@@ -40,7 +42,7 @@ export interface PilotReadinessReport {
   summary: { passed: number; warnings: number; failures: number };
 }
 
-const EXPECTED_NETWORK = "jgtc-testnet-v1";
+const EXPECTED_NETWORK = TESTNET_NETWORK.chainId;
 const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
 

@@ -45,7 +45,7 @@ Consensus V2, early Consensus V3, and unversioned block stores are deliberately
 unsupported. There is no automatic migration because those development stores
 may use a different genesis or commitment interpretation.
 
-Before starting `jgtc-testnet-v1` with an old or `jgc-testnet-v3` data directory,
+Before starting a new JGTC testnet identity with data from an older identity,
 the public-seed deployment uses an explicit reset token:
 
 1. stop every process using the directory;

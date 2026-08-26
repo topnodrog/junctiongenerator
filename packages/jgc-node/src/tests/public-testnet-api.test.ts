@@ -72,7 +72,7 @@ describe("public JGTC testnet explorer", () => {
     const producer = new DesignatedBlockProducer(testNode);
     const snapshot = explorerSnapshot(testNode, producer);
 
-    expect(snapshot.network).toBe("jgtc-testnet-v1");
+    expect(snapshot.network).toBe(TESTNET_NETWORK.chainId);
     expect(snapshot.currencySymbol).toBe("JGTC");
     expect(snapshot.targetBlockIntervalSec).toBe(600);
     expect(snapshot.height).toBe(0);

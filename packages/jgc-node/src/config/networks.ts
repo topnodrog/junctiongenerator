@@ -21,8 +21,8 @@ export interface NetworkDefinition {
 }
 
 export const TESTNET_NETWORK: NetworkDefinition = Object.freeze({
-  chainId: "jgtc-testnet-v1",
-  networkMagic: 0x4a474354, // ASCII "JGCT"
+  chainId: "jgtc-testnet-v2",
+  networkMagic: 0x4a474332, // ASCII "JGC2"
   consensusVersion: CONSENSUS_BLOCK_VERSION,
   proofMode: "simnet-receipts-v1",
   currencySymbol: "JGTC",
@@ -32,9 +32,9 @@ export const TESTNET_NETWORK: NetworkDefinition = Object.freeze({
 });
 
 /** Distinct zero-value JGTC genesis. No spendable test coins exist before epoch settlement. */
-export const TESTNET_GENESIS_TIMESTAMP = Date.UTC(2026, 7, 15, 4, 0, 0) / 1000;
-export const TESTNET_GENESIS_MESSAGE = "JGTC 2026-08-15: No premine; earned by compute every 144 blocks";
-export const TESTNET_GENESIS_HASH = "738588b974ed62ed52e74a946371bc8b6d84508b6c38203f56ada38fce4bab36";
+export const TESTNET_GENESIS_TIMESTAMP = Date.UTC(2026, 7, 20, 20, 0, 0) / 1000;
+export const TESTNET_GENESIS_MESSAGE = "JGTC 2026-08-20: Settlement IDs commit boundary height";
+export const TESTNET_GENESIS_HASH = "da5c0c28e076211e13e75f8cd28fe98f81080dafefc5ad803620961d16ee1d77";
 
 export const MAINNET_NETWORK: NetworkDefinition = Object.freeze({
   chainId: "jgc-mainnet-v3",
