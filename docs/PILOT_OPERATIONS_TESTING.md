@@ -191,3 +191,32 @@ shares for the seed anchor and workstation address. Seed A reported three
 peers, one produced block, and no producer error; Seed B reported three peers;
 the workstation reported two peers. The displayed 100 JGTC pending pool is
 unsettled accounting, not a premine or faucet balance.
+
+## Settlement-ID recovery evidence captured 2026-08-26
+
+The live v1 soak reached Seed A height 1,697 and Seed B height 1,696 before the
+approved recoverable reset. Repeated 7,200-JGTC settlement transactions had
+shared transaction IDs, so later unspent outpoints replaced earlier ones. The
+last public v1 snapshot accounted for 41,650 JGTC against 84,850 JGTC
+expected, a 43,200-JGTC gap from six overwritten settlements. The recovery
+release commits the boundary height in every settlement transaction,
+rejects unspent coinbase-outpoint replacement, and isolates the repaired chain
+as `jgtc-testnet-v2` with genesis
+`da5c0c28e076211e13e75f8cd28fe98f81080dafefc5ad803620961d16ee1d77`.
+
+The two-seed rollout used reviewed merge commit
+`7d023cf5f6793cb487a6244f70aec7eff287ead7`, resetting non-producing Seed B
+before producing Seed A. Both providers retained their v1 chain files in the
+reset-specific `jgtc-testnet-v1-reset-settlement-txid-v1-to-da5c0c28e076`
+archive. Seed A's participant identity fingerprint was unchanged; Seed B had
+participation disabled and no identity file. No private identity data or
+fingerprint is included in repository evidence.
+
+Block 1 synchronized across both seeds at tip
+`5ede97f62db16224900e17df3d910c30eb61b16b0c679a30af879b50352d5aca`.
+Seed A reported producer enabled with one produced block and no error; Seed B
+reported producer disabled at the same height. Public explorer accounting was
+zero premine, 100 JGTC pending, 100 JGTC accounted, 100 JGTC expected, and
+`supplyConserved: true`. Both public WSS probes passed. The first public soak
+snapshot recorded 9 passes, 1 expected fresh-chain timing warning, and 0
+failures.

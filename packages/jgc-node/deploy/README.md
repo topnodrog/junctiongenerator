@@ -1,16 +1,16 @@
 # Continuous two-seed pilot
 
-> Current rollout, 2026-08-15: Google Seed A and independent Fly.io Seed B run
-> Node.js 22.23.2 on `jgtc-testnet-v1`. Block 1 synchronized across both seeds
-> and an ordinary workstation participant. The seeds
+> Current rollout, completed 2026-08-26 (America/Toronto): Google Seed A and
+> independent Fly.io Seed B run Node.js 22.23.2 on `jgtc-testnet-v2`. Block 1
+> synchronized across both seeds with conserved supply. The seeds
 > online and accept external JGC peers at `wss://seed-a.junctiongenerator.net`
 > and `wss://jgc-testnet-seed-b.fly.dev`. Ordinary node runners should use
 > [`../docs/RUN-A-NODE.md`](../docs/RUN-A-NODE.md); this document is for seed
 > operators.
 
-> Recovery target, 2026-08-20: `jgtc-testnet-v2` with genesis
+> The isolated recovery network uses genesis
 > `da5c0c28e076211e13e75f8cd28fe98f81080dafefc5ad803620961d16ee1d77`
-> isolates the settlement-ID recovery from every v1 peer and archive.
+> to isolate the settlement-ID recovery from every v1 peer and archive.
 
 The target deployment keeps two `jgtc-testnet-v2` nodes online in separate
 provider failure domains:
@@ -171,10 +171,36 @@ transaction locktime, rejects overwriting an unspent coinbase outpoint, and sets
 `da5c0c28e076211e13e75f8cd28fe98f81080dafefc5ad803620961d16ee1d77`,
 so no v1 peer can repopulate the reset volume. Deploy/reset the non-producing
 Seed B first,
-verify its previous state is present in a reset-specific archive and its
+verify its previous state is present in a reset-specific archive and any
 participant identity remains present, then deploy/reset producing Seed A. Do
 not accept the reset as complete until both nodes agree from genesis, Seed A
 produces a new block, and public soak evidence reports conserved supply.
+
+### Completed coordinated `jgtc-testnet-v2` recovery
+
+The settlement-ID recovery completed on 2026-08-26 (America/Toronto; block 1
+was observed at 2026-08-27 00:09 UTC) from reviewed merge commit
+`7d023cf5f6793cb487a6244f70aec7eff287ead7`. Seed B was reset first, followed
+by producing Seed A. Seed B's v1 state ended at height 1,696 and Seed A's at
+height 1,697. The last public v1 snapshot accounted for 41,650 JGTC against
+84,850 JGTC expected, a 43,200-JGTC gap from six overwritten 7,200-JGTC
+settlements. Their four chain-specific files were retained at:
+
+- Seed B: `/data/archive/jgtc-testnet-v1-reset-settlement-txid-v1-to-da5c0c28e076/`;
+- Seed A: `/var/lib/jgc/archive/jgtc-testnet-v1-reset-settlement-txid-v1-to-da5c0c28e076/`.
+
+Both volumes contain the reset-specific marker. Seed A's participant identity
+fingerprint matched before and after the reset; Seed B had participation
+disabled and therefore had no participant identity file to preserve. The
+private identity file and its fingerprint are not published.
+
+Both seeds accepted v2 block 1 at tip
+`5ede97f62db16224900e17df3d910c30eb61b16b0c679a30af879b50352d5aca`.
+The public explorer reported zero premine, 100 JGTC pending, 100 JGTC
+accounted, 100 JGTC expected, and `supplyConserved: true`. Both public WSS
+probes passed. The initial soak snapshot reported 9 passes, 1 timing warning,
+and 0 failures; the timing warning is expected until the frozen genesis has
+enough post-recovery blocks for a representative interval window.
 
 ### Completed coordinated `jgtc-testnet-v1` reset
 
