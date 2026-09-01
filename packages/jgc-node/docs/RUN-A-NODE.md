@@ -25,7 +25,7 @@ its local data and can stay connected through the other seed while retrying.
 ### Supported setup
 
 - Windows, macOS, or Linux on an x64 computer
-- Node.js 20.19–20.x or Node.js 22.x
+- Node.js 20.19–20.x, Node.js 22.x, or Node.js 24.x
 - Git
 - about 2 GB of free memory and 2 GB of free disk space for a starter node
 
@@ -84,6 +84,31 @@ Use the live explorer at
 
 On Windows, if PowerShell says that `npm.ps1` cannot be loaded because script
 execution is disabled, replace `npm` with `npm.cmd` in the two npm commands.
+
+### Start automatically on Windows
+
+From `packages/jgc-node`, run:
+
+```text
+npm run windows:install
+```
+
+This builds the node with the active supported Node.js executable, registers a
+per-user Windows scheduled task that starts after sign-in, starts the node now,
+and creates a branded `JGC Node On-Off` shortcut on the desktop. The task runs
+with normal user permissions and keeps the status and peer ports bound to
+loopback unless you explicitly change the node configuration.
+
+Use the desktop shortcut to switch the node off or on. Off disables the task so
+it remains off after a restart; on re-enables automatic startup and launches the
+node immediately. Windows displays a short confirmation for each action.
+
+To remove the scheduled task and shortcut without deleting chain data or a
+participant identity, run:
+
+```text
+npm run windows:uninstall
+```
 
 ## Check that it is working
 

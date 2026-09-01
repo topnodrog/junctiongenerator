@@ -24,6 +24,8 @@ jobs:
         include:
           - os: ubuntu-latest
             node: 22
+          - os: ubuntu-latest
+            node: 24
     runs-on: ${{ matrix.os }}
     defaults:
       run:

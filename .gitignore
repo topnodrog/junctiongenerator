@@ -36,6 +36,7 @@ packages/jgc-node/rust/pkg/
 packages/*/.tmp/
 
 # jgc-node local testnet (data + run script — never commit)
+packages/jgc-node/data/
 packages/jgc-node/testnet-data/
 packages/jgc-node/run-testnet.ps1
 
