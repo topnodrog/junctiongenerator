@@ -91,7 +91,7 @@ Gate: do not open the P2P port to the internet before the first three items.
   removed, genesis has zero spendable supply, and test coins are created only
   by the same 144-block settlement path used by JGC monetary consensus.
 - [x] **Public node packaging and CI foundation**: a two-node container preset,
-  pinned Node/Rust/WASM toolchains, Windows/Linux/macOS builds, Node 20/22, and
+  pinned Node/Rust/WASM toolchains, Windows/Linux/macOS builds, Node 20/22/24, and
   deterministic consensus-vector checks. Native ARM execution remains an
   expansion of the matrix, not a completed claim.
 - [x] **Seed and transport deployment**: Google Seed A and independent Fly.io

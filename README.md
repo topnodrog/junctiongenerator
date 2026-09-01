@@ -40,7 +40,8 @@ Current node milestone (2026-08-15):
   or a one-command Docker Compose setup;
 - versioned, network-bound, checksum-protected storage now recovers torn tails,
   quarantines bad snapshots, and refuses incompatible data;
-- 37 suites / 318 tests under Node.js 22, a 31-block sync demo, a six-proof strict WASM run,
+- 40 suites / 329 tests under Node.js 24, plus Node.js 20/22/24 CI, a
+  31-block sync demo, a six-proof strict WASM run,
   cross-platform CI, and the hosted Docker smoke test pass.
 
 The node is early, valueless testnet software. Two independent bootstrap seeds

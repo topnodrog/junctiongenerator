@@ -21,7 +21,7 @@ and do not promise future compensation.
 
 ## Requirements
 
-- Node.js 20.19–20.x or Node.js 22.x (Node 23+ is not supported)
+- Node.js 20.19–20.x, Node.js 22.x, or Node.js 24.x
 - npm
 
 ## Verify the node
@@ -78,6 +78,28 @@ Both safe presets:
 The standalone preset starts with no seed peers. The public preset makes only
 outbound connections to both public seeds. Check the local node at
 `http://127.0.0.1:7777/status` and press `Ctrl+C` to stop it cleanly.
+
+### Windows automatic startup and desktop switch
+
+On Windows, install an automatic sign-in task and a branded desktop on/off
+switch with:
+
+```text
+npm run windows:install
+```
+
+The installer uses the active supported Node.js executable, builds the node,
+registers `JunctionGenerator JGTC Node` in Task Scheduler, starts it, and creates
+`JGC Node On-Off` on the desktop. Turning the node off with the shortcut also
+disables automatic startup; turning it on re-enables startup and launches it.
+Local chain and participant identity data are never removed by the switch or
+the uninstaller.
+
+Remove the task and shortcut without deleting chain data with:
+
+```text
+npm run windows:uninstall
+```
 
 Simulation receipts exercise networking and consensus plumbing but do not prove
 that useful computation occurred. Strict production verification rejects them.

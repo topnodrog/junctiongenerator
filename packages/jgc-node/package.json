@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "Junction Generator Coin — Proof-of-Useful-Compute node",
   "engines": {
-    "node": ">=20.19.0 <23"
+    "node": "^20.19.0 || ^22.0.0 || ^24.0.0"
   },
   "type": "module",
   "main": "dist/index.js",
@@ -42,6 +42,8 @@
     "junctioning-smoke": "node dist/scripts/junctioning-smoke.js",
     "junctioning-verify-smoke": "node dist/scripts/junctioning-verify-smoke.js",
     "node-status": "node dist/scripts/node-status-server.js",
+    "windows:install": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/windows/Install-JgcNodeStartup.ps1",
+    "windows:uninstall": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/windows/Uninstall-JgcNodeStartup.ps1",
     "fly-cost-guard": "node dist/scripts/fly-cost-guard.js",
     "collect-pilot-evidence": "node dist/scripts/collect-pilot-evidence.js",
     "collect-soak-evidence": "node dist/scripts/collect-soak-evidence.js",

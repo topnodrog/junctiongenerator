@@ -24,7 +24,7 @@ the multi-host soak.
 - Consensus V3, the designated producer, network compatibility checks,
   testnet wallet support, container packaging, and the two-node smoke
   test are merged into `main`.
-- Node CI covers Node 20/22, Linux, Windows, macOS, the Rust/WASM verifier, and
+- Node CI covers Node 20/22/24, Linux, Windows, macOS, the Rust/WASM verifier, and
   the Docker Compose testnet smoke path.
 - Website/Worker CI, the production website build, and the Vercel deployment
   are green.
