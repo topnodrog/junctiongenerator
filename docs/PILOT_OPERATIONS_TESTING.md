@@ -5,6 +5,50 @@ It does not change either live seed. Public WSS checks are safe and read-only;
 private status, snapshot, restore, disk, and billing evidence must be collected
 through each provider's authenticated administration path.
 
+## Closed-beta acceptance window
+
+Checkpoint D authorizes a known-operator window, not a broad public
+announcement. Start the measured soak only when all of these are true:
+
+1. the `jgc-node-v0.1.0` prerelease and `SHA256SUMS.txt` are published from the
+   reviewed tag, and every operator records the matching release commit;
+2. two independent x64 operators run participant mode and a third runs the
+   outbound-only back-checker role, across real networks outside both seed
+   providers;
+3. the public WSS probe, public soak collector, and authenticated readiness
+   collector all pass at the baseline;
+4. each operator privately records only the fields in
+   `deploy/ops/closed-beta-checkin.template.json` and keeps participant
+   identity files off shared channels and out of the repository.
+
+Run the window for at least 72 continuous hours, covering at least three
+complete 144-block settlement cycles while both participant identities are
+observed. Capture public transport and soak evidence at least hourly; capture
+authenticated readiness at the start, end, after each approved drill, and at
+least once per UTC day. Preserve every warning or failure rather than replacing
+it with a later passing snapshot.
+
+The window passes only when:
+
+- every snapshot reports `jgtc-testnet-v2`, the frozen genesis, contiguous
+  recent blocks, and exact accounted-versus-expected supply;
+- the two seeds converge within one block after normal propagation and after
+  each recovery;
+- both independent participant addresses appear throughout each completed
+  settlement window and receive the expected proportional valueless JGTC;
+- the independent back-checker remains synced without an inbound listener;
+- each external runner completes a clean restart with its chain and participant
+  identity preserved;
+- approved one-seed-at-a-time loss drills recover without divergence or lost
+  state; and
+- every incident and item of operator friction has an owner, disposition, and
+  reproducible detection or recovery path.
+
+Seed-loss drills change live availability and still require a scheduled
+maintenance window. Malformed-traffic, slow-peer, and reorg exercises must use
+bounded test clients and must not begin until the baseline evidence is safely
+preserved.
+
 ## Evidence tools
 
 Run from `packages/jgc-node` after `npm ci` and `npm run build`.

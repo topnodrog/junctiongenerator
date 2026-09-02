@@ -2,17 +2,18 @@
 
 **A Protocol for Redirecting Mining Compute to Real AI Workloads**
 
-*Version 0.5 — Implementation-aligned draft, 2026-08-15*
+*Version 0.6 — Implementation-aligned draft, 2026-09-01*
 
 > **Implementation status:** JGC currently runs as early, valueless testnet
-> software. Independent Google Cloud and Fly.io public pilot seeds and an
-> ordinary workstation participant synchronized block 1 of the zero-premine
-> `jgtc-testnet-v1` network; the multi-machine soak remains incomplete. Consensus V3
+> software. Independent Google Cloud and Fly.io public pilot seeds on the
+> repaired `jgtc-testnet-v2` network have completed six zero-premine
+> settlements with exact supply conservation; the independent multi-machine
+> soak remains incomplete. Consensus V3
 > commits delayed-beacon, ML-DSA-signed historical-audit
 > evidence through `auditRoot`, uses portable canonical encodings and integer
 > work weights, separates heterogeneous verification roles, and uses versioned,
-> checksum-protected, network-bound persistent storage. Thirty-seven suites /
-> 318 tests under Node.js 22, a 31-block two-node sync demo, and a bounded six-proof strict WASM
+> checksum-protected, network-bound persistent storage. Forty suites /
+> 329 tests under Node.js 24, a 31-block two-node sync demo, and a bounded six-proof strict WASM
 > run pass. Mandatory bonded-validator activation, economic rewards/slashing,
 > the marketplace, and mainnet are not deployed. See the
 > [node-runner guide](../packages/jgc-node/docs/RUN-A-NODE.md) for the supported

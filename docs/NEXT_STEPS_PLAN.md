@@ -1,10 +1,11 @@
 # Junction Generator Next-Steps Plan
 
 **Status:** Execution approved; Phases 1–4 complete. Phase 5 is active. Google
-Seed A, independent Fly.io Seed B, and a workstation participant synchronized
-block 1 of the live zero-premine JGTC pilot. The multi-host soak remains incomplete.
+Seed A and independent Fly.io Seed B are healthy on the repaired,
+zero-premine `jgtc-testnet-v2` chain. Release packaging and independent-runner
+recruitment are the active gates; the multi-host soak remains incomplete.
 
-**Prepared:** 2026-07-30 · **Last updated:** 2026-08-15
+**Prepared:** 2026-07-30 · **Last updated:** 2026-09-01
 
 **Target milestone:** A measured multi-day soak of the public JGTC testnet.
 
@@ -228,8 +229,9 @@ Planned work:
    expectations, Node.js and Docker quick starts, live-seed status checks,
    upgrades, safe defaults, troubleshooting, and recovery links. Ollama is not
    required for the current validator/back-checker role.
-4. Add native ARM64 CI or clearly document it as unsupported until verified.
-5. Publish a release artifact with checksums and a concise changelog.
+4. [x] Clearly document native ARM64 as unsupported until verified in CI.
+5. Publish the prepared `jgc-node-v0.1.0` prerelease artifact with its SHA-256
+   checksum and concise release notes after the release workflow merges.
 
 Implementation update (2026-08-15): the explorer reads canonical node state,
 reports JGTC pending issuance and settlement height, and participant mode
@@ -241,6 +243,16 @@ zero-value genesis, a ten-minute block target, no faucet allocation, and no
 spendable supply before settlement. The coordinated seed reset and site
 deployment completed on 2026-08-15; block 1 synchronized across both seeds and
 an ordinary workstation participant.
+
+Recovery update (2026-08-26): the v1 soak detected repeated settlement
+transaction IDs that replaced earlier unspent settlement outpoints. The repair
+commits each settlement boundary height into its transaction ID and isolates
+the corrected chain as `jgtc-testnet-v2`; both providers retain the v1 data in
+recoverable archives. On 2026-09-02 UTC, a fresh public snapshot at height 878
+passed ten checks with zero warnings or failures: six settlements, 600-second
+recent cadence, contiguous blocks, healthy connectivity, and exact 43,950 JGTC
+accounted and expected supply. The only current-epoch participant was the Seed
+A anchor, so this is baseline evidence rather than a completed multi-host soak.
 
 Exit criteria:
 
@@ -264,9 +276,9 @@ decision before replacing the current immediate height-epoch settlement.
 
 Planned work:
 
-1. Recruit a small group of known node runners.
+1. Recruit a small group of known node runners using the pinned release.
 2. Run two junctioning contributors and an independent back-checker across
-   real networks for multiple days.
+   real networks for at least 72 hours and three complete settlement cycles.
 3. Exercise restarts, seed loss, reorgs, malformed traffic, slow peers,
    incompatible execution profiles, and backup restoration.
 4. Record incidents, resource use, proof/replay outcomes, and operator friction.
@@ -321,8 +333,10 @@ Implementation should begin only after the owner approves each checkpoint:
 
 ## Next task
 
-Recruit the first independent runners and continue the multi-host soak on
-`jgtc-testnet-v1`. Confirm ten-minute timing over multiple blocks, first
-144-block settlement, balance conservation, seed height convergence, restart
-recovery, and simulated seed loss. Preserve participant identities and measured
-evidence so JGTC compensation is attributable.
+Merge the release workflow, create the `jgc-node-v0.1.0` tag, and let the tag
+publish the checksummed prerelease. Recruit two independent participants and
+one independent back-checker from known operators, then run the 72-hour
+multi-host soak on `jgtc-testnet-v2`. Confirm three complete 144-block
+settlements, exact balance conservation, seed height convergence, participant
+identity continuity, restart recovery, and approved one-seed-loss drills.
+Preserve measured evidence so valueless JGTC participation is attributable.

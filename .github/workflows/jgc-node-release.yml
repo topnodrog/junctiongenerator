@@ -1,0 +1,76 @@
+name: JGC node release
+
+on:
+  push:
+    tags:
+      - "jgc-node-v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build reviewed runner bundle
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/jgc-node
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: packages/jgc-node/package-lock.json
+      - name: Require tag to match the package version
+        shell: bash
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          expected="jgc-node-v${version}"
+          if [[ "${GITHUB_REF_NAME}" != "${expected}" ]]; then
+            echo "Tag ${GITHUB_REF_NAME} does not match ${expected}" >&2
+            exit 1
+          fi
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+        id: version
+      - name: Require the release commit to be on main
+        shell: bash
+        run: |
+          git fetch origin main
+          if ! git merge-base --is-ancestor "${GITHUB_SHA}" origin/main; then
+            echo "Release tags must point to a commit already merged into main" >&2
+            exit 1
+          fi
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test -- --ci
+      - run: npm run build
+      - name: Stage the allowlisted runner bundle
+        env:
+          JGC_RELEASE_COMMIT: ${{ github.sha }}
+        run: npm run release:stage
+      - name: Archive and checksum the runner bundle
+        shell: bash
+        run: |
+          version="${{ steps.version.outputs.version }}"
+          bundle="jgc-node-v${version}"
+          cd .tmp/release
+          zip -X -r "${GITHUB_WORKSPACE}/${bundle}.zip" "${bundle}"
+          cd "${GITHUB_WORKSPACE}"
+          sha256sum "${bundle}.zip" > SHA256SUMS.txt
+      - name: Publish the verified prerelease
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        working-directory: ${{ github.workspace }}
+        run: |
+          version="${{ steps.version.outputs.version }}"
+          gh release create "${GITHUB_REF_NAME}" \
+            --verify-tag \
+            --prerelease \
+            --title "JGC Node v${version} — JGTC v2 closed beta" \
+            --notes-file packages/jgc-node/RELEASE_NOTES.md \
+            "jgc-node-v${version}.zip" \
+            SHA256SUMS.txt

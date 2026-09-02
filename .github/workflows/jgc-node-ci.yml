@@ -5,10 +5,12 @@ on:
     paths:
       - "packages/jgc-node/**"
       - ".github/workflows/jgc-node-ci.yml"
+      - ".github/workflows/jgc-node-release.yml"
   pull_request:
     paths:
       - "packages/jgc-node/**"
       - ".github/workflows/jgc-node-ci.yml"
+      - ".github/workflows/jgc-node-release.yml"
 
 permissions:
   contents: read
@@ -43,6 +45,38 @@ jobs:
       - run: npm run build
       - name: Consensus and genesis vectors
         run: npm test -- --ci --runTestsByPath src/tests/canonical.test.ts src/tests/network-identity.test.ts
+
+  runner-release-bundle:
+    name: Runner release bundle
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/jgc-node
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: packages/jgc-node/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - name: Stage the allowlisted release contents
+        env:
+          JGC_RELEASE_COMMIT: ${{ github.sha }}
+        run: npm run release:stage
+      - name: Confirm local state and credentials are excluded
+        shell: bash
+        run: |
+          bundle=".tmp/release/jgc-node-v$(node -p 'require("./package.json").version')"
+          test -f "${bundle}/RELEASE-MANIFEST.json"
+          test -f "${bundle}/dist/scripts/testnet-node.js"
+          test ! -e "${bundle}/data"
+          test ! -e "${bundle}/node_modules"
+          if find "${bundle}" -type f \( -name "*.keystore.json" -o -name ".env*" \) | grep -q .; then
+            echo "Release bundle contains forbidden local state" >&2
+            exit 1
+          fi
 
   rust-verifier:
     name: Rust/WASM verifier

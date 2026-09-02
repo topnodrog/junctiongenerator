@@ -55,6 +55,19 @@ startup prints lines like these:
 Leave that terminal open. Press `Ctrl+C` to stop the node cleanly. Its chain
 data remains in `data/testnet` and is reused on the next start.
 
+### Use the pinned closed-beta release
+
+Known closed-beta operators should use the `jgc-node-v0.1.0` GitHub prerelease
+instead of a moving `main` branch. Download its ZIP and `SHA256SUMS.txt`, verify
+the archive as described in the release notes, extract it, then run `npm ci`
+and the same `npm run testnet:public` or `npm run testnet:participate` command.
+The included `RELEASE-MANIFEST.json` must report:
+
+- `"version": "0.1.0"`;
+- `"network": "jgtc-testnet-v2"`;
+- genesis `da5c0c28e076211e13e75f8cd28fe98f81080dafefc5ad803620961d16ee1d77`;
+- the full release commit used to build the archive.
+
 ### Record your participation
 
 To do more than validate, stop the ordinary runner and start participant mode:
@@ -81,6 +94,14 @@ simulation receipt does **not** prove useful AI computation.
 
 Use the live explorer at
 [junctiongenerator.net/testnet](https://junctiongenerator.net/testnet).
+
+For a closed-beta check-in, send the coordinator only your assigned runner ID,
+role, OS/architecture, Node.js version, release tag and commit, start time, and
+the public `1QGC...` address if you participate. Never send
+`participant-identity.json`, a wallet keystore, private provider output, or raw
+logs containing credentials. The operator-side template is
+`deploy/ops/closed-beta-checkin.template.json`; copy it into `.tmp` before
+filling it out so it cannot be committed accidentally.
 
 On Windows, if PowerShell says that `npm.ps1` cannot be loaded because script
 execution is disabled, replace `npm` with `npm.cmd` in the two npm commands.

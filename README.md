@@ -25,7 +25,7 @@ development.
 The primary protocol product lives in `packages/jgc-node`; it is separate from
 the legacy JGT token on Base.
 
-Current node milestone (2026-08-15):
+Current node milestone (2026-09-01):
 
 - Consensus V3 underlies the zero-premine `jgtc-testnet-v2` identity and rejects incompatible
   peers before chain data is exchanged;
@@ -46,12 +46,16 @@ Current node milestone (2026-08-15):
 
 The node is early, valueless testnet software. Two independent bootstrap seeds
 are reachable: Google Seed A at `wss://seed-a.junctiongenerator.net` and Fly.io
-Seed B at `wss://jgc-testnet-seed-b.fly.dev`. On 2026-08-15 both seeds and this
-workstation synchronized block 1 of `jgtc-testnet-v1`. No JGC mainnet has been
-deployed. The runner-facing explorer and signed pilot participation are live
-with zero-premine JGTC issuance through 144-block settlement; a multi-day
-real-network soak remains a gate. JGTC is valueless. Production rewards and slashing remain disabled until mandatory bonded-validator activation and an
-economics/security review.
+Seed B at `wss://jgc-testnet-seed-b.fly.dev`. After the v1 soak exposed
+non-unique settlement transaction IDs, the repaired chain was isolated as
+`jgtc-testnet-v2` on 2026-08-26 with the old state preserved in recoverable
+archives. A 2026-09-02 UTC public snapshot at height 878 passed all ten soak
+checks, including six settlements, exact supply conservation, contiguous
+ten-minute blocks, and healthy seed connectivity. Only the Seed A anchor
+appeared in the current epoch, so independent-runner evidence and a measured
+multi-day real-network soak remain gates. No JGC mainnet has been deployed.
+JGTC is valueless. Production rewards and slashing remain disabled until
+mandatory bonded-validator activation and an economics/security review.
 
 To run a node, follow
 [`packages/jgc-node/docs/RUN-A-NODE.md`](packages/jgc-node/docs/RUN-A-NODE.md).
@@ -122,10 +126,11 @@ material, not the current launch strategy.
 The active plan is [`docs/NEXT_STEPS_PLAN.md`](docs/NEXT_STEPS_PLAN.md). Work is
 sequenced behind explicit gates:
 
-1. recruit a small group of external participant nodes using the two-seed guide;
-2. observe 144-block settlement, balances, height convergence, and recovery;
-3. complete a closed multi-machine soak before any broad public announcement;
-4. publish only the participation and reliability claims supported by that evidence.
+1. publish the pinned `jgc-node-v0.1.0` prerelease and SHA-256 checksum;
+2. recruit two external participant nodes and one independent back-checker;
+3. run the pinned release for at least 72 hours and three settlement cycles;
+4. exercise approved restart and one-seed-loss drills while preserving evidence;
+5. publish only the participation and reliability claims supported by that evidence.
 
 The local model can help draft configuration, run checks, summarize monitoring,
 and support incident response. It cannot replace the public hosts, persistent
@@ -168,8 +173,9 @@ batch-preparation endpoint and does not submit an on-chain transaction.
 - Consensus V3 and local/container testnet foundation complete
 - Storage hardening and local operations-model evaluation complete; Google
   Seed A and independent Fly.io Seed B are live
-- Zero-premine JGTC explorer/participation is live; block 1 synchronized across
-  both seeds and a workstation participant; multi-day soak follows
+- The repaired zero-premine `jgtc-testnet-v2` explorer/participation chain is
+  live; six settlements and exact supply conservation were observed by the
+  2026-09-02 UTC snapshot; independent-runner soak evidence follows
 
 ---
 
