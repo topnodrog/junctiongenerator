@@ -1,12 +1,12 @@
 # Junction Generator — Completion Roadmap
 
-**Updated:** 2026-08-15 · **Owner:** James Gordon
+**Updated:** 2026-09-01 · **Owner:** James Gordon
 
 Three components, one repo. Keep them distinct:
 
 | Component | What it is | Status |
 |---|---|---|
-| **JGC coin** (`packages/jgc-node`) | Sovereign PoUC Layer-1 — the actual product | Zero-premine JGTC public pilot live; block 1 synced across two seeds and a workstation; soak pending |
+| **JGC coin** (`packages/jgc-node`) | Sovereign PoUC Layer-1 — the actual product | Repaired zero-premine `jgtc-testnet-v2` pilot live; six settlements and supply conservation verified; independent soak pending |
 | **JGT token** (`contracts/`) | ERC-20 on Base (legacy) | Deployed; held, not promoted (no-sale stance) |
 | **junctiongenerator.net** (`src/` + `api/`) | Public site + Cloudflare Worker backend | Worker live and verified; community-first site merged to `main` |
 
@@ -116,11 +116,21 @@ Gate: do not open the P2P port to the internet before the first three items.
   one-command Docker runner, two live seed connections, status checks, updates,
   safe network defaults, troubleshooting, and recovery links. Ollama is not a
   prerequisite for the current validator/back-checker role.
+- **Pinned runner release**: the `jgc-node-v0.1.0` prerelease workflow,
+  allowlisted runner bundle, SHA-256 checksum, and concise release notes are
+  prepared. Publishing waits for the workflow to merge and the matching tag.
 - **Multi-machine soak test** before announcing: two junctioning miners +
   one audit committee across real networks, left running for days, with reorgs,
   signed audit verdicts, restart recovery, and adversarial traffic observed.
   Slashing is deliberately out of scope until bonded validator state is
   consensus-owned.
+
+  The v1 soak found a settlement-ID collision and was recoverably reset to the
+  repaired `jgtc-testnet-v2` chain on 2026-08-26. A 2026-09-02 UTC snapshot at
+  height 878 passed all ten public checks with six settlements and exact
+  43,950-JGTC supply accounting. Only the Seed A anchor was participating in
+  the current epoch; two independent participants and one independent
+  back-checker must still complete the 72-hour acceptance window.
 
 - [x] **Consensus-owned validator-bond foundation**: tagged, spendable bond
   outputs derive the roster and stake snapshot from active-chain UTXOs; when a

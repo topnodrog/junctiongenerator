@@ -1,0 +1,21 @@
+{
+  "runnerId": "operator-assigned-pseudonym",
+  "role": "participant-or-back-checker",
+  "releaseTag": "jgc-node-v0.1.0",
+  "releaseCommit": "full-40-character-commit-hash",
+  "operatingSystem": "windows-macos-or-linux",
+  "architecture": "x64",
+  "nodeVersion": "v22.x.x",
+  "network": "jgtc-testnet-v2",
+  "startedAt": null,
+  "participantAddress": null,
+  "statusObservations": [],
+  "restartDrill": {
+    "startedAt": null,
+    "recoveredAt": null,
+    "identityPreserved": null,
+    "heightConverged": null,
+    "notes": null
+  },
+  "operatorFriction": []
+}

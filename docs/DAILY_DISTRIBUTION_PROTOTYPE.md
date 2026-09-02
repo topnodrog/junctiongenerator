@@ -1,7 +1,7 @@
 # Ten-day JGC daily-distribution prototype
 
 This prototype exercises a proposed UTC/height-based distribution policy
-without changing the live `jgtc-testnet-v1` settlement rules.
+without changing the live `jgtc-testnet-v2` settlement rules.
 
 ## Scenario
 
@@ -58,4 +58,4 @@ A versioned consensus proposal still needs to define reorg handling across the
 earning boundary and delayed settlement height, fee attribution during the
 24-block delay, and how a missed settlement transaction is recovered. Until
 then these blocks remain `daily-distribution-prototype-v1` evidence and must not
-be presented as valid current `jgtc-testnet-v1` blocks.
+be presented as valid current `jgtc-testnet-v2` blocks.
