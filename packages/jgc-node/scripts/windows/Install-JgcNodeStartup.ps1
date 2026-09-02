@@ -66,6 +66,24 @@ if ($existingTask) {
 }
 Register-ScheduledTask -TaskName $script:JgcNodeTaskName -InputObject $task | Out-Null
 
+# Register-ScheduledTask inherits the elevated installer's task ACL and can
+# leave the limited runner account with read-only access.  The desktop toggle
+# runs as that account, so explicitly grant it control of this task only.
+$accountSid = (New-Object System.Security.Principal.NTAccount($account)).Translate(
+  [System.Security.Principal.SecurityIdentifier]
+).Value
+$scheduleService = New-Object -ComObject "Schedule.Service"
+$scheduleService.Connect()
+$registeredTask = $scheduleService.GetFolder("\").GetTask($script:JgcNodeTaskName)
+$taskSddl = $registeredTask.GetSecurityDescriptor(0xF)
+$readOnlyAce = "(A;;FR;;;$accountSid)"
+$fullAccessAce = "(A;;FA;;;$accountSid)"
+if ($taskSddl.Contains($readOnlyAce)) {
+  $registeredTask.SetSecurityDescriptor($taskSddl.Replace($readOnlyAce, $fullAccessAce), 0)
+} elseif (-not $taskSddl.Contains($fullAccessAce)) {
+  throw "Unable to grant $account control of the automatic startup task."
+}
+
 $localAppData = [Environment]::GetFolderPath("LocalApplicationData")
 $controlDirectory = Join-Path $localAppData "JunctionGenerator"
 $iconPath = Join-Path $controlDirectory "jgc-node.ico"
