@@ -4,11 +4,13 @@ on:
   push:
     paths:
       - "packages/jgc-node/**"
+      - "packages/jg-codegen/**"
       - ".github/workflows/jgc-node-ci.yml"
       - ".github/workflows/jgc-node-release.yml"
   pull_request:
     paths:
       - "packages/jgc-node/**"
+      - "packages/jg-codegen/**"
       - ".github/workflows/jgc-node-ci.yml"
       - ".github/workflows/jgc-node-release.yml"
 
@@ -16,6 +18,23 @@ permissions:
   contents: read
 
 jobs:
+  codegen:
+    name: Deterministic code generator
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/jg-codegen
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: packages/jg-codegen/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+
   node-consensus:
     name: Node ${{ matrix.node }} / ${{ matrix.os }}
     strategy:

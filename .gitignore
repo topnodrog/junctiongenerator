@@ -32,6 +32,7 @@ packages/web/out/
 
 # jgc-node build output
 packages/jgc-node/dist/
+packages/jg-codegen/dist/
 packages/jgc-node/rust/pkg/
 packages/*/.tmp/
 
