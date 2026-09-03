@@ -1,4 +1,5 @@
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "fs";
+import { execFileSync } from "child_process";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath, pathToFileURL } from "url";
 import { buildReleaseManifest, collectReleaseFiles } from "./release-manifest.mjs";
@@ -56,6 +57,20 @@ const networks = await import(pathToFileURL(join(distRoot, "config", "networks.j
 const commit = process.env.JGC_RELEASE_COMMIT ?? "working-tree";
 if (commit !== "working-tree" && !/^[0-9a-f]{40}$/.test(commit)) {
   throw new Error("JGC_RELEASE_COMMIT must be a full lowercase Git commit hash");
+}
+if (commit !== "working-tree") {
+  let head;
+  try {
+    head = execFileSync("git", ["rev-parse", "HEAD"], {
+      cwd: packageRoot,
+      encoding: "utf8",
+    }).trim();
+  } catch {
+    throw new Error("JGC_RELEASE_COMMIT requires a Git checkout");
+  }
+  if (head !== commit) {
+    throw new Error(`JGC_RELEASE_COMMIT ${commit} does not match checked-out HEAD ${head}`);
+  }
 }
 
 const baseManifest = {
