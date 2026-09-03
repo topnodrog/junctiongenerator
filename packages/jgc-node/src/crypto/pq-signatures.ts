@@ -88,6 +88,11 @@ export function pqIsValidPublicKey(publicKeyHex: string): boolean {
   return /^[0-9a-fA-F]+$/.test(publicKeyHex) && toBytes(publicKeyHex).length === PQ_SIZES.publicKey;
 }
 
+/** Validate that a hex string is a well-formed ML-DSA-65 private key. */
+export function pqIsValidPrivateKey(privateKeyHex: string): boolean {
+  return /^[0-9a-fA-F]+$/.test(privateKeyHex) && toBytes(privateKeyHex).length === PQ_SIZES.secretKey;
+}
+
 /** Validate that a hex string is a well-formed ML-DSA-65 signature. */
 export function pqIsValidSignature(sigHex: string): boolean {
   return /^[0-9a-fA-F]+$/.test(sigHex) && toBytes(sigHex).length === PQ_SIZES.signature;

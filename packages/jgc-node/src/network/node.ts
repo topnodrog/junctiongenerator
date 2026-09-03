@@ -26,6 +26,7 @@
  */
 
 import { EventEmitter } from "events";
+import { peerMessageSignatureHash } from "./wire.js";
 import type {
   Block, BlockHeader, PeerMessage, Transaction,
   MinerComputeContribution, ComputeBid, NodeConfig,
@@ -74,6 +75,13 @@ import {
   quantumVerifyContributionSignature,
   quantumVerifyProofForConsensus,
 } from "../crypto/pq.js";
+import {
+  pqIsValidPrivateKey,
+  pqIsValidPublicKey,
+  pqIsValidSignature,
+  pqSignHash,
+  pqVerifyHashSignature,
+} from "../crypto/pq-signatures.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Peer Connection Types
@@ -97,6 +105,8 @@ export interface PeerInfo {
   advertisedUrl?: string;
   /** True only after a required public-network VERSION identity matched. */
   networkIdentityVerified?: boolean;
+  /** ML-DSA public key established by the authenticated VERSION handshake. */
+  authenticatedPublicKey?: string;
 }
 
 /** Simulated peer connection — in production: replace with TCP/WebSocket. */
@@ -220,11 +230,32 @@ export class JGCNode extends EventEmitter {
   private readonly audits = new AuditLifecycle();
   private auditStore?: AuditStore;
   private readonly peerGuard: PeerGuard;
+  private readonly peerAuthenticationRequired: boolean;
 
   constructor(config: NodeConfig, genesisBlock: Block) {
     super();
     this.config = config;
     this.genesis = genesisBlock;
+    this.peerAuthenticationRequired = config.requirePeerAuthentication ?? false;
+    if (this.peerAuthenticationRequired) {
+      if (!config.p2pPrivateKey || !config.p2pPublicKey ||
+          !pqIsValidPrivateKey(config.p2pPrivateKey) || !pqIsValidPublicKey(config.p2pPublicKey)) {
+        throw new Error(
+          "authenticated P2P mode requires a valid ML-DSA-65 p2pPrivateKey/p2pPublicKey pair",
+        );
+      }
+      const probe = {
+        type: MT.PING,
+        payload: { nonce: 0 },
+        timestamp: 0,
+        senderPublicKey: config.p2pPublicKey,
+      } as const;
+      const probeHash = peerMessageSignatureHash(probe, config.networkMagic);
+      const probeSignature = pqSignHash(config.p2pPrivateKey, probeHash);
+      if (!pqVerifyHashSignature(probeSignature, probeHash, config.p2pPublicKey)) {
+        throw new Error("p2pPrivateKey does not match p2pPublicKey");
+      }
+    }
     this.maxMempoolTxs    = config.maxMempoolTxs   ?? DEFAULT_MAX_MEMPOOL_TXS;
     this.minRelayFeeRate  = config.minRelayFeeRate ?? DEFAULT_MIN_RELAY_FEERATE;
     this.snapshotInterval = config.snapshotIntervalBlocks ?? BLOCKS_PER_EPOCH;
@@ -505,6 +536,30 @@ export class JGCNode extends EventEmitter {
     }
 
     peer.info.lastSeen   = Math.floor(Date.now() / 1000);
+
+    if (this.peerAuthenticationRequired) {
+      const unsigned = {
+        type: msg.type,
+        payload: msg.payload,
+        timestamp: msg.timestamp,
+        senderPublicKey: msg.senderPublicKey,
+      };
+      const valid = pqIsValidPublicKey(msg.senderPublicKey) &&
+        pqIsValidSignature(msg.signature) &&
+        pqVerifyHashSignature(
+          msg.signature,
+          peerMessageSignatureHash(unsigned, this.config.networkMagic),
+          msg.senderPublicKey,
+        ) &&
+        (peer.info.authenticatedPublicKey === undefined ||
+          peer.info.authenticatedPublicKey === msg.senderPublicKey);
+      if (!valid) {
+        console.warn(`[Node] Disconnecting ${peerId}: invalid P2P message authentication`);
+        this.disconnectPeer(peerId);
+        return;
+      }
+      peer.info.authenticatedPublicKey ??= msg.senderPublicKey;
+    }
 
     if (this.config.requireNetworkIdentity &&
         !peer.info.networkIdentityVerified && msg.type !== MT.VERSION) {
@@ -1454,13 +1509,24 @@ export class JGCNode extends EventEmitter {
   get maxPeerLimit(): number { return this.config.maxPeers; }
 
   private buildMessage(type: MT, payload: unknown): PeerMessage {
-    return {
+    const timestamp = Math.floor(Date.now() / 1000);
+    const senderPublicKey = this.config.p2pPublicKey ?? this.config.minerAddress ?? "unknown";
+    const unsigned = {
       type:            type as import("../types/index.js").MessageType,
       payload,
-      timestamp:       Math.floor(Date.now() / 1000),
-      senderPublicKey: this.config.minerAddress ?? "unknown",
-      signature:       "0".repeat(128),  // production: sign with node key
+      timestamp,
+      senderPublicKey,
     };
+    const signature = this.config.p2pPrivateKey
+      ? pqSignHash(
+          this.config.p2pPrivateKey,
+          peerMessageSignatureHash(unsigned, this.config.networkMagic),
+        )
+      : "0".repeat(128);
+    if (this.peerAuthenticationRequired && signature === "0".repeat(128)) {
+      throw new Error("authenticated P2P mode cannot emit unsigned messages");
+    }
+    return { ...unsigned, signature };
   }
 
   /**

@@ -82,6 +82,50 @@ function encodePayload(msg: PeerMessage): Buffer {
   return Buffer.from(body, "utf8");
 }
 
+function canonicalWireValue(value: unknown): unknown {
+  if (typeof value === "bigint") return { [BIGINT_TAG]: value.toString() };
+  if (value instanceof Map) {
+    return {
+      [MAP_TAG]: [...value.entries()].map(([key, item]) => [
+        canonicalWireValue(key),
+        canonicalWireValue(item),
+      ]),
+    };
+  }
+  if (Array.isArray(value)) return value.map(canonicalWireValue);
+  if (value !== null && typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    return Object.fromEntries(
+      Object.keys(record).sort().map((key) => [key, canonicalWireValue(record[key])]),
+    );
+  }
+  return value;
+}
+
+/**
+ * Hash the canonical, unsigned form of a peer message for ML-DSA signing.
+ * The network magic, message type, timestamp, sender key, and payload are all
+ * bound to prevent cross-network, cross-type, and replay substitution.
+ */
+export function peerMessageSignatureHash(
+  msg: Omit<PeerMessage, "signature">,
+  networkMagic: number,
+): Uint8Array {
+  const magic = Buffer.alloc(4);
+  magic.writeUInt32BE(networkMagic >>> 0, 0);
+  const unsigned = canonicalWireValue({
+    type: msg.type,
+    payload: msg.payload,
+    timestamp: msg.timestamp,
+    senderPublicKey: msg.senderPublicKey,
+  });
+  return createHash("sha3-256")
+    .update("JGC-P2P-MESSAGE/V1", "utf8")
+    .update(magic)
+    .update(JSON.stringify(unsigned), "utf8")
+    .digest();
+}
+
 function isSafeDecodedValue(value: unknown, depth = 0): boolean {
   if (depth > MAX_DECODED_PAYLOAD_DEPTH) return false;
   if (value === null || typeof value === "boolean" || typeof value === "bigint") return true;
