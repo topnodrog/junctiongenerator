@@ -2,7 +2,11 @@ import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } fr
 import { execFileSync } from "child_process";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath, pathToFileURL } from "url";
-import { buildReleaseManifest, collectReleaseFiles } from "./release-manifest.mjs";
+import {
+  buildReleaseManifest,
+  collectReleaseFiles,
+  validateReleaseManifestMetadata,
+} from "./release-manifest.mjs";
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const packageJson = JSON.parse(readFileSync(join(packageRoot, "package.json"), "utf8"));
@@ -86,6 +90,7 @@ const baseManifest = {
   ],
 };
 const manifest = buildReleaseManifest(baseManifest, collectReleaseFiles(bundleRoot));
+validateReleaseManifestMetadata(manifest, bundleRoot);
 writeFileSync(
   join(bundleRoot, "RELEASE-MANIFEST.json"),
   `${JSON.stringify(manifest, null, 2)}\n`,

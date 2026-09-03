@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { test } from "node:test";
 import {
   buildReleaseManifest,
   collectReleaseFiles,
   releaseTreeSha256,
+  validateReleaseManifestMetadata,
   verifyReleaseBundle,
 } from "./release-manifest.mjs";
 
@@ -61,6 +62,27 @@ test("rejects missing and extra files", () => {
     writeFileSync(join(root, "dist", "index.js"), "console.log('ok');\n");
     writeFileSync(join(root, "extra.txt"), "unexpected\n");
     assert.throws(() => verifyReleaseBundle(root), /do not match/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("validates operator-facing release metadata", () => {
+  const root = fixture();
+  try {
+    writeFileSync(join(root, "package.json"), JSON.stringify({ version: "0.0.0" }));
+    const manifest = buildReleaseManifest({
+      artifact: basename(root),
+      version: "0.0.0",
+      commit: "working-tree",
+      network: "jgtc-testnet-v2",
+      genesisHash: "aa".repeat(32),
+      proofMode: "simnet-receipts-v1",
+      seeds: ["wss://seed.example"],
+    }, collectReleaseFiles(root));
+    assert.doesNotThrow(() => validateReleaseManifestMetadata(manifest, root));
+    assert.throws(() => validateReleaseManifestMetadata({ ...manifest, version: "9.9.9" }, root), /does not match package.json/);
+    assert.throws(() => validateReleaseManifestMetadata({ ...manifest, seeds: ["http://seed.example"] }, root), /seeds are malformed/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

@@ -1,7 +1,7 @@
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { existsSync, readFileSync } from "node:fs";
-import { verifyReleaseBundle } from "./release-manifest.mjs";
+import { validateReleaseManifestMetadata, verifyReleaseBundle } from "./release-manifest.mjs";
 
 const packageRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const packageJson = JSON.parse(readFileSync(resolve(packageRoot, "package.json"), "utf8"));
@@ -13,4 +13,5 @@ const stagedBundle = resolve(packageRoot, ".tmp", "release", `jgc-node-v${versio
 const defaultBundle = existsSync(resolve(packageRoot, "RELEASE-MANIFEST.json")) ? packageRoot : stagedBundle;
 const bundleRoot = resolve(suppliedBundle ?? defaultBundle);
 const manifest = verifyReleaseBundle(bundleRoot);
+validateReleaseManifestMetadata(manifest, bundleRoot);
 console.log(`Verified ${manifest.artifact}: ${manifest.fileCount} files, tree ${manifest.treeSha256}`);

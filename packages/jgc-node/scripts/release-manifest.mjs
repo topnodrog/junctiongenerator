@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
-import { join, relative, sep } from "node:path";
+import { basename, join, relative, sep } from "node:path";
 
 export const RELEASE_MANIFEST_VERSION = 1;
 const MANIFEST_NAME = "RELEASE-MANIFEST.json";
@@ -78,6 +78,33 @@ export function buildReleaseManifest(base, entries) {
     treeSha256: releaseTreeSha256(files),
     files,
   };
+}
+
+/** Validate release identity fields that describe the bundle to an operator. */
+export function validateReleaseManifestMetadata(manifest, bundleRoot) {
+  if (!manifest || typeof manifest !== "object") throw new Error("release manifest must be an object");
+  if (typeof manifest.artifact !== "string" || !/^[A-Za-z0-9._-]+$/.test(manifest.artifact) || manifest.artifact !== basename(bundleRoot)) {
+    throw new Error("release manifest artifact does not match its bundle directory");
+  }
+  if (typeof manifest.version !== "string" || !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(manifest.version)) {
+    throw new Error("release manifest version is malformed");
+  }
+  const packagePath = join(bundleRoot, "package.json");
+  if (!existsSync(packagePath)) throw new Error("release bundle package.json is missing");
+  const packageJson = JSON.parse(readFileSync(packagePath, "utf8"));
+  if (packageJson.version !== manifest.version) throw new Error("release manifest version does not match package.json");
+  if (manifest.commit !== "working-tree" && (typeof manifest.commit !== "string" || !/^[0-9a-f]{40}$/.test(manifest.commit))) {
+    throw new Error("release manifest commit is malformed");
+  }
+  if (typeof manifest.network !== "string" || manifest.network.length === 0) throw new Error("release manifest network is missing");
+  if (typeof manifest.genesisHash !== "string" || !/^[0-9a-f]{64}$/.test(manifest.genesisHash)) {
+    throw new Error("release manifest genesis hash is malformed");
+  }
+  if (typeof manifest.proofMode !== "string" || manifest.proofMode.length === 0) throw new Error("release manifest proof mode is missing");
+  if (!Array.isArray(manifest.seeds) || manifest.seeds.length === 0 || manifest.seeds.some(seed => typeof seed !== "string" || !/^wss:\/\/[^\s]+$/.test(seed))) {
+    throw new Error("release manifest seeds are malformed");
+  }
+  return manifest;
 }
 
 /** Verify the manifest inventory and every file digest against the bundle on disk. */
