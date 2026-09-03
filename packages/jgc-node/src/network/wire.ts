@@ -35,6 +35,13 @@ export const MAX_DECODED_PAYLOAD_ARRAY_ITEMS = 16_384;
 export const MAX_DECODED_PAYLOAD_OBJECT_KEYS = 256;
 export const MAX_DECODED_PAYLOAD_STRING_BYTES = 1_048_576;
 
+// Signed messages must be recent enough to prevent replay while allowing for
+// normal clock skew and short network delays. The node also caches accepted
+// message digests for this age window (see network/node.ts).
+export const MAX_AUTH_MESSAGE_AGE_SECONDS = 15 * 60;
+export const MAX_AUTH_MESSAGE_FUTURE_SKEW_SECONDS = 120;
+export const MAX_AUTHENTICATED_MESSAGE_CACHE = 10_000;
+
 const BIGINT_TAG = "$jgc:bigint";
 const MAP_TAG = "$jgc:map";
 
@@ -124,6 +131,17 @@ export function peerMessageSignatureHash(
     .update(magic)
     .update(JSON.stringify(unsigned), "utf8")
     .digest();
+}
+
+/** Return whether an authenticated message timestamp is inside the replay window. */
+export function isPeerMessageTimestampFresh(
+  timestamp: number,
+  now = Math.floor(Date.now() / 1000),
+): boolean {
+  return Number.isSafeInteger(timestamp)
+    && Number.isSafeInteger(now)
+    && timestamp >= now - MAX_AUTH_MESSAGE_AGE_SECONDS
+    && timestamp <= now + MAX_AUTH_MESSAGE_FUTURE_SKEW_SECONDS;
 }
 
 function isSafeDecodedValue(value: unknown, depth = 0): boolean {

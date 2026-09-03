@@ -107,14 +107,40 @@ describe("authenticated P2P messages", () => {
     node.connectPeer(connection);
     await Promise.resolve();
 
-    const valid = signedMessage(MessageType.PING, { nonce: 7 }, 123);
+    const now = Math.floor(Date.now() / 1000);
+    const valid = signedMessage(MessageType.PING, { nonce: 7 }, now);
     await node.processMessage(connection.info.peerId, valid);
     expect(disconnected.value).toBe(false);
 
     await node.processMessage(connection.info.peerId, {
-      ...signedMessage(MessageType.PING, { nonce: 8 }, 124),
+      ...signedMessage(MessageType.PING, { nonce: 8 }, now + 1),
       senderPublicKey: pqGenerateKeyPair("33".repeat(32)).publicKey,
     });
     expect(disconnected.value).toBe(true);
+  });
+
+  test("rejects stale and replayed signed messages", async () => {
+    const node = new JGCNode(config(), createGenesisBlock());
+    const sent: PeerMessage[] = [];
+    const disconnected = { value: false };
+    const connection = peer(sent, disconnected);
+    node.connectPeer(connection);
+    await Promise.resolve();
+
+    const now = Math.floor(Date.now() / 1000);
+    await node.processMessage(connection.info.peerId, signedMessage(MessageType.PING, { nonce: 1 }, now - 15 * 60 - 1));
+    expect(disconnected.value).toBe(true);
+
+    const secondNode = new JGCNode(config(), createGenesisBlock());
+    const secondSent: PeerMessage[] = [];
+    const secondDisconnected = { value: false };
+    const secondConnection = peer(secondSent, secondDisconnected);
+    secondNode.connectPeer(secondConnection);
+    await Promise.resolve();
+    const valid = signedMessage(MessageType.PING, { nonce: 2 }, now);
+    await secondNode.processMessage(secondConnection.info.peerId, valid);
+    expect(secondDisconnected.value).toBe(false);
+    await secondNode.processMessage(secondConnection.info.peerId, valid);
+    expect(secondDisconnected.value).toBe(true);
   });
 });
