@@ -8,6 +8,7 @@ const packageJson = JSON.parse(readFileSync(resolve(packageRoot, "package.json")
 const version = packageJson.version;
 const flagIndex = process.argv.indexOf("--bundle");
 const suppliedBundle = flagIndex >= 0 ? process.argv[flagIndex + 1] : undefined;
+if (flagIndex >= 0 && !suppliedBundle) throw new Error("--bundle requires a directory path");
 const stagedBundle = resolve(packageRoot, ".tmp", "release", `jgc-node-v${version}`);
 const defaultBundle = existsSync(resolve(packageRoot, "RELEASE-MANIFEST.json")) ? packageRoot : stagedBundle;
 const bundleRoot = resolve(suppliedBundle ?? defaultBundle);

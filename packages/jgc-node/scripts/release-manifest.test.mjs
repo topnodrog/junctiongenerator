@@ -23,10 +23,11 @@ test("builds and verifies a canonical content-addressed inventory", () => {
   const root = fixture();
   try {
     const entries = collectReleaseFiles(root);
-    const manifest = buildReleaseManifest({ artifact: "fixture", version: "0.0.0" }, entries);
+    const manifest = buildReleaseManifest({ artifact: "fixture", version: "0.0.0" }, [...entries].reverse());
     writeFileSync(join(root, "RELEASE-MANIFEST.json"), `${JSON.stringify(manifest, null, 2)}\n`);
     assert.deepEqual(verifyReleaseBundle(root), manifest);
     assert.equal(manifest.fileCount, 3);
+    assert.deepEqual(manifest.files, entries);
     assert.equal(manifest.treeSha256, releaseTreeSha256(entries));
   } finally {
     rmSync(root, { recursive: true, force: true });

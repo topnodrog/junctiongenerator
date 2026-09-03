@@ -62,12 +62,21 @@ export function releaseTreeSha256(entries) {
 
 export function buildReleaseManifest(base, entries) {
   if (!base || typeof base !== "object") throw new Error("release manifest base must be an object");
+  if (!Array.isArray(entries)) throw new Error("release manifest entries must be an array");
+  const files = entries.map(entry => {
+    if (!entry || typeof entry.path !== "string" || !/^[0-9a-f]{64}$/.test(entry.sha256)) {
+      throw new Error("release manifest contains a malformed file entry");
+    }
+    assertSafeRelativePath(entry.path);
+    if (FORBIDDEN_PATH.test(entry.path)) throw new Error(`forbidden release path: ${entry.path}`);
+    return { path: entry.path, sha256: entry.sha256 };
+  }).sort((a, b) => comparePath(a.path, b.path));
   return {
     ...base,
     manifestVersion: RELEASE_MANIFEST_VERSION,
-    fileCount: entries.length,
-    treeSha256: releaseTreeSha256(entries),
-    files: entries,
+    fileCount: files.length,
+    treeSha256: releaseTreeSha256(files),
+    files,
   };
 }
 
