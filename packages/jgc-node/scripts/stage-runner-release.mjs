@@ -40,6 +40,7 @@ const paths = [
   "rust/rust-toolchain.toml",
   "rust/src",
   "scripts/compose-smoke.mjs",
+  "scripts/release-check.mjs",
   "scripts/release-manifest.mjs",
   "scripts/stage-runner-release.mjs",
   "scripts/verify-release-bundle.mjs",

@@ -52,6 +52,7 @@
     "public-seed-probe": "node dist/scripts/public-seed-probe.js",
     "ten-day-ledger": "node dist/scripts/ten-day-ledger.js",
     "solo-soak": "npm run build && node dist/scripts/solo-soak.js",
+    "release:check": "node scripts/release-check.mjs",
     "release:stage": "node scripts/stage-runner-release.mjs",
     "release:verify": "node scripts/verify-release-bundle.mjs",
     "test:release-manifest": "node --test scripts/release-manifest.test.mjs"

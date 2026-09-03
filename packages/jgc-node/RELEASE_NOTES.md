@@ -40,6 +40,11 @@ npm ci
 npm run testnet:public
 ```
 
+For a complete owner-only release rehearsal, run `npm run release:check` after
+`npm ci`. It reruns the full consensus suite, rebuilds the node, confirms the
+mainnet preflight is still blocked, stages the allowlisted bundle, and verifies
+its content-addressed manifest.
+
 Use `npm run testnet:participate` instead to submit signed, equal-weight pilot
 receipts. Back up `data/testnet/participant-identity.json` privately. Never
 publish that file or reuse the identity on a valuable network.
