@@ -20,6 +20,7 @@
 
 import type { NodeConfig } from "../types/index.js";
 import { loadVerifierWasm } from "../crypto/zkp.js";
+import { setQuantumVerifierMode } from "../crypto/pq.js";
 import { JGCNode } from "../network/node.js";
 import { startP2PServer, dialPeer } from "../network/transport.js";
 import { BlockProducer, mineBlocks, makePeer, makeGenesisBlock } from "../sim/harness.js";
@@ -55,6 +56,7 @@ async function main(): Promise<void> {
 
   // Simnet harness mines with placeholder proofs (no valid pairing) — use the
   // structural verifier path. Mainnet nodes load in the default "strict" mode.
+  setQuantumVerifierMode("simnet");
   await loadVerifierWasm({ mode: "simnet" });
 
   // ── Node A: mining node ───────────────────────────────────────────────────

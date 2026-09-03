@@ -17,6 +17,7 @@
 import { JGCNode } from "../network/node.js";
 import { MessageType as MT } from "../types/index.js";
 import { loadVerifierWasm } from "../crypto/zkp.js";
+import { setQuantumVerifierMode } from "../crypto/pq.js";
 import { p2pkhScript } from "../crypto/signatures.js";
 import { BASE_UNITS_PER_JGC, getBlockReward } from "../consensus/emission.js";
 import {
@@ -47,6 +48,7 @@ async function main(): Promise<void> {
   console.log("══════════════════════════════════════════════════════════════");
   console.log(" JGC Wallet — keystore, balance, coin selection, send, confirm");
   console.log("══════════════════════════════════════════════════════════════");
+  setQuantumVerifierMode("simnet");
   await loadVerifierWasm({ mode: "simnet" });
 
   let allOk = true;

@@ -18,6 +18,7 @@ import type { NodeConfig, Block, MinerComputeContribution } from "../types/index
 import { JGCNode } from "../network/node.js";
 import { MessageType as MT } from "../types/index.js";
 import { loadVerifierWasm } from "../crypto/zkp.js";
+import { setQuantumVerifierMode } from "../crypto/pq.js";
 import { hashBlockHeader } from "../consensus/block.js";
 import {
   makeGenesisBlock, makePeer, makeMessage, makeContribution, BlockProducer, DEFAULT_MINERS,
@@ -38,6 +39,7 @@ async function main(): Promise<void> {
   console.log("══════════════════════════════════════════════════════════════");
   console.log(" JGC Node — fork choice + chain reorganization");
   console.log("══════════════════════════════════════════════════════════════");
+  setQuantumVerifierMode("simnet");
   await loadVerifierWasm({ mode: "simnet" });
 
   let allOk = true;

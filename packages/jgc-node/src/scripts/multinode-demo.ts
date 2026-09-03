@@ -18,6 +18,7 @@
 import type { NodeConfig } from "../types/index.js";
 import { JGCNode } from "../network/node.js";
 import { loadVerifierWasm } from "../crypto/zkp.js";
+import { setQuantumVerifierMode } from "../crypto/pq.js";
 import { startP2PServer, connectToPeers, type P2PServer, type PeerLinks } from "../network/transport.js";
 import { makeGenesisBlock, makePeer, BlockProducer, mineBlocks } from "../sim/harness.js";
 
@@ -45,6 +46,7 @@ async function main(): Promise<void> {
   console.log(" JGC Node — multi-peer P2P: 3-node propagation + reconnect");
   console.log("══════════════════════════════════════════════════════════════");
 
+  setQuantumVerifierMode("simnet");
   await loadVerifierWasm({ mode: "simnet" });
 
   // Three independent nodes, each on its own socket.

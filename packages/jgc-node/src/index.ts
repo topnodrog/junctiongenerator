@@ -26,6 +26,7 @@ import type { PeerConnection } from "./network/node.js";
 import { createGenesisBlock, hashBlockHeader } from "./consensus/block.js";
 import { decodeDifficultyBits, BLOCKS_PER_EPOCH } from "./consensus/emission.js";
 import { loadVerifierWasm } from "./crypto/zkp.js";
+import { setQuantumVerifierMode } from "./crypto/pq.js";
 import {
   createRegtestMiner, generateContribution, buildBlockCandidate, createRegtestTx,
 } from "./miner/miner.js";
@@ -83,6 +84,7 @@ async function main(): Promise<void> {
   // 1. Load the ZK verifier (falls back to JS stub without compiled WASM).
   // Simnet harness mines with placeholder proofs (no valid pairing) — use the
   // structural verifier path. Mainnet nodes load in the default "strict" mode.
+  setQuantumVerifierMode("simnet");
   await loadVerifierWasm({ mode: "simnet" });
 
   // 2. Construct genesis and boot the node.
