@@ -467,4 +467,6 @@ export interface NodeConfig {
   p2pPublicKey?: string;
   /** Require valid ML-DSA signatures on inbound P2P messages. */
   requirePeerAuthentication?: boolean;
+  /** Signed readiness record required when starting the value-bearing mainnet. */
+  mainnetReadiness?: unknown;
 }
