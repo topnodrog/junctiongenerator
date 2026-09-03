@@ -27,6 +27,14 @@ export const WIRE_VERSION = 1;
 export const WIRE_HEADER_BYTES = 16;
 export const MAX_WIRE_PAYLOAD_BYTES = 8 * 1024 * 1024 - WIRE_HEADER_BYTES;
 
+// Decoding limits are deliberately stricter than the frame limit. A valid
+// frame must not be able to create an arbitrarily deep or wide object graph
+// before the message reaches protocol validation.
+export const MAX_DECODED_PAYLOAD_DEPTH = 32;
+export const MAX_DECODED_PAYLOAD_ARRAY_ITEMS = 16_384;
+export const MAX_DECODED_PAYLOAD_OBJECT_KEYS = 256;
+export const MAX_DECODED_PAYLOAD_STRING_BYTES = 1_048_576;
+
 const BIGINT_TAG = "$jgc:bigint";
 const MAP_TAG = "$jgc:map";
 
@@ -72,6 +80,32 @@ function encodePayload(msg: PeerMessage): Buffer {
     return value;
   });
   return Buffer.from(body, "utf8");
+}
+
+function isSafeDecodedValue(value: unknown, depth = 0): boolean {
+  if (depth > MAX_DECODED_PAYLOAD_DEPTH) return false;
+  if (value === null || typeof value === "boolean" || typeof value === "bigint") return true;
+  if (typeof value === "string") {
+    return Buffer.byteLength(value, "utf8") <= MAX_DECODED_PAYLOAD_STRING_BYTES;
+  }
+  if (typeof value === "number") return Number.isFinite(value);
+  if (Array.isArray(value)) {
+    if (value.length > MAX_DECODED_PAYLOAD_ARRAY_ITEMS) return false;
+    return value.every((item) => isSafeDecodedValue(item, depth + 1));
+  }
+  if (value instanceof Map) {
+    if (value.size > MAX_DECODED_PAYLOAD_ARRAY_ITEMS) return false;
+    for (const [key, item] of value) {
+      if (!isSafeDecodedValue(key, depth + 1) || !isSafeDecodedValue(item, depth + 1)) return false;
+    }
+    return true;
+  }
+  if (typeof value === "object") {
+    const keys = Object.keys(value as Record<string, unknown>);
+    if (keys.length > MAX_DECODED_PAYLOAD_OBJECT_KEYS) return false;
+    return keys.every((key) => isSafeDecodedValue((value as Record<string, unknown>)[key], depth + 1));
+  }
+  return false;
 }
 
 /** Encode a peer message into a checksummed, network-bound binary frame. */
@@ -133,6 +167,7 @@ export function decodePeerMessage(data: Buffer | Uint8Array, networkMagic: numbe
     if (!Number.isSafeInteger(decoded.timestamp) || (decoded.timestamp as number) < 0) return null;
     if (typeof decoded.senderPublicKey !== "string" || typeof decoded.signature !== "string") return null;
     if (!Object.prototype.hasOwnProperty.call(decoded, "payload")) return null;
+    if (!isSafeDecodedValue(decoded.payload)) return null;
 
     return {
       type,
