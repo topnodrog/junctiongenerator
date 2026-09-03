@@ -14,6 +14,10 @@ function portablePath(value) {
   return value.split(sep).join("/");
 }
 
+function comparePath(left, right) {
+  return left < right ? -1 : left > right ? 1 : 0;
+}
+
 function assertSafeRelativePath(path) {
   if (!path || path.startsWith("/") || path.includes("\\") || path.split("/").includes("..")) {
     throw new Error(`unsafe release path: ${path}`);
@@ -22,7 +26,7 @@ function assertSafeRelativePath(path) {
 
 function walk(root, directory = root, output = []) {
   const children = readdirSync(directory, { withFileTypes: true })
-    .sort((a, b) => a.name.localeCompare(b.name));
+    .sort((a, b) => comparePath(a.name, b.name));
   for (const child of children) {
     const absolute = join(directory, child.name);
     const relativeName = portablePath(relative(root, absolute));
@@ -43,7 +47,7 @@ export function collectReleaseFiles(bundleRoot) {
   if (!existsSync(bundleRoot) || !statSync(bundleRoot).isDirectory()) {
     throw new Error(`release bundle directory does not exist: ${bundleRoot}`);
   }
-  const entries = walk(bundleRoot).sort((a, b) => a.path.localeCompare(b.path));
+  const entries = walk(bundleRoot).sort((a, b) => comparePath(a.path, b.path));
   for (const entry of entries) {
     if (FORBIDDEN_PATH.test(entry.path)) throw new Error(`forbidden release path: ${entry.path}`);
   }
@@ -81,7 +85,7 @@ export function verifyReleaseBundle(bundleRoot) {
     if (FORBIDDEN_PATH.test(entry.path)) throw new Error(`release manifest contains forbidden path: ${entry.path}`);
     return { path: entry.path, sha256: entry.sha256 };
   });
-  const sortedListed = [...listed].sort((a, b) => a.path.localeCompare(b.path));
+  const sortedListed = [...listed].sort((a, b) => comparePath(a.path, b.path));
   if (JSON.stringify(listed) !== JSON.stringify(sortedListed)) throw new Error("release manifest files are not canonically sorted");
   const actual = collectReleaseFiles(bundleRoot);
   if (JSON.stringify(actual) !== JSON.stringify(listed)) throw new Error("release bundle files do not match the manifest inventory");
