@@ -61,6 +61,13 @@ For owner-only rehearsal, run `npm run solo-soak -- --blocks 100000 --nodes 5`
 from `packages/jgc-node`. The command uses simnet receipts and writes local JSON
 evidence; see [`packages/jgc-node/docs/SOLO-SOAK.md`](../../packages/jgc-node/docs/SOLO-SOAK.md).
 
+For an owner-only release-candidate rehearsal, run `npm run release:check` from
+`packages/jgc-node` after installing the locked dependencies. It runs the full
+consensus test suite, rebuilds the node, verifies the release bundle and its
+metadata, and confirms the mainnet preflight remains blocked. This is useful
+local evidence, but it does not satisfy the independent-review, production
+proof, or validator-economics gates by itself.
+
 ## Launch rule
 
 Any future mainnet launcher must call
