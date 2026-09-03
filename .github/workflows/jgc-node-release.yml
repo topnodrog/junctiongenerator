@@ -64,6 +64,15 @@ jobs:
           zip -X -r "${GITHUB_WORKSPACE}/${bundle}.zip" "${bundle}"
           cd "${GITHUB_WORKSPACE}"
           sha256sum "${bundle}.zip" > SHA256SUMS.txt
+      - name: Verify the extracted release archive
+        shell: bash
+        run: |
+          version="${{ steps.version.outputs.version }}"
+          bundle="jgc-node-v${version}"
+          extract_dir="$(mktemp -d)"
+          trap 'rm -rf "${extract_dir}"' EXIT
+          unzip -q "${GITHUB_WORKSPACE}/${bundle}.zip" -d "${extract_dir}"
+          node scripts/verify-release-bundle.mjs --bundle "${extract_dir}/${bundle}"
       - name: Publish the verified prerelease
         shell: bash
         env:
