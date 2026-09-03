@@ -1,6 +1,7 @@
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath, pathToFileURL } from "url";
+import { buildReleaseManifest, collectReleaseFiles } from "./release-manifest.mjs";
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const packageJson = JSON.parse(readFileSync(join(packageRoot, "package.json"), "utf8"));
@@ -34,7 +35,9 @@ const paths = [
   "rust/rust-toolchain.toml",
   "rust/src",
   "scripts/compose-smoke.mjs",
+  "scripts/release-manifest.mjs",
   "scripts/stage-runner-release.mjs",
+  "scripts/verify-release-bundle.mjs",
   "scripts/windows",
   "src",
   "tsconfig.json",
@@ -55,7 +58,7 @@ if (commit !== "working-tree" && !/^[0-9a-f]{40}$/.test(commit)) {
   throw new Error("JGC_RELEASE_COMMIT must be a full lowercase Git commit hash");
 }
 
-const manifest = {
+const baseManifest = {
   artifact: bundleName,
   version,
   commit,
@@ -67,6 +70,7 @@ const manifest = {
     "wss://jgc-testnet-seed-b.fly.dev",
   ],
 };
+const manifest = buildReleaseManifest(baseManifest, collectReleaseFiles(bundleRoot));
 writeFileSync(
   join(bundleRoot, "RELEASE-MANIFEST.json"),
   `${JSON.stringify(manifest, null, 2)}\n`,

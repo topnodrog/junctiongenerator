@@ -96,6 +96,10 @@ jobs:
             echo "Release bundle contains forbidden local state" >&2
             exit 1
           fi
+      - name: Verify deterministic release manifest
+        run: npm run release:verify
+      - name: Verify release manifest unit tests
+        run: npm run test:release-manifest
 
   rust-verifier:
     name: Rust/WASM verifier

@@ -51,6 +51,10 @@ jobs:
         env:
           JGC_RELEASE_COMMIT: ${{ github.sha }}
         run: npm run release:stage
+      - name: Verify the content-addressed release manifest
+        run: npm run release:verify
+      - name: Verify release manifest unit tests
+        run: npm run test:release-manifest
       - name: Archive and checksum the runner bundle
         shell: bash
         run: |

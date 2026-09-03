@@ -12,6 +12,8 @@ This is the first pinned runner release for the early, valueless
 - versioned crash-safe storage and recoverable incompatible-state handling;
 - compiled JavaScript, source, locked npm dependencies, Docker runner files,
   Windows startup helpers, and operator documentation.
+- a deterministic `RELEASE-MANIFEST.json` inventory with per-file SHA-256
+  hashes and a tree digest, verified before publication.
 
 The release bundle deliberately excludes wallets, participant identities,
 chain data, provider credentials, and local evidence.
@@ -33,6 +35,7 @@ After extraction:
 
 ```text
 cd jgc-node-v0.1.0
+node scripts/verify-release-bundle.mjs
 npm ci
 npm run testnet:public
 ```
