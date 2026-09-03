@@ -12,6 +12,7 @@
     "build:rust": "wasm-pack build rust --target nodejs --out-dir pkg --release",
     "build:all": "npm run build:rust && npm run build",
     "start": "node dist/index.js",
+    "mainnet:preflight": "npm run build && node dist/scripts/mainnet-preflight.js",
     "pretestnet": "npm run build",
     "testnet": "node dist/scripts/testnet-node.js",
     "pretestnet:public": "npm run build",

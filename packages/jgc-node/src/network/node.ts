@@ -62,6 +62,8 @@ import {
 import { computeAuditClaimId } from "../broker/audit-schedule.js";
 import { AuditStore } from "../storage/audit-store.js";
 import { PeerGuard, DEFAULT_PEER_GUARD_POLICY, type PeerViolation } from "./peer-guard.js";
+import { MAINNET_NETWORK, networkGenesisHash } from "../config/networks.js";
+import { assertMainnetLaunchAllowed } from "../config/mainnet-readiness.js";
 import { validatorStakeSnapshot } from "../consensus/validator-bonds.js";
 import {
   quantumVerifyContributionSignature,
@@ -216,6 +218,18 @@ export class JGCNode extends EventEmitter {
 
   constructor(config: NodeConfig, genesisBlock: Block) {
     super();
+    if (config.chainId === MAINNET_NETWORK.chainId) {
+      if (config.networkMagic !== MAINNET_NETWORK.networkMagic
+          || config.consensusVersion !== MAINNET_NETWORK.consensusVersion
+          || config.proofMode !== MAINNET_NETWORK.proofMode
+          || config.requireNetworkIdentity !== true) {
+        throw new Error("mainnet node configuration does not match the compiled network identity");
+      }
+      if (hashBlockHeader(genesisBlock.header) !== networkGenesisHash(MAINNET_NETWORK)) {
+        throw new Error("mainnet node genesis does not match the compiled network identity");
+      }
+      assertMainnetLaunchAllowed(config.mainnetReadiness);
+    }
     this.config = config;
     this.genesis = genesisBlock;
     this.maxMempoolTxs    = config.maxMempoolTxs   ?? DEFAULT_MAX_MEMPOOL_TXS;

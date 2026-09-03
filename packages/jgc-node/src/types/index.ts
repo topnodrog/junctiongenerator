@@ -461,4 +461,6 @@ export interface NodeConfig {
   consensusVersion?: number;
   proofMode?: string;
   requireNetworkIdentity?: boolean;
+  /** Signed readiness record required when starting the value-bearing mainnet. */
+  mainnetReadiness?: unknown;
 }

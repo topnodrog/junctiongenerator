@@ -33,6 +33,16 @@ npm test
 npm run build
 ```
 
+The mainnet identity is not launchable yet. Check the fail-closed readiness
+guard with:
+
+```text
+npm run mainnet:preflight
+```
+
+It is expected to exit non-zero until every gate in
+[`docs/mainnet/README.md`](../../docs/mainnet/README.md) is complete.
+
 ## Node modes
 
 Join the public pilot as an outbound-only validator/back-checker:
