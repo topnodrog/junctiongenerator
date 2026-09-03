@@ -57,4 +57,23 @@ describe("mainnet readiness guard", () => {
       requireNetworkIdentity: true,
     }, createNetworkGenesis(MAINNET_NETWORK))).toThrow(/mainnet launch is blocked/);
   });
+
+  test("requires authenticated P2P mode on a ready mainnet configuration", () => {
+    const gates = Object.fromEntries(MAINNET_GATE_KEYS.map((key) => [key, true]));
+    const ready = { ...MAINNET_READINESS, status: "ready" as const, gates };
+    expect(() => new JGCNode({
+      listenPort: 0,
+      rpcPort: 0,
+      networkMagic: MAINNET_NETWORK.networkMagic,
+      maxPeers: 8,
+      enableBroker: false,
+      junctionGeneratorMode: false,
+      chainId: MAINNET_NETWORK.chainId,
+      consensusVersion: MAINNET_NETWORK.consensusVersion,
+      proofMode: MAINNET_NETWORK.proofMode,
+      requireNetworkIdentity: true,
+      requirePeerAuthentication: false,
+      mainnetReadiness: ready,
+    }, createNetworkGenesis(MAINNET_NETWORK))).toThrow(/authenticated P2P mode/);
+  });
 });

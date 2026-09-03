@@ -247,6 +247,9 @@ export class JGCNode extends EventEmitter {
         throw new Error("mainnet node genesis does not match the compiled network identity");
       }
       assertMainnetLaunchAllowed(config.mainnetReadiness);
+      if (config.requirePeerAuthentication !== true) {
+        throw new Error("mainnet requires authenticated P2P mode");
+      }
     }
     this.config = config;
     this.genesis = genesisBlock;
