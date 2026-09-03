@@ -57,7 +57,13 @@ import {
   hashBlockHeader,
 } from "./block.js";
 import { computeContributionsMerkleRoot, computeEpochRoot, computeEpochSettlement, applyBlockToEpoch } from "./epoch.js";
-import { decodeDifficultyBits, BLOCKS_PER_EPOCH, HARD_CAP_SATOSHIS } from "./emission.js";
+import {
+  decodeDifficultyBitsExact,
+  DIFFICULTY_SCALE,
+  BLOCKS_PER_EPOCH,
+  HARD_CAP_SATOSHIS,
+  isCanonicalDifficultyBits,
+} from "./emission.js";
 import { quantumVerifyContributionSignature } from "../crypto/pq.js";
 import { verifyPortableComputeProof } from "../crypto/compute-proof.js";
 import { txid, UTXOSet, validateSpend } from "./utxo.js";
@@ -195,11 +201,22 @@ export function validateBlockHeader(
     );
   }
 
-  // Difficulty bits format — must decode to a positive TFLOPS value.
-  const target = decodeDifficultyBits(header.difficultyBits);
-  if (target <= 0 || !isFinite(target)) {
+  // Difficulty bits format — must decode to a positive, finite, canonical
+  // fixed-point TFLOPS value. Canonical encoding prevents multiple byte
+  // representations of the same target from creating consensus splits.
+  let targetMicros: bigint;
+  try {
+    targetMicros = decodeDifficultyBitsExact(header.difficultyBits);
+  } catch {
+    return fail(
+      ValidationError.INVALID_DIFFICULTY_BITS,
+      `difficultyBits 0x${header.difficultyBits.toString(16)} is not a uint32 compact target`,
+    );
+  }
+  const target = Number(targetMicros) / Number(DIFFICULTY_SCALE);
+  if (targetMicros <= 0n || !Number.isFinite(target) || !isCanonicalDifficultyBits(header.difficultyBits)) {
     return fail(ValidationError.INVALID_DIFFICULTY_BITS,
-      `difficultyBits 0x${header.difficultyBits.toString(16)} decodes to ${target}`
+      `difficultyBits 0x${header.difficultyBits.toString(16)} decodes to ${target} but is not a canonical positive target`
     );
   }
 
@@ -257,7 +274,8 @@ export async function validateComputeProofs(
   epochBlockIndex: number,
   currentHeight:   BlockHeight,
 ): Promise<ValidationResult> {
-  const difficultyTarget = decodeDifficultyBits(header.difficultyBits);
+  const difficultyTargetMicros = decodeDifficultyBitsExact(header.difficultyBits);
+  const difficultyTarget = Number(difficultyTargetMicros) / Number(DIFFICULTY_SCALE);
 
   // ── Guard: genesis block has no proofs ────────────────────────────────────
   if (currentHeight === 0) return ok();
@@ -308,7 +326,8 @@ export async function validateComputeProofs(
   const zkStart = Date.now();
 
   // Per-proof minimum: 10% of block target (prevents thousands of tiny proofs).
-  const perProofMin = difficultyTarget * 0.1;
+  const perProofMinMicros = (difficultyTargetMicros + 9n) / 10n;
+  const perProofMin = Number(perProofMinMicros) / Number(DIFFICULTY_SCALE);
 
   const verificationResults = contributions.map((contribution) =>
     verifyPortableComputeProof(contribution.proof, {
@@ -340,7 +359,17 @@ export async function validateComputeProofs(
     (sum, r) => sum + r.verifiedTFLOPS, 0
   );
 
-  if (totalTFLOPS < difficultyTarget) {
+  if (!Number.isSafeInteger(totalTFLOPS) || totalTFLOPS < 0) {
+    return {
+      valid: false,
+      errors: [ValidationError.PROOF_VERIFICATION_FAILED],
+      warnings: [`verified TFLOPS total ${totalTFLOPS} is not a non-negative safe integer`],
+      zkVerifyMs: zkMs,
+    };
+  }
+
+  const totalTFLOPSMicros = BigInt(totalTFLOPS) * DIFFICULTY_SCALE;
+  if (totalTFLOPSMicros < difficultyTargetMicros) {
     return {
       valid: false,
       errors: [ValidationError.INSUFFICIENT_TFLOPS],

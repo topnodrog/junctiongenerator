@@ -49,7 +49,14 @@ import {
 import { createEpochSettlementTransaction } from "../consensus/settlement-transaction.js";
 import { UTXOSet, validateSpend, txid } from "../consensus/utxo.js";
 import { BlockStore, SnapshotStore, StorageManifest, type ChainSnapshot } from "../storage/persistence.js";
-import { calculateNextDifficultyTarget, BLOCKS_PER_EPOCH, RETARGET_WINDOW_BLOCKS, encodeDifficultyBits, decodeDifficultyBits } from "../consensus/emission.js";
+import {
+  calculateNextDifficultyTargetExact,
+  decodeDifficultyBitsExact,
+  encodeDifficultyBitsExact,
+  DIFFICULTY_SCALE,
+  BLOCKS_PER_EPOCH,
+  RETARGET_WINDOW_BLOCKS,
+} from "../consensus/emission.js";
 import { globalBroker } from "../broker/compute-broker.js";
 import { compareCanonicalBytes } from "../protocol/canonical.js";
 import type { Hash256, EpochState } from "../types/index.js";
@@ -1152,7 +1159,8 @@ export class JGCNode extends EventEmitter {
   /** Per-block work for fork choice: the block's TFLOPS difficulty target,
    *  rounded to an integer (the PoUC analog of Bitcoin's per-block chainwork). */
   private blockWork(header: BlockHeader): bigint {
-    return BigInt(Math.max(1, Math.round(decodeDifficultyBits(header.difficultyBits))));
+    const targetMicros = decodeDifficultyBitsExact(header.difficultyBits);
+    return targetMicros > 0n ? targetMicros : 1n;
   }
 
   /** Hashes from genesis (inclusive) up to `hash`, oldest-first, via prevHash. */
@@ -1364,14 +1372,14 @@ export class JGCNode extends EventEmitter {
     if (times.length < 2) return chain.currentDifficultyBits;
 
     const actualTimespan = times[times.length - 1] - times[Math.max(0, times.length - RETARGET_WINDOW_BLOCKS - 1)];
-    const oldTarget      = decodeDifficultyBits(chain.currentDifficultyBits);
-    const newTarget      = calculateNextDifficultyTarget(oldTarget, actualTimespan);
-
-    const newBits = encodeDifficultyBits(newTarget);
+    const oldTargetMicros = decodeDifficultyBitsExact(chain.currentDifficultyBits);
+    const newTargetMicros = calculateNextDifficultyTargetExact(oldTargetMicros, actualTimespan);
+    const newBits = encodeDifficultyBitsExact(newTargetMicros);
     if (!this.replaying) {
       console.log(
         `[Node] Difficulty retarget at height ${height}: ` +
-        `${oldTarget.toFixed(2)} → ${newTarget.toFixed(2)} TFLOPS ` +
+        `${(Number(oldTargetMicros) / Number(DIFFICULTY_SCALE)).toFixed(2)} → ` +
+        `${(Number(newTargetMicros) / Number(DIFFICULTY_SCALE)).toFixed(2)} TFLOPS ` +
         `(actual=${actualTimespan}s, target=${RETARGET_WINDOW_BLOCKS * 600}s)`
       );
     }
@@ -1583,7 +1591,9 @@ export class JGCNode extends EventEmitter {
     if (!quantumVerifyContributionSignature(contribution, nextHeight)) {
       return { ok: false, error: "invalid contribution signature" };
     }
-    const minimumWork = decodeDifficultyBits(this.chain.currentDifficultyBits) * 0.1;
+    const targetMicros = decodeDifficultyBitsExact(this.chain.currentDifficultyBits);
+    const minimumWorkMicros = (targetMicros + 9n) / 10n;
+    const minimumWork = Number(minimumWorkMicros) / Number(DIFFICULTY_SCALE);
     const proof = quantumVerifyProofForConsensus(
       contribution.proof,
       nextHeight,

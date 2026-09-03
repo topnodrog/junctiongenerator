@@ -284,6 +284,83 @@ export function printEmissionSchedule(eras: number = 10): void {
 export const RETARGET_WINDOW_BLOCKS = 2016;
 export const RETARGET_TARGET_SECONDS = RETARGET_WINDOW_BLOCKS * TARGET_BLOCK_INTERVAL_SECONDS;
 
+/** Fixed-point scale for consensus difficulty targets (one-millionth TFLOPS). */
+export const DIFFICULTY_SCALE = 1_000_000n;
+
+function difficultyMicrosFromNumber(targetTFLOPS: number): bigint {
+  if (!Number.isFinite(targetTFLOPS) || targetTFLOPS <= 0) {
+    throw new RangeError("difficulty target must be finite and positive");
+  }
+  const scaled = Math.round(targetTFLOPS * Number(DIFFICULTY_SCALE));
+  if (!Number.isSafeInteger(scaled) || scaled <= 0) {
+    throw new RangeError("difficulty target is outside the fixed-point range");
+  }
+  return BigInt(scaled);
+}
+
+/** Convert a fixed-point target to a display-only Number. */
+function difficultyNumberFromMicros(targetMicros: bigint): number {
+  return Number(targetMicros) / Number(DIFFICULTY_SCALE);
+}
+
+/** Encode an exact micro-TFLOPS target using the JGC compact nBits format. */
+export function encodeDifficultyBitsExact(targetMicros: bigint): number {
+  if (targetMicros <= 0n) throw new RangeError("difficulty target must be positive");
+
+  let size = 0;
+  let temp = targetMicros;
+  while (temp > 0n) {
+    temp >>= 8n;
+    size += 1;
+  }
+  if (size > 0xff) throw new RangeError("difficulty target is too large for compact encoding");
+
+  const shift = size > 3 ? (size - 3) * 8 : 0;
+  const mantissa = Number(targetMicros >> BigInt(shift)) & 0x00ff_ffff;
+  return (size << 24) | mantissa;
+}
+
+/** Decode compact nBits into an exact micro-TFLOPS target. */
+export function decodeDifficultyBitsExact(compactBits: number): bigint {
+  if (!Number.isSafeInteger(compactBits) || compactBits < 0 || compactBits > 0xffff_ffff) {
+    throw new RangeError("compact difficulty bits must fit uint32");
+  }
+  const exponent = (compactBits >>> 24) & 0xff;
+  const mantissa = BigInt(compactBits & 0x00ff_ffff);
+  const shift = exponent - 3;
+  if (shift < 0) return mantissa / (256n ** BigInt(-shift));
+  return mantissa * (256n ** BigInt(shift));
+}
+
+/** Return true only for the canonical compact representation of a target. */
+export function isCanonicalDifficultyBits(compactBits: number): boolean {
+  try {
+    const targetMicros = decodeDifficultyBitsExact(compactBits);
+    return targetMicros > 0n && encodeDifficultyBitsExact(targetMicros) === compactBits;
+  } catch {
+    return false;
+  }
+}
+
+/** Calculate the next target using integer arithmetic only. */
+export function calculateNextDifficultyTargetExact(
+  oldTargetMicros: bigint,
+  actualTimespan: number,
+): bigint {
+  if (oldTargetMicros <= 0n) throw new RangeError("old difficulty target must be positive");
+  if (!Number.isFinite(actualTimespan) || !Number.isSafeInteger(actualTimespan)) {
+    throw new RangeError("actual timespan must be a safe integer");
+  }
+
+  const targetTimespan = BigInt(RETARGET_TARGET_SECONDS);
+  const minTimespan = targetTimespan / 4n;
+  const maxTimespan = targetTimespan * 4n;
+  const actual = BigInt(Math.max(0, actualTimespan));
+  const clamped = actual < minTimespan ? minTimespan : actual > maxTimespan ? maxTimespan : actual;
+  const next = (oldTargetMicros * targetTimespan) / clamped;
+  return next > 0n ? next : 1n;
+}
+
 /**
  * Calculate the new TFLOPS difficulty target.
  *
@@ -302,23 +379,10 @@ export function calculateNextDifficultyTarget(
   oldTargetTFLOPS: number,
   actualTimespan:  number,
 ): number {
-  // Clamp actual timespan to [target/4, target×4] — same as Bitcoin.
-  const clamped = Math.max(
-    RETARGET_TARGET_SECONDS / 4,
-    Math.min(RETARGET_TARGET_SECONDS * 4, actualTimespan)
+  const oldTargetMicros = difficultyMicrosFromNumber(oldTargetTFLOPS);
+  return difficultyNumberFromMicros(
+    calculateNextDifficultyTargetExact(oldTargetMicros, actualTimespan),
   );
-
-  // newTarget = oldTarget × (clamped / targetTimespan)
-  // If clamped < target: blocks arrived fast → raise difficulty (result < old? No wait:
-  //   fast blocks means actualTimespan < target → clamped/target < 1 → newTarget < old... wait
-  //   that lowers difficulty. Let me check: in Bitcoin, lower target = harder.
-  //   Bitcoin: newTarget = oldTarget * actual / target  → actual < target → newTarget < old → HARDER.
-  //   JGC TFLOPS: HIGHER tflops target = HARDER.
-  //   So: if blocks arrived fast (actual < target), we want HIGHER tflops → newTarget = oldTarget * (target/clamped).
-  const newTarget = oldTargetTFLOPS * (RETARGET_TARGET_SECONDS / clamped);
-
-  // Floor to a reasonable precision.
-  return Math.max(1.0, Math.round(newTarget * 100) / 100);
 }
 
 /**
@@ -336,23 +400,7 @@ export function calculateNextDifficultyTarget(
  * @returns 32-bit compact encoding (nBits).
  */
 export function encodeDifficultyBits(tflopsTarget: number): number {
-  // Scale to integer: TFLOPS × 10^6 (micro-TFLOPS precision).
-  let value = BigInt(Math.round(tflopsTarget * 1_000_000));
-  if (value === 0n) value = 1n;
-
-  // Find the byte length of value.
-  let size = 0;
-  let temp = value;
-  while (temp > 0n) { temp >>= 8n; size++; }
-
-  // Extract the top 3 significant bytes as mantissa.
-  const shift     = size > 3 ? (size - 3) * 8 : 0;
-  const mantissa  = Number(value >> BigInt(shift)) & 0x00FFFFFF;
-  // exponent = byte length of value (same as Bitcoin's nBits exponent field).
-  // Bitcoin: compact = (byteLen << 24) | top3bytes; value = top3bytes * 256^(byteLen-3).
-  const exponent  = size;
-
-  return (exponent << 24) | mantissa;
+  return encodeDifficultyBitsExact(difficultyMicrosFromNumber(tflopsTarget));
 }
 
 /**
@@ -364,11 +412,5 @@ export function encodeDifficultyBits(tflopsTarget: number): number {
  * @returns TFLOPS-seconds difficulty target.
  */
 export function decodeDifficultyBits(compactBits: number): number {
-  const exponent = (compactBits >> 24) & 0xFF;
-  const mantissa = compactBits & 0x00FFFFFF;
-  const shift    = exponent - 3;
-
-  if (shift < 0) return mantissa / Math.pow(256, -shift) / 1_000_000;
-  const value = BigInt(mantissa) * (256n ** BigInt(shift));
-  return Number(value) / 1_000_000;
+  return difficultyNumberFromMicros(decodeDifficultyBitsExact(compactBits));
 }
