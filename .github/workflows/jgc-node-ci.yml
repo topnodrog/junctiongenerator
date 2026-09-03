@@ -80,6 +80,18 @@ jobs:
           cache-dependency-path: packages/jgc-node/package-lock.json
       - run: npm ci
       - run: npm run build
+      - name: Confirm mainnet preflight remains fail-closed
+        shell: bash
+        run: |
+          set +e
+          node dist/scripts/mainnet-preflight.js > mainnet-preflight.json
+          status=$?
+          set -e
+          if [[ "${status}" -eq 0 ]]; then
+            echo "Mainnet preflight unexpectedly reported ready" >&2
+            exit 1
+          fi
+          node -e 'const fs=require("fs"); const result=JSON.parse(fs.readFileSync("mainnet-preflight.json", "utf8")); const required=["proofSystem","deterministicConsensus","permissionlessProduction","peerAuthentication","validatorEconomics","reproducibleArtifacts","soloSoak","independentSecurityReview"]; if (result.ready || result.status !== "blocked" || JSON.stringify(result.missingGates) !== JSON.stringify(required)) process.exit(1);'
       - name: Stage the allowlisted release contents
         env:
           JGC_RELEASE_COMMIT: ${{ github.sha }}
