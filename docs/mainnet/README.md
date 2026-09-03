@@ -37,10 +37,14 @@ chain identity exactly.
 - The testnet proof path uses simulation receipts that are not proofs of useful
   computation.
 - The production loop is a testnet-only designated producer.
-- P2P message construction still uses zero-filled envelope signatures.
+- ML-DSA message authentication is implemented, but proposer identity is not
+  yet bound into the block header and the authenticated mode is not the default
+  testnet mode.
 - There is no mainnet node launcher or mainnet release bundle.
-- The code generator is currently a browser-side template demonstration; it is
-  not a compiler, auditor, or deployment service.
+- The isolated `@jg/codegen` package now emits deterministic bounded artifacts,
+  but it intentionally does not run a pinned Solidity compiler or deployer.
+- The deterministic proposer schedule is a reusable consensus primitive; it is
+  not yet enforced by block validation or fork choice.
 
 These are release blockers, not documentation-only tasks.
 
@@ -52,6 +56,10 @@ does not constitute independent decentralization evidence. If no independent
 security review or outside participation will ever be allowed, the terminal
 safe state is a zero-value canary or mainnet candidate; do not label it a
 value-bearing decentralized mainnet.
+
+For owner-only rehearsal, run `npm run solo-soak -- --blocks 100000 --nodes 5`
+from `packages/jgc-node`. The command uses simnet receipts and writes local JSON
+evidence; see [`packages/jgc-node/docs/SOLO-SOAK.md`](../../packages/jgc-node/docs/SOLO-SOAK.md).
 
 ## Launch rule
 
