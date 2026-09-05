@@ -13,8 +13,13 @@ import {
   getCumulativeSupply,
   getEmissionEra,
   calculateNextDifficultyTarget,
+  calculateNextDifficultyTargetExact,
   encodeDifficultyBits,
+  encodeDifficultyBitsExact,
   decodeDifficultyBits,
+  decodeDifficultyBitsExact,
+  isCanonicalDifficultyBits,
+  DIFFICULTY_SCALE,
   INITIAL_BLOCK_REWARD_SATOSHIS,
   BASE_UNITS_PER_JGC,
   BLOCKS_PER_QUARTERING,
@@ -189,6 +194,28 @@ describe("quartering interval", () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe("difficulty bits encoding", () => {
+  test("uses the canonical mainnet compact vector", () => {
+    const targetMicros = 1_000n * DIFFICULTY_SCALE;
+    expect(encodeDifficultyBitsExact(targetMicros)).toBe(0x043b9aca);
+    expect(decodeDifficultyBitsExact(0x043b9aca)).toBe(1_000_000_000n);
+    expect(isCanonicalDifficultyBits(0x043b9aca)).toBe(true);
+    expect(isCanonicalDifficultyBits(0x04000001)).toBe(false);
+  });
+
+  test("retargets with exact integer arithmetic", () => {
+    const oldTargetMicros = 1_000n * DIFFICULTY_SCALE;
+    const halfWindow = RETARGET_WINDOW_BLOCKS * TARGET_BLOCK_INTERVAL_SECONDS / 2;
+    expect(calculateNextDifficultyTargetExact(oldTargetMicros, halfWindow)).toBe(
+      2_000n * DIFFICULTY_SCALE,
+    );
+    expect(calculateNextDifficultyTargetExact(oldTargetMicros, 1)).toBe(
+      4_000n * DIFFICULTY_SCALE,
+    );
+    expect(calculateNextDifficultyTargetExact(oldTargetMicros, Number.MAX_SAFE_INTEGER)).toBe(
+      250n * DIFFICULTY_SCALE,
+    );
+  });
+
   test("encode and decode 1000 TFLOPS roundtrip", () => {
     const target  = 1000;
     const bits    = encodeDifficultyBits(target);

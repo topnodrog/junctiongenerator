@@ -15,6 +15,7 @@ import { join } from "path";
 import type { NodeConfig } from "../types/index.js";
 import { JGCNode } from "../network/node.js";
 import { loadVerifierWasm } from "../crypto/zkp.js";
+import { setQuantumVerifierMode } from "../crypto/pq.js";
 import { BlockStore } from "../storage/persistence.js";
 import { makeGenesisBlock, makePeer, BlockProducer, mineBlocks } from "../sim/harness.js";
 
@@ -44,6 +45,7 @@ async function main(): Promise<void> {
   console.log(" JGC Node — persistence: a node survives restart");
   console.log("══════════════════════════════════════════════════════════════");
 
+  setQuantumVerifierMode("simnet");
   await loadVerifierWasm({ mode: "simnet" });
   new BlockStore(DATA_DIR).clear(); // fresh start
   console.log(`[Persist] dataDir: ${DATA_DIR}`);

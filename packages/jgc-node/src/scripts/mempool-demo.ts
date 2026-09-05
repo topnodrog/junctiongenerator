@@ -18,6 +18,7 @@ import type { NodeConfig, Transaction } from "../types/index.js";
 import { JGCNode } from "../network/node.js";
 import { MessageType as MT } from "../types/index.js";
 import { loadVerifierWasm } from "../crypto/zkp.js";
+import { setQuantumVerifierMode } from "../crypto/pq.js";
 import { txSigHash } from "../consensus/utxo.js";
 import { generateKeyPair, p2pkhScript, signHash, p2pkhScriptSig } from "../crypto/signatures.js";
 import { BASE_UNITS_PER_JGC, getBlockReward } from "../consensus/emission.js";
@@ -63,6 +64,7 @@ async function main(): Promise<void> {
   console.log(" JGC Node — mempool + transaction relay + fee accounting");
   console.log("══════════════════════════════════════════════════════════════");
 
+  setQuantumVerifierMode("simnet");
   await loadVerifierWasm({ mode: "simnet" });
 
   const nodeA = new JGCNode(cfg(PORT_A), makeGenesisBlock());

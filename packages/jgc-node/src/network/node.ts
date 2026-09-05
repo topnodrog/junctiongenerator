@@ -26,6 +26,12 @@
  */
 
 import { EventEmitter } from "events";
+import {
+  peerMessageSignatureHash,
+  isPeerMessageTimestampFresh,
+  MAX_AUTH_MESSAGE_AGE_SECONDS,
+  MAX_AUTHENTICATED_MESSAGE_CACHE,
+} from "./wire.js";
 import type {
   Block, BlockHeader, PeerMessage, Transaction,
   MinerComputeContribution, ComputeBid, NodeConfig,
@@ -49,7 +55,12 @@ import {
 import { createEpochSettlementTransaction } from "../consensus/settlement-transaction.js";
 import { UTXOSet, validateSpend, txid } from "../consensus/utxo.js";
 import { BlockStore, SnapshotStore, StorageManifest, type ChainSnapshot } from "../storage/persistence.js";
-import { calculateNextDifficultyTarget, BLOCKS_PER_EPOCH, RETARGET_WINDOW_BLOCKS, encodeDifficultyBits, decodeDifficultyBits } from "../consensus/emission.js";
+import {
+  decodeDifficultyBitsExact,
+  DIFFICULTY_SCALE,
+  BLOCKS_PER_EPOCH,
+  RETARGET_WINDOW_BLOCKS,
+} from "../consensus/emission.js";
 import { globalBroker } from "../broker/compute-broker.js";
 import { compareCanonicalBytes } from "../protocol/canonical.js";
 import type { Hash256, EpochState } from "../types/index.js";
@@ -62,11 +73,21 @@ import {
 import { computeAuditClaimId } from "../broker/audit-schedule.js";
 import { AuditStore } from "../storage/audit-store.js";
 import { PeerGuard, DEFAULT_PEER_GUARD_POLICY, type PeerViolation } from "./peer-guard.js";
+import { MAINNET_NETWORK, networkGenesisHash } from "../config/networks.js";
+import { networkBlockWork, nextNetworkDifficultyBits } from "../config/difficulty-policy.js";
+import { assertMainnetLaunchAllowed } from "../config/mainnet-readiness.js";
 import { validatorStakeSnapshot } from "../consensus/validator-bonds.js";
 import {
   quantumVerifyContributionSignature,
   quantumVerifyProofForConsensus,
 } from "../crypto/pq.js";
+import {
+  pqIsValidPrivateKey,
+  pqIsValidPublicKey,
+  pqIsValidSignature,
+  pqSignHash,
+  pqVerifyHashSignature,
+} from "../crypto/pq-signatures.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Peer Connection Types
@@ -90,6 +111,8 @@ export interface PeerInfo {
   advertisedUrl?: string;
   /** True only after a required public-network VERSION identity matched. */
   networkIdentityVerified?: boolean;
+  /** ML-DSA public key established by the authenticated VERSION handshake. */
+  authenticatedPublicKey?: string;
 }
 
 /** Simulated peer connection — in production: replace with TCP/WebSocket. */
@@ -213,11 +236,49 @@ export class JGCNode extends EventEmitter {
   private readonly audits = new AuditLifecycle();
   private auditStore?: AuditStore;
   private readonly peerGuard: PeerGuard;
+  private readonly peerAuthenticationRequired: boolean;
+  /** Digest -> expiry for accepted authenticated messages (replay defense). */
+  private readonly authenticatedMessageCache = new Map<string, number>();
 
   constructor(config: NodeConfig, genesisBlock: Block) {
     super();
+    if (config.chainId === MAINNET_NETWORK.chainId) {
+      if (config.networkMagic !== MAINNET_NETWORK.networkMagic
+          || config.consensusVersion !== MAINNET_NETWORK.consensusVersion
+          || config.proofMode !== MAINNET_NETWORK.proofMode
+          || config.requireNetworkIdentity !== true) {
+        throw new Error("mainnet node configuration does not match the compiled network identity");
+      }
+      if (hashBlockHeader(genesisBlock.header) !== networkGenesisHash(MAINNET_NETWORK)) {
+        throw new Error("mainnet node genesis does not match the compiled network identity");
+      }
+      assertMainnetLaunchAllowed(config.mainnetReadiness);
+      if (config.requirePeerAuthentication !== true) {
+        throw new Error("mainnet requires authenticated P2P mode");
+      }
+    }
     this.config = config;
     this.genesis = genesisBlock;
+    this.peerAuthenticationRequired = config.requirePeerAuthentication ?? false;
+    if (this.peerAuthenticationRequired) {
+      if (!config.p2pPrivateKey || !config.p2pPublicKey ||
+          !pqIsValidPrivateKey(config.p2pPrivateKey) || !pqIsValidPublicKey(config.p2pPublicKey)) {
+        throw new Error(
+          "authenticated P2P mode requires a valid ML-DSA-65 p2pPrivateKey/p2pPublicKey pair",
+        );
+      }
+      const probe = {
+        type: MT.PING,
+        payload: { nonce: 0 },
+        timestamp: 0,
+        senderPublicKey: config.p2pPublicKey,
+      } as const;
+      const probeHash = peerMessageSignatureHash(probe, config.networkMagic);
+      const probeSignature = pqSignHash(config.p2pPrivateKey, probeHash);
+      if (!pqVerifyHashSignature(probeSignature, probeHash, config.p2pPublicKey)) {
+        throw new Error("p2pPrivateKey does not match p2pPublicKey");
+      }
+    }
     this.maxMempoolTxs    = config.maxMempoolTxs   ?? DEFAULT_MAX_MEMPOOL_TXS;
     this.minRelayFeeRate  = config.minRelayFeeRate ?? DEFAULT_MIN_RELAY_FEERATE;
     this.snapshotInterval = config.snapshotIntervalBlocks ?? BLOCKS_PER_EPOCH;
@@ -499,6 +560,35 @@ export class JGCNode extends EventEmitter {
 
     peer.info.lastSeen   = Math.floor(Date.now() / 1000);
 
+    if (this.peerAuthenticationRequired) {
+      const now = Math.floor(Date.now() / 1000);
+      const unsigned = {
+        type: msg.type,
+        payload: msg.payload,
+        timestamp: msg.timestamp,
+        senderPublicKey: msg.senderPublicKey,
+      };
+      const messageHash = peerMessageSignatureHash(unsigned, this.config.networkMagic);
+      const messageId = Buffer.from(messageHash).toString("hex");
+      const valid = pqIsValidPublicKey(msg.senderPublicKey) &&
+        pqIsValidSignature(msg.signature) &&
+        pqVerifyHashSignature(
+          msg.signature,
+          messageHash,
+          msg.senderPublicKey,
+        ) &&
+        (peer.info.authenticatedPublicKey === undefined ||
+          peer.info.authenticatedPublicKey === msg.senderPublicKey) &&
+        isPeerMessageTimestampFresh(msg.timestamp, now) &&
+        !this.isAuthenticatedMessageReplay(messageId, now);
+      if (!valid) {
+        console.warn(`[Node] Disconnecting ${peerId}: invalid or replayed P2P message authentication`);
+        this.disconnectPeer(peerId);
+        return;
+      }
+      peer.info.authenticatedPublicKey ??= msg.senderPublicKey;
+    }
+
     if (this.config.requireNetworkIdentity &&
         !peer.info.networkIdentityVerified && msg.type !== MT.VERSION) {
       console.warn(`[Node] Disconnecting ${peerId}: chain data received before network identity`);
@@ -579,6 +669,19 @@ export class JGCNode extends EventEmitter {
       default:
         console.debug(`[Node] Unknown message type ${msg.type} from peer ${peerId}`);
     }
+  }
+
+  private isAuthenticatedMessageReplay(messageId: string, now: number): boolean {
+    for (const [id, expiry] of this.authenticatedMessageCache) {
+      if (expiry < now) this.authenticatedMessageCache.delete(id);
+    }
+    if (this.authenticatedMessageCache.has(messageId)) return true;
+    if (this.authenticatedMessageCache.size >= MAX_AUTHENTICATED_MESSAGE_CACHE) {
+      const oldest = this.authenticatedMessageCache.keys().next().value as string | undefined;
+      if (oldest !== undefined) this.authenticatedMessageCache.delete(oldest);
+    }
+    this.authenticatedMessageCache.set(messageId, now + MAX_AUTH_MESSAGE_AGE_SECONDS);
+    return false;
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -1149,10 +1252,9 @@ export class JGCNode extends EventEmitter {
   // Fork choice & reorganization
   // ─────────────────────────────────────────────────────────────────────────
 
-  /** Per-block work for fork choice: the block's TFLOPS difficulty target,
-   *  rounded to an integer (the PoUC analog of Bitcoin's per-block chainwork). */
+  /** Fork-choice work uses the frozen pilot units or candidate-network exact units. */
   private blockWork(header: BlockHeader): bigint {
-    return BigInt(Math.max(1, Math.round(decodeDifficultyBits(header.difficultyBits))));
+    return networkBlockWork(this.config.chainId, header.difficultyBits);
   }
 
   /** Hashes from genesis (inclusive) up to `hash`, oldest-first, via prevHash. */
@@ -1364,14 +1466,14 @@ export class JGCNode extends EventEmitter {
     if (times.length < 2) return chain.currentDifficultyBits;
 
     const actualTimespan = times[times.length - 1] - times[Math.max(0, times.length - RETARGET_WINDOW_BLOCKS - 1)];
-    const oldTarget      = decodeDifficultyBits(chain.currentDifficultyBits);
-    const newTarget      = calculateNextDifficultyTarget(oldTarget, actualTimespan);
-
-    const newBits = encodeDifficultyBits(newTarget);
+    const oldTargetMicros = decodeDifficultyBitsExact(chain.currentDifficultyBits);
+    const newBits = nextNetworkDifficultyBits(this.config.chainId, chain.currentDifficultyBits, actualTimespan);
+    const newTargetMicros = decodeDifficultyBitsExact(newBits);
     if (!this.replaying) {
       console.log(
         `[Node] Difficulty retarget at height ${height}: ` +
-        `${oldTarget.toFixed(2)} → ${newTarget.toFixed(2)} TFLOPS ` +
+        `${(Number(oldTargetMicros) / Number(DIFFICULTY_SCALE)).toFixed(2)} → ` +
+        `${(Number(newTargetMicros) / Number(DIFFICULTY_SCALE)).toFixed(2)} TFLOPS ` +
         `(actual=${actualTimespan}s, target=${RETARGET_WINDOW_BLOCKS * 600}s)`
       );
     }
@@ -1446,13 +1548,24 @@ export class JGCNode extends EventEmitter {
   get maxPeerLimit(): number { return this.config.maxPeers; }
 
   private buildMessage(type: MT, payload: unknown): PeerMessage {
-    return {
+    const timestamp = Math.floor(Date.now() / 1000);
+    const senderPublicKey = this.config.p2pPublicKey ?? this.config.minerAddress ?? "unknown";
+    const unsigned = {
       type:            type as import("../types/index.js").MessageType,
       payload,
-      timestamp:       Math.floor(Date.now() / 1000),
-      senderPublicKey: this.config.minerAddress ?? "unknown",
-      signature:       "0".repeat(128),  // production: sign with node key
+      timestamp,
+      senderPublicKey,
     };
+    const signature = this.config.p2pPrivateKey
+      ? pqSignHash(
+          this.config.p2pPrivateKey,
+          peerMessageSignatureHash(unsigned, this.config.networkMagic),
+        )
+      : "0".repeat(128);
+    if (this.peerAuthenticationRequired && signature === "0".repeat(128)) {
+      throw new Error("authenticated P2P mode cannot emit unsigned messages");
+    }
+    return { ...unsigned, signature };
   }
 
   /**
@@ -1583,7 +1696,9 @@ export class JGCNode extends EventEmitter {
     if (!quantumVerifyContributionSignature(contribution, nextHeight)) {
       return { ok: false, error: "invalid contribution signature" };
     }
-    const minimumWork = decodeDifficultyBits(this.chain.currentDifficultyBits) * 0.1;
+    const targetMicros = decodeDifficultyBitsExact(this.chain.currentDifficultyBits);
+    const minimumWorkMicros = (targetMicros + 9n) / 10n;
+    const minimumWork = Number(minimumWorkMicros) / Number(DIFFICULTY_SCALE);
     const proof = quantumVerifyProofForConsensus(
       contribution.proof,
       nextHeight,

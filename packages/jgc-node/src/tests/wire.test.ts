@@ -2,6 +2,9 @@ import { MessageType, type PeerMessage } from "../types/index.js";
 import {
   decodePeerMessage,
   encodePeerMessage,
+  MAX_DECODED_PAYLOAD_ARRAY_ITEMS,
+  MAX_DECODED_PAYLOAD_DEPTH,
+  MAX_DECODED_PAYLOAD_STRING_BYTES,
   WIRE_HEADER_BYTES,
   WIRE_VERSION,
 } from "../network/wire.js";
@@ -62,6 +65,28 @@ describe("binary peer wire framing", () => {
   test("rejects invalid required metadata even with a valid frame checksum", () => {
     const invalid = { ...message(), timestamp: Number.NaN };
     const encoded = encodePeerMessage(invalid, MAGIC);
+    expect(decodePeerMessage(encoded, MAGIC)).toBeNull();
+  });
+
+  test("rejects payloads that exceed the nesting limit", () => {
+    let payload: unknown = "leaf";
+    for (let index = 0; index <= MAX_DECODED_PAYLOAD_DEPTH; index += 1) {
+      payload = [payload];
+    }
+
+    const encoded = encodePeerMessage({ ...message(), payload }, MAGIC);
+    expect(decodePeerMessage(encoded, MAGIC)).toBeNull();
+  });
+
+  test("rejects payload arrays that exceed the item limit", () => {
+    const payload = Array.from({ length: MAX_DECODED_PAYLOAD_ARRAY_ITEMS + 1 }, () => 0);
+    const encoded = encodePeerMessage({ ...message(), payload }, MAGIC);
+    expect(decodePeerMessage(encoded, MAGIC)).toBeNull();
+  });
+
+  test("rejects payload strings that exceed the byte limit", () => {
+    const payload = "x".repeat(MAX_DECODED_PAYLOAD_STRING_BYTES + 1);
+    const encoded = encodePeerMessage({ ...message(), payload }, MAGIC);
     expect(decodePeerMessage(encoded, MAGIC)).toBeNull();
   });
 });

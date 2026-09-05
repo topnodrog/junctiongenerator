@@ -1,6 +1,12 @@
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "fs";
+import { execFileSync } from "child_process";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath, pathToFileURL } from "url";
+import {
+  buildReleaseManifest,
+  collectReleaseFiles,
+  validateReleaseManifestMetadata,
+} from "./release-manifest.mjs";
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const packageJson = JSON.parse(readFileSync(join(packageRoot, "package.json"), "utf8"));
@@ -34,7 +40,11 @@ const paths = [
   "rust/rust-toolchain.toml",
   "rust/src",
   "scripts/compose-smoke.mjs",
+  "scripts/release-check.mjs",
+  "scripts/release-manifest.mjs",
+  "scripts/release-manifest.test.mjs",
   "scripts/stage-runner-release.mjs",
+  "scripts/verify-release-bundle.mjs",
   "scripts/windows",
   "src",
   "tsconfig.json",
@@ -54,8 +64,22 @@ const commit = process.env.JGC_RELEASE_COMMIT ?? "working-tree";
 if (commit !== "working-tree" && !/^[0-9a-f]{40}$/.test(commit)) {
   throw new Error("JGC_RELEASE_COMMIT must be a full lowercase Git commit hash");
 }
+if (commit !== "working-tree") {
+  let head;
+  try {
+    head = execFileSync("git", ["rev-parse", "HEAD"], {
+      cwd: packageRoot,
+      encoding: "utf8",
+    }).trim();
+  } catch {
+    throw new Error("JGC_RELEASE_COMMIT requires a Git checkout");
+  }
+  if (head !== commit) {
+    throw new Error(`JGC_RELEASE_COMMIT ${commit} does not match checked-out HEAD ${head}`);
+  }
+}
 
-const manifest = {
+const baseManifest = {
   artifact: bundleName,
   version,
   commit,
@@ -67,6 +91,8 @@ const manifest = {
     "wss://jgc-testnet-seed-b.fly.dev",
   ],
 };
+const manifest = buildReleaseManifest(baseManifest, collectReleaseFiles(bundleRoot));
+validateReleaseManifestMetadata(manifest, bundleRoot);
 writeFileSync(
   join(bundleRoot, "RELEASE-MANIFEST.json"),
   `${JSON.stringify(manifest, null, 2)}\n`,

@@ -19,6 +19,7 @@ import type { Block, Transaction } from "../types/index.js";
 import { MessageType as MT } from "../types/index.js";
 import { JGCNode } from "../network/node.js";
 import { loadVerifierWasm } from "../crypto/zkp.js";
+import { setQuantumVerifierMode } from "../crypto/pq.js";
 import { txid, txSigHash } from "../consensus/utxo.js";
 import { generateKeyPair, p2pkhScript, signHash, p2pkhScriptSig } from "../crypto/signatures.js";
 import { BASE_UNITS_PER_JGC } from "../consensus/emission.js";
@@ -55,6 +56,7 @@ async function main(): Promise<void> {
   console.log(" JGC Node — UTXO enforcement LIVE in the block pipeline");
   console.log("══════════════════════════════════════════════════════════════");
 
+  setQuantumVerifierMode("simnet");
   await loadVerifierWasm({ mode: "simnet" }); // fast proofs; UTXO rules are always-on
 
   const node = new JGCNode(cfg(), makeGenesisBlock());

@@ -461,4 +461,12 @@ export interface NodeConfig {
   consensusVersion?: number;
   proofMode?: string;
   requireNetworkIdentity?: boolean;
+  /** ML-DSA-65 keypair used to authenticate every P2P message. Both values
+   *  must be supplied together when requirePeerAuthentication is enabled. */
+  p2pPrivateKey?: string;
+  p2pPublicKey?: string;
+  /** Require valid ML-DSA signatures on inbound P2P messages. */
+  requirePeerAuthentication?: boolean;
+  /** Signed readiness record required when starting the value-bearing mainnet. */
+  mainnetReadiness?: unknown;
 }
