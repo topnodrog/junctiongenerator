@@ -73,6 +73,9 @@ jobs:
           trap 'rm -rf "${extract_dir}"' EXIT
           unzip -q "${GITHUB_WORKSPACE}/${bundle}.zip" -d "${extract_dir}"
           node scripts/verify-release-bundle.mjs --bundle "${extract_dir}/${bundle}"
+          cd "${extract_dir}/${bundle}"
+          npm ci
+          npm run release:check
       - name: Publish the verified prerelease
         shell: bash
         env:

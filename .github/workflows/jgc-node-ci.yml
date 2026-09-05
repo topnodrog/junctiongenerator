@@ -112,6 +112,13 @@ jobs:
         run: npm run release:verify
       - name: Verify release manifest unit tests
         run: npm run test:release-manifest
+      - name: Run the operator rehearsal from the staged bundle
+        shell: bash
+        run: |
+          bundle=".tmp/release/jgc-node-v$(node -p 'require("./package.json").version')"
+          cd "${bundle}"
+          npm ci
+          npm run release:check
 
   rust-verifier:
     name: Rust/WASM verifier

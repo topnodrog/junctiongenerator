@@ -42,6 +42,7 @@ const paths = [
   "scripts/compose-smoke.mjs",
   "scripts/release-check.mjs",
   "scripts/release-manifest.mjs",
+  "scripts/release-manifest.test.mjs",
   "scripts/stage-runner-release.mjs",
   "scripts/verify-release-bundle.mjs",
   "scripts/windows",

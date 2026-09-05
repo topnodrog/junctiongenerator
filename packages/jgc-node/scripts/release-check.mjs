@@ -59,7 +59,7 @@ try {
   run("stage release bundle", npmExecutable, [...npmPrefixArgs, "run", "release:stage"]);
   run("verify release bundle", npmExecutable, [...npmPrefixArgs, "run", "release:verify"]);
   run("release manifest tests", npmExecutable, [...npmPrefixArgs, "run", "test:release-manifest"]);
-  console.log("[release-check] PASS — release candidate is reproducible and mainnet remains fail-closed");
+  console.log("[release-check] PASS — release bundle checks pass and mainnet remains fail-closed");
 } catch (error) {
   console.error(`[release-check] FAIL — ${error instanceof Error ? error.message : String(error)}`);
   process.exitCode = 1;
