@@ -1,18 +1,23 @@
 # Cloudflare Worker deployment and verification
 
-**Last verified:** 2026-07-24
+**Last verified:** 2026-09-05 UTC
 
 Worker: `jgt-mining-api`
 
 URL: `https://jgt-mining-api.james-gordon.workers.dev`
 
-Current version: `2ad932ae-bbf3-4ee6-8a8c-f212c298492a`
+Current version: `9de91da9-3e77-447e-9bf4-98362650f3d6`
+
+Website protection merged in PR #47 and deployed through Vercel before the
+Worker update. The production page has its real Turnstile site key and enforced
+CSP; no dummy key is present. See `docs/WEBSITE_SECURITY.md`.
 
 ## Live behavior
 
 - `POST /api/subscribe`, `POST /api/hire-lead`,
   `POST /api/community/join`, and `POST /api/community/activate` are public
-  and rate-limited.
+  and rate-limited, and require server-verified Turnstile tokens bound to the
+  form action and production hostname before storage or notification.
 - `GET /api/community/scoreboard` returns aggregate community and funding
   progress without personal data.
 - `POST /api/community/funding` and `POST /api/community/weekly-metrics`
@@ -27,13 +32,14 @@ Current version: `2ad932ae-bbf3-4ee6-8a8c-f212c298492a`
   `Authorization: Bearer <API_SECRET>`.
 - CORS, rate limiting, server-authoritative rewards, and PII masking remain
   enabled.
+- Legacy `POST /api/airdrop/register` is retired and returns 410.
 
 ## Verified Cloudflare state
 
 | Requirement | Verified state |
 |---|---|
-| Wrangler identity | OAuth as `james_gordon@junctiongenerator.net` |
-| Worker secrets | `API_SECRET`, `CRON_SECRET`, `TURSO_AUTH_TOKEN` present |
+| Deployment identity | Existing project Cloudflare API token; previous OAuth session unavailable |
+| Worker secrets | `API_SECRET`, `CRON_SECRET`, `TURSO_AUTH_TOKEN`, `TURNSTILE_SECRET_KEY` present |
 | Send binding | `EMAIL_SENDER` → verified fixed destination |
 | Destination | `james_gordon@junctiongenerator.net`, verified 2026-06-26 |
 | Other bindings | `RATE_LIMITER`, `TURSO_URL`, `DIGEST_RECIPIENT`, `AD_REWARD_JGT` |
@@ -45,6 +51,13 @@ Current version: `2ad932ae-bbf3-4ee6-8a8c-f212c298492a`
 | Digest execution | `digest_state.last_sent_at` advanced to `2026-07-24 00:00:01` |
 | Immediate email | Live synthetic request logged `owner notification sent` |
 
+The digest and immediate-email rows above are historical 2026-07-24 evidence;
+no new notification was sent during the September security verification.
+On 2026-09-05 all four public write routes rejected missing tokens with 400,
+a forged newsletter token returned 400, airdrop registration returned 410,
+owner-only pending rewards returned 401, and health/scoreboard reads returned
+200 with database health connected. No signup records were created by those checks.
+
 The live synthetic verification rows were deleted after the test. Real contact
 records were not changed.
 
@@ -53,9 +66,10 @@ unconfigured/disabled. That is distinct from the Worker send binding: the
 destination address is verified and the outbound notification call completed
 successfully in the live Worker.
 
-The gitignored `.cf_token` belongs to older API automation and is not used by
-`wrangler deploy`; Wrangler's OAuth session is the working deployment
-credential.
+The gitignored `.cf_token` was used through the temporary
+`CLOUDFLARE_API_TOKEN` process environment for the September deployment.
+Do not print or commit it. The earlier Wrangler OAuth session was unavailable.
+The Turnstile secret is stored in the Worker; it is not in the repository.
 
 ## Deploy
 

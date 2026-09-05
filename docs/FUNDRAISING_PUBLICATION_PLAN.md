@@ -1,71 +1,51 @@
-# Fundraising Content Publication Plan
+# Fundraising publication record
 
-**Status:** Classification decision recorded 2026-07-30; no fundraising files
-have been moved, published, or deleted by this plan.
+Completed 2026-09-05 UTC. Owner: James Gordon.
 
-The repository currently contains tracked fundraising material under `vault/`
-and newer, untracked revisions at the repository root. The root revisions are
-not byte-for-byte duplicates of the vault copies. The root files remain local
-and untracked. Before consolidating them, review the newer text for factual
-accuracy and apply the audience decision below.
+## Canonical public sources
 
-## Public repository and website
+[docs/public](public/README.md) contains the reviewed project brief, builder
+biography, use-case boundaries, and brand guidance. Old vault paths link to
+those sources. Website/download copy should use these canonical documents.
 
-These documents support building in public and can become canonical public
-materials after a factual and claims review:
+The review withdrew unsupported root-draft claims about a 50-validator pilot,
+sub-two-second inference, live slashing, imminent mainnet/exchange dates,
+enterprise adoption, financial returns, and unverified professional credentials.
+Research directions are labeled as such. Funding follows the grants/donations,
+defined sponsorship, and client-work strategy, with no token sale or promised
+investment return. Only the intentionally public project email is included.
 
-- `JGC_OnePager.md`
-- `JGC_TeamBios.md`
-- `JGC_UseCases.md`
-- `JG_Logo_Guidelines.md`
+## Private preservation
 
-Proposed canonical source location: `docs/public/`. Website downloads should be
-generated from or link to those canonical sources instead of keeping another
-editable copy under `public/`.
+With the owner's explicit approval, 25 original revisions were preserved in
+the private `topnodrog/junctiongenerator-operations` GitHub repository:
 
-Review gates before publication:
+- `drafts/`: all 12 previously untracked root documents, including the pitch
+  deck and financial projections;
+- `archive/vault/`: the older fundraising revisions, duplicate brand guide,
+  and VISIBLE/week-one operations guides;
+- `archive-manifest.json`: original paths and SHA-256 hashes, verified against
+  every committed archive blob;
+- `.gitattributes`: disables text conversion for archived originals so their
+  bytes survive checkouts unchanged.
 
-- distinguish deployed software, local demonstrations, and future targets;
-- verify every testnet, pilot, performance, partner, and traction claim;
-- ensure the funding ask matches the current grants/donations strategy;
-- remove personal contact details that are not intentionally public;
-- add an updated date and document owner.
+Repository visibility was checked as PRIVATE before upload and after upload.
+No collaborators were added. The archive README records that its content is
+historical and is not an approved investor data room or current project claims.
+The verified archive commit is `d0f3e19`.
 
-## Controlled sharing or data room
+Financial models, decks, outreach templates, and private operations guides were
+removed from the current public vault only after their copies were preserved
+and uploaded. Original root drafts remain locally available and explicitly
+ignored, together with the local `.private/` archive. They are not public
+canonical copies and should not be staged into the public repository.
 
-These are useful to grant reviewers or serious funding conversations, but they
-need assumptions and context and should not be treated as general website copy:
+## Historical boundary
 
-- `JGC_FinancialProjections.md`
-- `JGC_Funding_Pitch.pptx`
+Some originals were already public. Removing current copies does not erase
+Git history, caches, or prior downloads. No history rewrite was requested or
+performed. No outreach, grant application, partner claim, or funding commitment
+was sent or made during this consolidation.
 
-Proposed canonical location: a private fundraising repository or data room.
-Publish a summarized funding-use section on the website only after the full
-model has been reviewed.
-
-## Internal operating material
-
-These documents describe outreach tactics, investor handling, internal
-workflows, or revenue operations. Keep their canonical copies in a private
-operations repository:
-
-- `FUNDRAISING_ACTION_PLAN.md`
-- `OUTREACH_EMAIL_TEMPLATES.md`
-- `PITCH_NARRATIVES_BY_INVESTOR.md`
-- `VISIBLE_SETUP_GUIDE.md`
-- `WEEK1_QUICK_REFERENCE.md`
-- `WEBSITE_GROWTH_PLAN.md`
-
-Some versions of these documents are already tracked in the public `vault/`.
-Moving future canonical copies to a private repository does not erase their Git
-history; decide separately whether historical cleanup is warranted.
-
-## Consolidation sequence
-
-1. Review the root revision against its corresponding `vault/` copy.
-2. Select the root revision, vault revision, or a merged revision as canonical.
-3. Complete the factual and privacy review appropriate to its audience.
-4. Move public sources to `docs/public/` and private sources to a separate
-   private repository or data room.
-5. Remove duplicate working copies only after the canonical versions are safely
-   stored and reviewed.
+Future external use of a financial scenario or pitch deck requires a fresh
+factual review against measured evidence and current funding assumptions.

@@ -56,6 +56,21 @@ packages/jgc-node/rust/target/
 *.pem
 .claude/settings.local.json
 /.tmp/
+/.private/
+
+# Archived fundraising originals; public sources live in docs/public/.
+/FUNDRAISING_ACTION_PLAN.md
+/JGC_FinancialProjections.md
+/JGC_Funding_Pitch.pptx
+/JGC_OnePager.md
+/JGC_TeamBios.md
+/JGC_UseCases.md
+/JG_Logo_Guidelines.md
+/OUTREACH_EMAIL_TEMPLATES.md
+/PITCH_NARRATIVES_BY_INVESTOR.md
+/VISIBLE_SETUP_GUIDE.md
+/WEBSITE_GROWTH_PLAN.md
+/WEEK1_QUICK_REFERENCE.md
 
 # debug
 npm-debug.log*

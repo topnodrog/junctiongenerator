@@ -126,20 +126,31 @@ material, not the current launch strategy.
 The active plan is [`docs/NEXT_STEPS_PLAN.md`](docs/NEXT_STEPS_PLAN.md). Work is
 sequenced behind explicit gates:
 
-1. publish the pinned `jgc-node-v0.1.0` prerelease and SHA-256 checksum;
-2. recruit two external participant nodes and one independent back-checker;
-3. run the pinned release for at least 72 hours and three settlement cycles;
-4. exercise approved restart and one-seed-loss drills while preserving evidence;
-5. publish only the participation and reliability claims supported by that evidence.
+The [v0.1.0 prerelease](https://github.com/topnodrog/junctiongenerator/releases/tag/jgc-node-v0.1.0)
+and checksum were published on 2026-09-02. The pending node foundations and
+release rehearsal fixes are merged in PR #46. The current v2 difficulty rules
+are preserved for compatibility with installed nodes.
 
-The local model can help draft configuration, run checks, summarize monitoring,
-and support incident response. It cannot replace the public hosts, persistent
-storage, DNS/TLS, backups, or human approval for live infrastructure changes.
+1. Complete the measured multi-host soak: at least 72 hours and three complete
+   settlement cycles. The owner reports two installed computers and a third
+   downloading; this is preparation, not measured acceptance evidence.
+2. Exercise approved restart and one-seed-loss drills while preserving evidence.
+3. Recruit and record independent operators separately from owner-run machines.
+4. Publish only the participation and reliability claims supported by that evidence.
 
-Website security continues in parallel: Turnstile on public write forms, a
-tested Content Security Policy, and error isolation. The current midnight
+Neither evaluated local model passed the operations safety gate. They may help
+with sanitized, non-authoritative drafts and summaries; they do not receive
+secrets or decide, execute, or verify live operations.
+
+Website protections are merged in PR #47: server-verified Turnstile, a tested
+Content Security Policy, error isolation, clear demo labels, and phone layout
+fixes. See [security and deployment notes](docs/WEBSITE_SECURITY.md). The current midnight
 Worker cron sends the owner digest; `/api/dispense` is an authenticated legacy
 batch-preparation endpoint and does not submit an on-chain transaction.
+
+Reviewed external material is in [docs/public](docs/public/README.md).
+Historical financial and outreach drafts are preserved privately. The
+[mainnet gates](docs/mainnet/README.md) remain open; these merges do not launch JGC mainnet.
 
 ---
 
