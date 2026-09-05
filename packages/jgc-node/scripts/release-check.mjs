@@ -1,8 +1,11 @@
 import { spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const packageRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
+const { version } = JSON.parse(readFileSync(resolve(packageRoot, "package.json"), "utf8"));
+const stagedBundle = resolve(packageRoot, ".tmp", "release", `jgc-node-v${version}`);
 const npmCliPath = process.env.npm_execpath;
 const npmExecutable = npmCliPath ? process.execPath : process.platform === "win32" ? "npm.cmd" : "npm";
 const npmPrefixArgs = npmCliPath ? [npmCliPath] : [];
@@ -57,7 +60,7 @@ try {
   run("compile", npmExecutable, [...npmPrefixArgs, "run", "build"]);
   confirmMainnetPreflightBlocked();
   run("stage release bundle", npmExecutable, [...npmPrefixArgs, "run", "release:stage"]);
-  run("verify release bundle", npmExecutable, [...npmPrefixArgs, "run", "release:verify"]);
+  run("verify release bundle", npmExecutable, [...npmPrefixArgs, "run", "release:verify", "--", "--bundle", stagedBundle]);
   run("release manifest tests", npmExecutable, [...npmPrefixArgs, "run", "test:release-manifest"]);
   console.log("[release-check] PASS — release bundle checks pass and mainnet remains fail-closed");
 } catch (error) {
