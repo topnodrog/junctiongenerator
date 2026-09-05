@@ -1,12 +1,12 @@
 # Junction Generator — Completion Roadmap
 
-**Updated:** 2026-09-01 · **Owner:** James Gordon
+**Updated:** 2026-09-05 UTC · **Owner:** James Gordon
 
 Three components, one repo. Keep them distinct:
 
 | Component | What it is | Status |
 |---|---|---|
-| **JGC coin** (`packages/jgc-node`) | Sovereign PoUC Layer-1 — the actual product | Repaired zero-premine `jgtc-testnet-v2` pilot live; six settlements and supply conservation verified; independent soak pending |
+| **JGC coin** (`packages/jgc-node`) | Sovereign PoUC Layer-1 — the actual product | Repaired zero-premine `jgtc-testnet-v2` pilot live; runner prerelease published; 351 node tests pass; measured soak pending |
 | **JGT token** (`contracts/`) | ERC-20 on Base (legacy) | Deployed; held, not promoted (no-sale stance) |
 | **junctiongenerator.net** (`src/` + `api/`) | Public site + Cloudflare Worker backend | Worker live and verified; community-first site merged to `main` |
 
@@ -39,26 +39,26 @@ Security/quality debt that should land before recruiting outside node runners.
 
 - [x] **GitHub secret scanning + push protection enabled** on 2026-07-30.
   Dependabot security updates and vulnerability alerts are also enabled.
-  GitHub still reports secret validity checks as disabled; retry if that
-  control becomes available in repository settings.
-- **Decide what a public repo should contain.** The Obsidian vault
-  (fundraising strategy, ops notes) and any pitch material are world-readable
-  here. Either make peace with building in public, or split vault/ and
-  business docs into a private repo. The root-level fundraising drafts
-  (`FUNDRAISING_ACTION_PLAN.md`, `PITCH_NARRATIVES_BY_INVESTOR.md`,
-  `OUTREACH_EMAIL_TEMPLATES.md`, `JGC_TeamBios.md`, `VISIBLE_SETUP_GUIDE.md`,
-  `WEEK1_QUICK_REFERENCE.md`, the .pptx) are untracked — do **not** commit
-  them unless that decision is deliberate.
+  GitHub still reports secret validity checks as disabled: a 2026-09-05
+  enable request was accepted but read-back remained disabled. This platform
+  limitation is recorded rather than claimed complete.
+- [x] **Publish reviewed facts and separate private drafts.** Canonical public
+  sources are in `docs/public/`. All 25 original fundraising/operations
+  revisions were preserved with verified hashes in the explicitly approved
+  private operations repository. Original root drafts remain ignored locally;
+  private vault copies are removed from the current public tree. Earlier Git
+  history remains public; no history rewrite was performed.
 - [x] **CI**: website lint/build, Worker syntax, jgc-node tests/build,
   Rust/WASM verification, cross-platform jobs, and the Docker smoke topology
   run through GitHub Actions on relevant changes.
-- **Turnstile (or equivalent) on the public forms** (subscribe / hire-lead /
-  airdrop). Rate limiting is live but a bot check keeps the Turso bill and
-  the digest signal clean.
-- **CSP for the site**: build the `connect-src`/`img-src` allowlist for
-  RainbowKit + WalletConnect relays and ship a tested Content-Security-Policy
-  (deferred from the header work — needs verification against the wallet flow).
-- **Clean `scripts/2BDeleted/`** after confirming nothing is still needed.
+- [x] **Public-form protection:** Turnstile validation for newsletter, hire,
+  community join and activation. Legacy airdrop enrollment is retired (410).
+- [x] **CSP, error recovery, and responsive checks:** PR #47 adds fresh script
+  nonces, tested dependencies, route/section recovery, honest demo labels, and
+  fixes verified at 375/320px. No wallet-connection libraries remain in the site.
+- [x] **Clarify `scripts/2BDeleted/`:** no files there are tracked. Its ignored
+  local tools/dependencies are preserved; deleting the owner's local software
+  is not a public repository cleanup task.
 
 ## Phase 2 — Public testnet (3–6 weeks)
 
@@ -116,9 +116,10 @@ Gate: do not open the P2P port to the internet before the first three items.
   one-command Docker runner, two live seed connections, status checks, updates,
   safe network defaults, troubleshooting, and recovery links. Ollama is not a
   prerequisite for the current validator/back-checker role.
-- **Pinned runner release**: the `jgc-node-v0.1.0` prerelease workflow,
-  allowlisted runner bundle, SHA-256 checksum, and concise release notes are
-  prepared. Publishing waits for the workflow to merge and the matching tag.
+- [x] **Pinned runner release:** `jgc-node-v0.1.0`, checksum and release notes
+  published 2026-09-02. PR #46 adds bundle manifests and exercises the shipped
+  distribution in CI. Content attestation is not yet a reproducible signed
+  mainnet release.
 - **Multi-machine soak test** before announcing: two junctioning miners +
   one audit committee across real networks, left running for days, with reorgs,
   signed audit verdicts, restart recovery, and adversarial traffic observed.
@@ -131,6 +132,17 @@ Gate: do not open the P2P port to the internet before the first three items.
   43,950-JGTC supply accounting. Only the Seed A anchor was participating in
   the current epoch; two independent participants and one independent
   back-checker must still complete the 72-hour acceptance window.
+
+  On 2026-09-05 UTC the owner reported two installed computers and a third
+  downloading. This supports preparation for an owner-run multi-host rehearsal;
+  measured results and independent operation must be established separately.
+
+- [x] **Pending node PR delivery:** #46 contains bounded decoding, candidate
+  exact arithmetic, authenticated messages/replay checks, proposer-schedule
+  and code-generation primitives, local soak tooling, and release rehearsal
+  fixes. The published v2 retarget and fork-choice policy is explicitly retained
+  so installed pilot nodes can agree with updated builds. Candidate mechanisms
+  do not activate a mainnet, permissionless production, or bonded economics.
 
 - [x] **Consensus-owned validator-bond foundation**: tagged, spendable bond
   outputs derive the roster and stake snapshot from active-chain UTXOs; when a
@@ -173,11 +185,11 @@ problems, in priority order:
 
 ## Funding track (parallel, gated on Phase 0)
 
-With the local testnet demo working and the worker/digest funnel working: submit the
-Gitcoin/verifiable-compute grant applications using `JGC_OnePager.md` and the
-financial projections; route interested parties to the site's node-runner
-section. The early public JGTC pilot is now a running artifact; the next useful
-fundraising evidence is a measured multi-day soak with independent runners.
+Use [the reviewed public brief](public/JGC_OnePager.md) for milestone-based
+grant and sponsorship preparation. Financial projections and pitch decks are
+archived privately as unapproved historical drafts. No applications or outreach
+were sent during this cleanup. The next useful fundraising evidence is a
+measured multi-day soak; independently operated runners must be identified as such.
 
 ---
 
@@ -191,8 +203,8 @@ fundraising evidence is a measured multi-day soak with independent runners.
   checksums, PQ wallet integration, strict proof verification, and documented
   quantum-readiness boundaries.
 - Audit evidence survives mining, peer sync, restart, and reorg; forged votes
-  and replayed verdicts are rejected. Full suite: 37 suites / 318 tests under
-  Node.js 22, plus
+  and replayed verdicts are rejected. Current local verification on 2026-09-05
+  UTC: 44 suites / 351 tests under Node.js 24, plus
   a passing 31-block two-node sync demo and a real six-proof strict WASM demo.
 - JGT rescued to a clean wallet after the 2026-06 key compromise; no rogue
   minters on-chain; no-sale stance adopted.

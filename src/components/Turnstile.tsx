@@ -59,8 +59,10 @@ export default function Turnstile({ action, attempt, onVerify }: {
 
   return (
     <div className="jg-verification">
-      {siteKey && <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
-        nonce={nonce} onReady={() => setReady(true)} onError={() => setFailed(true)} />}
+      {/* onLoad covers a shared in-flight script; onReady covers later mounts. */}
+      {siteKey && <Script id={`turnstile-loader-${action}`} src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
+        nonce={nonce} onLoad={() => setReady(true)} onReady={() => setReady(true)}
+        onError={() => setFailed(true)} />}
       <div ref={container} data-action={action} />
       {(!siteKey || failed) && <p role="status">
         Verification is unavailable or has expired. {ready && siteKey && <button type="button"

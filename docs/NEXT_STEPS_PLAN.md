@@ -2,10 +2,11 @@
 
 **Status:** Execution approved; Phases 1–4 complete. Phase 5 is active. Google
 Seed A and independent Fly.io Seed B are healthy on the repaired,
-zero-premine `jgtc-testnet-v2` chain. Release packaging and independent-runner
-recruitment are the active gates; the multi-host soak remains incomplete.
+zero-premine `jgtc-testnet-v2` chain. The runner prerelease is published and
+the pending node foundations are merged. Measured multi-host soak evidence
+and independent-runner recruitment remain incomplete.
 
-**Prepared:** 2026-07-30 · **Last updated:** 2026-09-01
+**Prepared:** 2026-07-30 · **Last updated:** 2026-09-05 UTC
 
 **Target milestone:** A measured multi-day soak of the public JGTC testnet.
 
@@ -22,6 +23,20 @@ the multi-host soak.
 
 ## Verified starting point
 
+**Review closeout (2026-09-05 UTC):** PR #46 merged the pending node work,
+including release-bundle rehearsal corrections and preservation of the
+published v2 difficulty policy. Its six ancestor PRs merged automatically;
+duplicate PRs #38 and #43 were closed after implementation comparison.
+All 44 node suites / 351 tests passed. PR #47 merged website protections and
+truthful demonstration labels. See [website security](WEBSITE_SECURITY.md).
+The reviewed public documents are in [docs/public](public/README.md), and the
+25 original fundraising/operations revisions were hash-verified and uploaded
+to the owner's explicitly approved private repository.
+
+The owner reports two computers with nodes and a third downloading. No measured
+soak result is inferred from installation, and three owner-run machines are
+not three independent operators.
+
 - Consensus V3, the designated producer, network compatibility checks,
   testnet wallet support, container packaging, and the two-node smoke
   test are merged into `main`.
@@ -32,9 +47,10 @@ the multi-host soak.
 - The Cloudflare Worker and Turso-backed community funnel are deployed.
 - The two obsolete draft pull requests are closed.
 - GitHub secret scanning, push protection, vulnerability alerts, and Dependabot
-  security updates are enabled. Secret validity checks remain unavailable.
-- Root-level fundraising and outreach drafts remain untracked and must not be
-  added to the public repository without a deliberate publication review.
+  security updates are enabled. A fresh 2026-09-05 request to enable secret
+  validity checks still read back disabled; that control remains unavailable.
+- Original root drafts remain local and ignored; public copies must come from
+  the reviewed canonical sources. See [the publication record](FUNDRAISING_PUBLICATION_PLAN.md).
 
 ## Resolved documentation drift
 
@@ -230,8 +246,8 @@ Planned work:
    upgrades, safe defaults, troubleshooting, and recovery links. Ollama is not
    required for the current validator/back-checker role.
 4. [x] Clearly document native ARM64 as unsupported until verified in CI.
-5. Publish the prepared `jgc-node-v0.1.0` prerelease artifact with its SHA-256
-   checksum and concise release notes after the release workflow merges.
+5. [x] Publish `jgc-node-v0.1.0` with SHA-256 checksum and release notes.
+   Published 2026-09-02; later rehearsal hardening merged in PR #46.
 
 Implementation update (2026-08-15): the explorer reads canonical node state,
 reports JGTC pending issuance and settlement height, and participant mode
@@ -293,19 +309,17 @@ Exit criteria:
 
 ## Parallel website security track
 
-This work may proceed alongside Phases 2–4, but must not displace the
-public-testnet critical path:
+Implemented and merged in PR #47; deployment evidence is recorded in
+`api/DEPLOY.md`. The tested current site has no wallet connection flow.
 
-1. Add Turnstile to public write forms and verify tokens in the Worker.
-2. Introduce Content Security Policy in report-only mode, exercise
-   RainbowKit/WalletConnect and analytics, then enforce a tested allowlist.
-3. Add route/section error boundaries where a client failure can blank a page.
-4. Verify responsive navigation and accessibility against the current site;
-   do not carry forward the obsolete “eight-link overflow” TODO without
-   reproducing it.
-5. Decide whether reward dispensing remains retired with the JGT promotion
-   strategy or needs a separate, authenticated operator workflow. The existing
-   midnight cron sends the digest; it does not submit on-chain batches.
+1. [x] Add action/hostname-bound Turnstile checks before public writes.
+2. [x] Exercise report-only CSP, then enforce fresh nonces and the tested allowlist.
+3. [x] Add route/section retry boundaries.
+4. [x] Check desktop navigation and 375/320px phone layouts; correct demo/widget
+   overflow and keep form labels and keyboard controls accessible. This is not
+   a full assistive-device certification.
+5. [x] Keep reward promotion retired; new airdrop enrollment returns 410.
+   The midnight cron still sends the digest and does not submit on-chain batches.
 
 ## Explicitly deferred
 
@@ -321,7 +335,11 @@ public-testnet critical path:
 
 ## Approval checkpoints
 
-Implementation should begin only after the owner approves each checkpoint:
+Historical checkpoints below guided the original rollout. The owner authorized
+the remaining engineering, website, documentation work and GitHub merges on
+2026-09-05 UTC, and explicitly approved the private document upload. New paid
+infrastructure, external outreach, and acceptance of unmeasured soak results
+are not implied by that authorization.
 
 1. **Checkpoint A:** repository truth/security changes and disposition of the
    two stale draft PRs;
@@ -333,10 +351,14 @@ Implementation should begin only after the owner approves each checkpoint:
 
 ## Next task
 
-Merge the release workflow, create the `jgc-node-v0.1.0` tag, and let the tag
-publish the checksummed prerelease. Recruit two independent participants and
-one independent back-checker from known operators, then run the 72-hour
+Use the already published, checksummed runner release for the 72-hour
 multi-host soak on `jgtc-testnet-v2`. Confirm three complete 144-block
 settlements, exact balance conservation, seed height convergence, participant
 identity continuity, restart recovery, and approved one-seed-loss drills.
 Preserve measured evidence so valueless JGTC participation is attributable.
+Record owner-controlled hosts accurately and recruit independent participants
+and a back-checker before claiming independent operation. Review real incidents
+before expansion. The production proof, permissionless production, validator
+economics, reproducible signed-artifact, and external-review work remains
+tracked in [mainnet readiness](mainnet/README.md); no gate is set true by these
+preparatory merges.

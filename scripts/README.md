@@ -26,10 +26,8 @@ Utility scripts organized by purpose.
 
 ## 2BDeleted Directory
 
-Old iterative versions pending review for deletion:
-- `apply_airdrop2.py` — Old version of apply_airdrop_schema.py
-- `test_turso.py` — Old Turso test (v1, uses wrong endpoint)
-- `test_turso2.py` — Old Turso test (v2, partial fix)
-- `verify_db2.py` — Old version of verify_db.py
-
-Keep this directory until confirming these old versions are no longer needed.
+This directory is ignored and contains no tracked repository files as of
+2026-09-05. Local copies may include separate tools and their dependencies;
+they are preserved as owner data. It is not part of the public release or a
+pending public-code deletion task. Use maintained scripts above rather than
+assuming an older local filename is current.
