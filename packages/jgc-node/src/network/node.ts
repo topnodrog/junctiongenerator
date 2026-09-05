@@ -56,9 +56,7 @@ import { createEpochSettlementTransaction } from "../consensus/settlement-transa
 import { UTXOSet, validateSpend, txid } from "../consensus/utxo.js";
 import { BlockStore, SnapshotStore, StorageManifest, type ChainSnapshot } from "../storage/persistence.js";
 import {
-  calculateNextDifficultyTargetExact,
   decodeDifficultyBitsExact,
-  encodeDifficultyBitsExact,
   DIFFICULTY_SCALE,
   BLOCKS_PER_EPOCH,
   RETARGET_WINDOW_BLOCKS,
@@ -76,6 +74,7 @@ import { computeAuditClaimId } from "../broker/audit-schedule.js";
 import { AuditStore } from "../storage/audit-store.js";
 import { PeerGuard, DEFAULT_PEER_GUARD_POLICY, type PeerViolation } from "./peer-guard.js";
 import { MAINNET_NETWORK, networkGenesisHash } from "../config/networks.js";
+import { networkBlockWork, nextNetworkDifficultyBits } from "../config/difficulty-policy.js";
 import { assertMainnetLaunchAllowed } from "../config/mainnet-readiness.js";
 import { validatorStakeSnapshot } from "../consensus/validator-bonds.js";
 import {
@@ -1253,11 +1252,9 @@ export class JGCNode extends EventEmitter {
   // Fork choice & reorganization
   // ─────────────────────────────────────────────────────────────────────────
 
-  /** Per-block work for fork choice: the block's TFLOPS difficulty target,
-   *  rounded to an integer (the PoUC analog of Bitcoin's per-block chainwork). */
+  /** Fork-choice work uses the frozen pilot units or candidate-network exact units. */
   private blockWork(header: BlockHeader): bigint {
-    const targetMicros = decodeDifficultyBitsExact(header.difficultyBits);
-    return targetMicros > 0n ? targetMicros : 1n;
+    return networkBlockWork(this.config.chainId, header.difficultyBits);
   }
 
   /** Hashes from genesis (inclusive) up to `hash`, oldest-first, via prevHash. */
@@ -1470,8 +1467,8 @@ export class JGCNode extends EventEmitter {
 
     const actualTimespan = times[times.length - 1] - times[Math.max(0, times.length - RETARGET_WINDOW_BLOCKS - 1)];
     const oldTargetMicros = decodeDifficultyBitsExact(chain.currentDifficultyBits);
-    const newTargetMicros = calculateNextDifficultyTargetExact(oldTargetMicros, actualTimespan);
-    const newBits = encodeDifficultyBitsExact(newTargetMicros);
+    const newBits = nextNetworkDifficultyBits(this.config.chainId, chain.currentDifficultyBits, actualTimespan);
+    const newTargetMicros = decodeDifficultyBitsExact(newBits);
     if (!this.replaying) {
       console.log(
         `[Node] Difficulty retarget at height ${height}: ` +
