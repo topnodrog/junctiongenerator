@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { headers } from "next/headers";
+import { SecurityProvider } from "@/components/Turnstile";
 import "./globals.css";
 
 const outfit = localFont({
@@ -39,11 +41,14 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const nonce = (await headers()).get("x-nonce") ?? "";
+  // Site keys are public. The corresponding secret exists only in the Worker.
+  const siteKey = process.env.TURNSTILE_SITE_KEY ?? process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "0x4AAAAAAEoMz0ExPnpqcG8u";
   return (
     <html lang="en" className={`${outfit.variable} ${jetbrainsMono.variable} h-full antialiased`}>
       <head>
@@ -51,6 +56,7 @@ export default function RootLayout({
         {/* Cloudflare Web Analytics — set NEXT_PUBLIC_CF_BEACON_TOKEN to enable */}
         {process.env.NEXT_PUBLIC_CF_BEACON_TOKEN && (
           <script
+            nonce={nonce}
             defer
             src="https://static.cloudflareinsights.com/beacon.min.js"
             data-cf-beacon={`{"token": "${process.env.NEXT_PUBLIC_CF_BEACON_TOKEN}"}`}
@@ -58,7 +64,7 @@ export default function RootLayout({
         )}
       </head>
       <body style={{ margin: 0, padding: 0, backgroundColor: "var(--bg-space)", color: "var(--text-primary)" }}>
-        {children}
+        <SecurityProvider nonce={nonce} siteKey={siteKey}>{children}</SecurityProvider>
       </body>
     </html>
   );

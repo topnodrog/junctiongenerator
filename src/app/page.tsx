@@ -8,9 +8,10 @@ import NodeStatusPanel from "@/components/NodeStatusPanel";
 import HireMePopup from "@/components/HireMePopup";
 import PartnerLinks from "@/components/PartnerLinks";
 import Link from "next/link";
+import SectionBoundary from "@/components/SectionBoundary";
 
 const PROOF_POINTS = [
-  { value: "280", label: "node tests passing" },
+  { value: "351", label: "node tests passing · Sep 5, 2026 UTC" },
   { value: "31", label: "blocks synced in a two-node demo" },
   { value: "10", label: "blocks per historical audit window" },
   { value: "3", label: "validators per audit committee" },
@@ -68,7 +69,7 @@ const COMMUNITY_PATHS = [
 
 const STATUS_ITEMS = [
   { state: "working", title: "Local inference", body: "Gemma runs through Ollama on a contributor's own machine." },
-  { state: "working", title: "Post-quantum node path", body: "ML-DSA signatures, SHA3-256 checksums, and transparent proof foundations are active in the private node." },
+  { state: "working", title: "Post-quantum node path", body: "ML-DSA signatures, SHA3-256 checksums, and transparent proof foundations are implemented in the node. Production inference proving remains research." },
   { state: "working", title: "Historical audit consensus", body: "Signed verdict evidence survives mining, peer sync, restart, and chain reorganization." },
   { state: "working", title: "Public JGTC testnet", body: "Two monitored TLS/WSS seeds use zero-premine epoch issuance; the explorer and signed participation path are entering the closed soak." },
   { state: "research", title: "Cross-hardware verification", body: "The central research problem: proving valid work across different processors, runtimes, and quantizations." },
@@ -78,7 +79,7 @@ const STATUS_ITEMS = [
 export default function Home() {
   return (
     <>
-      <HireMePopup />
+      <SectionBoundary label="Project inquiry"><HireMePopup /></SectionBoundary>
       <header className="jg-nav">
         <a href="#top" className="jg-brand" aria-label="Junction Generator home">
           <span className="jg-mark" aria-hidden="true">JG</span>
@@ -98,7 +99,7 @@ export default function Home() {
       <main id="top" className="jg-page">
         <section className="jg-hero" aria-labelledby="hero-title">
           <div className="jg-hero-copy">
-            <div className="jg-kicker"><span aria-hidden="true" />Local/private testnet • building in public</div>
+            <div className="jg-kicker"><span aria-hidden="true" />Valueless public testnet • building in public</div>
             <h1 id="hero-title">What if mining <span>did useful work?</span></h1>
             <p className="jg-hero-lede">
               Junction Generator is building a post-quantum-oriented network where everyday
@@ -156,7 +157,7 @@ export default function Home() {
           </div>
           <div className="jg-node-panel">
             <div><span className="jg-eyebrow">A real signal, when a node is running</span><h3>Local node status</h3><p>This panel reads a node on your own machine. Offline is an honest state—not simulated activity.</p></div>
-            <NodeStatusPanel />
+            <SectionBoundary label="Local node status"><NodeStatusPanel /></SectionBoundary>
           </div>
         </section>
 
@@ -177,7 +178,7 @@ export default function Home() {
 
         <section id="newsletter" className="jg-section jg-newsletter">
           <div><span className="jg-eyebrow">Field notes, not hype</span><h2>Follow the experiment from the beginning.</h2><p>Occasional progress reports, research decisions, and invitations to early tests.</p></div>
-          <NewsletterSignup />
+          <SectionBoundary label="Newsletter signup"><NewsletterSignup /></SectionBoundary>
         </section>
 
         <section id="lab" className="jg-section">
@@ -190,10 +191,10 @@ export default function Home() {
             <Link href="/blog/becoming-quantum-ready" className="jg-text-link">Read the quantum-ready brief <span>↗</span></Link>
           </div>
           <div className="section-grid jg-lab-grid">
-            <div className="jg-span-two"><VibePlayground /></div>
-            <div><MiningTelemetry /></div>
-            <div><OSCRPCalculator /></div>
-            <div className="jg-span-two"><AgentConsole /></div>
+            <div className="jg-span-two"><SectionBoundary label="Contract template demo"><VibePlayground /></SectionBoundary></div>
+            <div><SectionBoundary label="Mining simulation"><MiningTelemetry /></SectionBoundary></div>
+            <div><SectionBoundary label="Contribution simulation"><OSCRPCalculator /></SectionBoundary></div>
+            <div className="jg-span-two"><SectionBoundary label="Agent simulation"><AgentConsole /></SectionBoundary></div>
           </div>
         </section>
 
@@ -219,7 +220,7 @@ export default function Home() {
       <footer className="jg-footer">
         <div>
           <a href="#top" className="jg-brand"><span className="jg-mark" aria-hidden="true">JG</span><span><strong>Junction Generator</strong><small>Useful compute, independently verified.</small></span></a>
-          <p>Local/private testnet software. No public JGC mainnet is currently deployed.</p>
+          <p>Early, valueless JGTC public testnet. No JGC mainnet is deployed.</p>
         </div>
         <nav aria-label="Footer navigation"><Link href="/community">Join community</Link><Link href="/whitepaper">Concept paper</Link><Link href="/blog">Field notes</Link><a href="https://github.com/topnodrog/junctiongenerator" target="_blank" rel="noopener noreferrer">GitHub</a><a href="#hire">Hire James</a></nav>
         <span>© 2026 Junction Generator</span>

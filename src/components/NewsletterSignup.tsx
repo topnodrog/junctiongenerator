@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Turnstile, { useFormVerification } from "./Turnstile";
 
 /**
  * Newsletter signup — posts to the live Worker endpoint POST /api/subscribe,
@@ -15,11 +16,13 @@ type State = { kind: "idle" | "loading" | "ok" | "error"; msg?: string };
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function NewsletterSignup() {
+  const verification = useFormVerification();
   const [email, setEmail] = useState("");
   const [state, setState] = useState<State>({ kind: "idle" });
 
   const submit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
+    if (!verification.token) return;
     const value = email.trim();
     if (!EMAIL_RE.test(value)) {
       setState({ kind: "error", msg: "Please enter a valid email address." });
@@ -30,7 +33,7 @@ export default function NewsletterSignup() {
       const res = await fetch(`${API_BASE}/api/subscribe`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: value }),
+        body: JSON.stringify({ email: value, turnstileToken: verification.token }),
       });
       const data: { message?: string; error?: string } = await res.json().catch(() => ({}));
       if (res.ok) {
@@ -41,6 +44,8 @@ export default function NewsletterSignup() {
       }
     } catch {
       setState({ kind: "error", msg: "Network error — please try again in a moment." });
+    } finally {
+      verification.reset();
     }
   };
 
@@ -74,7 +79,8 @@ export default function NewsletterSignup() {
               color: "var(--text-primary)", fontSize: 14, outline: "none",
             }}
           />
-          <button type="submit" className="btn-glow-purple" disabled={state.kind === "loading"} style={{ whiteSpace: "nowrap" }}>
+          <Turnstile action="newsletter" attempt={verification.attempt} onVerify={verification.setToken} />
+          <button type="submit" className="btn-glow-purple" disabled={state.kind === "loading" || !verification.token} style={{ whiteSpace: "nowrap" }}>
             {state.kind === "loading" ? "Subscribing…" : "Subscribe"}
           </button>
         </form>

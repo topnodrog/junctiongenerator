@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Turnstile, { useFormVerification } from "./Turnstile";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL || "https://jgt-mining-api.james-gordon.workers.dev";
@@ -14,6 +15,7 @@ const ACTIONS = [
 ] as const;
 
 export default function ActivationCheckIn() {
+  const verification = useFormVerification();
   const [email, setEmail] = useState("");
   const [action, setAction] = useState("introduction");
   const [note, setNote] = useState("");
@@ -22,12 +24,13 @@ export default function ActivationCheckIn() {
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
+    if (!verification.token) return;
     setStatus("loading");
     try {
       const response = await fetch(`${API_BASE}/api/community/activate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, action, note }),
+        body: JSON.stringify({ email, action, note, turnstileToken: verification.token }),
       });
       const data: { message?: string; error?: string } = await response.json().catch(() => ({}));
       setMessage(data.message || data.error || "We could not record that action.");
@@ -35,6 +38,8 @@ export default function ActivationCheckIn() {
     } catch {
       setMessage("The community service is temporarily unavailable.");
       setStatus("error");
+    } finally {
+      verification.reset();
     }
   }
 
@@ -50,7 +55,8 @@ export default function ActivationCheckIn() {
         </select>
       </label>
       <label>Optional note<input value={note} onChange={(event) => setNote(event.target.value)} maxLength={500} placeholder="Link or one sentence of context" /></label>
-      <button className="jg-button jg-button-secondary" disabled={status === "loading"}>
+      <Turnstile action="community-activate" attempt={verification.attempt} onVerify={verification.setToken} />
+      <button className="jg-button jg-button-secondary" disabled={status === "loading" || !verification.token}>
         {status === "loading" ? "Recording…" : "Record my action"}
       </button>
       {(status === "ok" || status === "error") && <p className={status === "ok" ? "jg-form-ok" : "jg-form-error"} role="status">{message}</p>}

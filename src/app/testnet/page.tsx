@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import TestnetDashboard from "@/components/TestnetDashboard";
+import SectionBoundary from "@/components/SectionBoundary";
 
 export const metadata: Metadata = {
   title: "JGTC Public Testnet Explorer | Junction Generator",
@@ -23,7 +24,7 @@ export default function TestnetPage() {
           <h1>The testnet is where participation becomes <span>evidence.</span></h1>
           <p>Watch ten-minute blocks arrive, inspect network health, and see signed participant identities accumulate their share of JGTC created at each 144-block settlement.</p>
         </section>
-        <TestnetDashboard />
+        <SectionBoundary label="Testnet explorer"><TestnetDashboard /></SectionBoundary>
       </main>
       <footer className="jg-community-footer"><span>Junction Generator · JGTC public testnet</span><Link href="/">Back to the project</Link></footer>
     </div>

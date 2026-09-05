@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import Turnstile, { useFormVerification } from "./Turnstile";
 
 const STORAGE_KEY = "jg_hire_popup_dismissed_at_v3";
 const DISMISSAL_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
@@ -9,11 +10,18 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 type State = { kind: "idle" | "loading" | "ok" | "error"; msg?: string };
 
 export default function HireMePopup() {
+  const verification = useFormVerification();
   const [visible, setVisible] = useState(false);
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [state, setState] = useState<State>({ kind: "idle" });
   const closeButton = useRef<HTMLButtonElement>(null);
+  const { reset: resetVerification } = verification;
+  const close = useCallback(() => {
+    resetVerification();
+    localStorage.setItem(STORAGE_KEY, String(Date.now()));
+    setVisible(false);
+  }, [resetVerification]);
 
   useEffect(() => {
     const dismissedAt = Number(localStorage.getItem(STORAGE_KEY) || 0);
@@ -33,15 +41,11 @@ export default function HireMePopup() {
       window.removeEventListener("keydown", onKey);
       document.body.style.overflow = previousOverflow;
     };
-  }, [visible]);
-
-  function close() {
-    localStorage.setItem(STORAGE_KEY, String(Date.now()));
-    setVisible(false);
-  }
+  }, [visible, close]);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
+    if (!verification.token) return;
     const emailValue = email.trim();
     const phoneValue = phone.trim();
     if (!emailValue && !phoneValue) {
@@ -57,7 +61,7 @@ export default function HireMePopup() {
       const response = await fetch(`${API_BASE}/api/hire-lead`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: emailValue, phone: phoneValue }),
+        body: JSON.stringify({ email: emailValue, phone: phoneValue, turnstileToken: verification.token }),
       });
       const data: { message?: string; error?: string } = await response.json().catch(() => ({}));
       if (!response.ok) {
@@ -68,6 +72,8 @@ export default function HireMePopup() {
       setState({ kind: "ok", msg: data.message || "Thank you. I’ll be in touch soon." });
     } catch {
       setState({ kind: "error", msg: "Network error. Please try again in a moment." });
+    } finally {
+      verification.reset();
     }
   }
 
@@ -87,7 +93,8 @@ export default function HireMePopup() {
           <form onSubmit={submit}>
             <label><span>Email</span><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" autoComplete="email" disabled={state.kind === "loading"} /></label>
             <label><span>Phone <small>optional</small></span><input type="tel" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="Your phone number" autoComplete="tel" disabled={state.kind === "loading"} /></label>
-            <button type="submit" className="jg-button jg-button-primary" disabled={state.kind === "loading"}>{state.kind === "loading" ? "Sending…" : "I’d like to talk"}</button>
+            <Turnstile action="hire" attempt={verification.attempt} onVerify={verification.setToken} />
+            <button type="submit" className="jg-button jg-button-primary" disabled={state.kind === "loading" || !verification.token}>{state.kind === "loading" ? "Sending…" : "I’d like to talk"}</button>
           </form>
         )}
         {state.kind === "error" && <p className="hire-modal-error" role="alert">{state.msg}</p>}

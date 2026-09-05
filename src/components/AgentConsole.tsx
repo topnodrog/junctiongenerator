@@ -381,10 +381,10 @@ export default function AgentConsole() {
   return (
     <div className="glass-container" style={{ gridColumn: "span 2" }}>
       <h3 style={{ fontSize: "18px", marginBottom: "16px", display: "flex", alignItems: "center", gap: "8px" }}>
-        <span style={{ color: "var(--color-cyan)" }}>🤖</span> Autonomous C-Suite Agent Console
+        <span style={{ color: "var(--color-cyan)" }}>🤖</span> Agent coordination simulation
       </h3>
       <p style={{ color: "var(--text-secondary)", fontSize: "13px", marginBottom: "20px" }}>
-        Monitor active logs and reasoning traces of the interconnected multi-agent corporate system, recursively evolving on the DNCG compute grid. Send strategic orders to trigger real-time coordinated executive campaigns.
+        Simulation only. These scripted characters and logs illustrate coordination ideas. No AI agents are running, and commands do not deploy software, contact people, move funds, or change the network.
       </p>
 
       {/* Tabs */}

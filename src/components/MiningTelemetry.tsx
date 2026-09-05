@@ -321,10 +321,10 @@ export default function MiningTelemetry() {
     <div className="glass-container" style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
       <div>
         <h3 style={{ fontSize: "18px", marginBottom: "8px", display: "flex", alignItems: "center", gap: "8px" }}>
-          <span style={{ color: "var(--color-purple)" }}>⛏️</span> DNCG Proof-of-Useful-Compute Telemetry
+          <span style={{ color: "var(--color-purple)" }}>⛏️</span> Mining telemetry simulation
         </h3>
         <p style={{ color: "var(--text-secondary)", fontSize: "13px" }}>
-          Real-time telemetry showing computational cycles harvested from the global $JGC GPU mining rig network and prioritized dynamically.
+          Simulation only. These generated node counts, compute figures, blocks, and workloads illustrate a possible interface. For measured activity, open the JGTC testnet explorer.
         </p>
       </div>
 
