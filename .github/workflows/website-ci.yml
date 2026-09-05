@@ -54,6 +54,8 @@ jobs:
       - name: Check Worker and migration scripts
         shell: bash
         run: |
-          for file in api/*.js; do
+          for file in api/*.js api/*.mjs; do
             node --check "$file"
           done
+      - name: Test public form security
+        run: node --test api/public-write.test.mjs

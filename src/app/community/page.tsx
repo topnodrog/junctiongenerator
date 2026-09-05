@@ -3,6 +3,7 @@ import Link from "next/link";
 import CommunityJoin from "@/components/CommunityJoin";
 import ActivationCheckIn from "@/components/ActivationCheckIn";
 import CommunityScoreboard from "@/components/CommunityScoreboard";
+import SectionBoundary from "@/components/SectionBoundary";
 
 export const metadata: Metadata = {
   title: "Join the JG Founding Community",
@@ -55,14 +56,14 @@ export default function CommunityPage() {
         </aside>
       </section>
 
-      <section id="join" className="jg-community-join-shell"><CommunityJoin /></section>
+      <section id="join" className="jg-community-join-shell"><SectionBoundary label="Community signup"><CommunityJoin /></SectionBoundary></section>
 
       <section id="activate" className="jg-activation-section">
         <div className="jg-section-heading"><span className="jg-eyebrow">Join + one action</span><h2>A signup is a beginning, not the goal.</h2><p>You become an activated member by completing one meaningful action within seven days.</p></div>
         <div className="jg-activation-grid">
           {ACTIONS.map(([number, title, body]) => <article key={number}><span>{number}</span><h3>{title}</h3><p>{body}</p></article>)}
         </div>
-        <ActivationCheckIn />
+        <SectionBoundary label="Community check-in"><ActivationCheckIn /></SectionBoundary>
       </section>
 
       <section className="jg-role-section">
@@ -70,7 +71,7 @@ export default function CommunityPage() {
         <div className="jg-role-grid">{ROLES.map(([role, body]) => <article key={role}><h3>{role}</h3><p>{body}</p></article>)}</div>
       </section>
 
-      <div id="scoreboard"><CommunityScoreboard /></div>
+      <div id="scoreboard"><SectionBoundary label="Community scoreboard"><CommunityScoreboard /></SectionBoundary></div>
 
       <section id="support" className="jg-funding-ladder">
         <div className="jg-section-heading"><span className="jg-eyebrow">Support at the right level</span><h2>Start with the action that fits.</h2><p>Everyone gets a useful next step. Funding conversations stay distinct and truthful.</p></div>

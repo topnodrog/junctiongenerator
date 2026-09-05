@@ -111,10 +111,10 @@ export default function OSCRPCalculator() {
   return (
     <div className="glass-container">
       <h3 style={{ fontSize: "18px", marginBottom: "16px", display: "flex", alignItems: "center", gap: "8px" }}>
-        <span style={{ color: "var(--color-magenta)" }}>👐</span> OSCRP Contributor Hub & Calculator
+        <span style={{ color: "var(--color-magenta)" }}>👐</span> Contribution rewards simulation
       </h3>
       <p style={{ color: "var(--text-secondary)", fontSize: "13px", marginBottom: "20px" }}>
-        Simulate submitting a pull request to the Junction Generator repository. Our AI-operated CFO assessment agent scores contribution complexity, gas efficacy, and security to calculate immediate liquid $JGT rewards and Autonomy Equity (AE) stakes.
+        Simulation only. Scores, treasury reserves, contributors, token amounts, and equity percentages are fictional examples. This demo does not review real pull requests or award tokens or ownership.
       </p>
 
       {/* Grid Simulator Layout */}
@@ -274,7 +274,7 @@ export default function OSCRPCalculator() {
       {/* Leaderboard Table section */}
       <div style={{ borderTop: "1px solid var(--glass-border)", paddingTop: "16px" }}>
         <h4 style={{ fontSize: "12px", color: "var(--text-muted)", textTransform: "uppercase", marginBottom: "10px", letterSpacing: "0.03em" }}>
-          🌐 OSCRP Network Contributor Leaderboard (Verified Claims)
+          🌐 Example contributor leaderboard (fictional data)
         </h4>
 
         <div style={{ overflowX: "auto" }}>

@@ -898,6 +898,11 @@ body::after { display: none; }
 .jg-lab-intro strong { color: #d6eee5; font-size: 15px; }
 .jg-lab-intro p { max-width: 740px; }
 .jg-lab-grid { gap: 14px; }
+.jg-lab-grid > *, .jg-template-settings > * { min-width: 0; }
+.jg-template-settings { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 24px; margin-bottom: 24px; }
+@media (max-width: 700px) {
+  .jg-template-settings { grid-template-columns: minmax(0, 1fr); }
+}
 .jg-span-two { grid-column: span 2; }
 .jg-support-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 
@@ -1292,3 +1297,7 @@ body::after { display: none; }
   .jg-score-grid div, .jg-score-notes, .jg-score-disclaimer { padding-inline: 22px; }
   .jg-community-footer { display: grid; gap: 12px; margin-inline: 18px; }
 }
+/* Form verification and isolated recovery stay usable on narrow screens. */
+.jg-verification { grid-column: 1 / -1; flex-basis: 100%; width: 100%; min-width: 0; margin: 12px 0; }
+.jg-verification p { font-size: 0.875rem; color: var(--text-secondary); }
+.jg-section-error { padding: 32px; }

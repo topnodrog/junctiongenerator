@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Turnstile, { useFormVerification } from "./Turnstile";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL || "https://jgt-mining-api.james-gordon.workers.dev";
@@ -26,6 +27,7 @@ function attribution(): Record<string, string> {
 }
 
 export default function CommunityJoin() {
+  const verification = useFormVerification();
   const [email, setEmail] = useState("");
   const [discordName, setDiscordName] = useState("");
   const [audienceType, setAudienceType] = useState("ai-crypto-builder");
@@ -41,6 +43,7 @@ export default function CommunityJoin() {
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
+    if (!verification.token) return;
     if (!consent || interests.length === 0) {
       setStatus({ kind: "error", message: "Choose at least one path and confirm email permission." });
       return;
@@ -57,6 +60,7 @@ export default function CommunityJoin() {
           audienceType,
           interests,
           consent,
+          turnstileToken: verification.token,
           ...attribution(),
         }),
       });
@@ -66,6 +70,8 @@ export default function CommunityJoin() {
         : { kind: "error", message: data.error || "We could not save your place. Please try again." });
     } catch {
       setStatus({ kind: "error", message: "The community service is temporarily unavailable." });
+    } finally {
+      verification.reset();
     }
   }
 
@@ -128,7 +134,8 @@ export default function CommunityJoin() {
         <span>Email me the weekly field note, event invitations, and relevant contributor opportunities. I can unsubscribe at any time.</span>
       </label>
 
-      <button className="jg-button jg-button-primary" disabled={status.kind === "loading"}>
+      <Turnstile action="community-join" attempt={verification.attempt} onVerify={verification.setToken} />
+      <button className="jg-button jg-button-primary" disabled={status.kind === "loading" || !verification.token}>
         {status.kind === "loading" ? "Saving your place…" : "Join the JG Founding Community"}
       </button>
       {status.kind === "error" && <p className="jg-form-error" role="alert">{status.message}</p>}

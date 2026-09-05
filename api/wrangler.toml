@@ -11,8 +11,11 @@ TURSO_URL = "https://jgt-mining-topnodrog.aws-us-east-2.turso.io"
 DIGEST_RECIPIENT = "james_gordon@junctiongenerator.net"
 # Server-authoritative JGT reward credited per ad view (clients cannot set it)
 AD_REWARD_JGT = "1"
+# Siteverify must confirm both the expected hostname and the form action.
+TURNSTILE_HOSTNAMES = "junctiongenerator.net,www.junctiongenerator.net"
 # Secrets (set via wrangler secret put):
 # TURSO_AUTH_TOKEN - Turso auth token
+# TURNSTILE_SECRET_KEY - widget secret; never store in source or local files
 # API_SECRET - Bearer token gating the owner endpoints (ad-view,
 #              referral/claim, campaigns POST, pending-rewards)
 # CRON_SECRET - Bearer token gating automation endpoints (dispense, digest/run)

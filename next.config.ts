@@ -1,8 +1,6 @@
 import type { NextConfig } from "next";
 
-// Baseline security headers. CSP is intentionally omitted for now: the
-// wallet stack (RainbowKit/WalletConnect) needs a tested connect-src and
-// style allowlist before one can ship without breaking the app.
+// Per-request nonces and Content Security Policy are applied in src/proxy.ts.
 const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "X-Frame-Options", value: "DENY" },

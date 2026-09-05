@@ -6,11 +6,12 @@
 // Optional bindings: RATE_LIMITER (ratelimit binding, see wrangler.toml)
 //
 // Auth model:
-//   - Public (rate-limited): POST /api/subscribe, POST /api/hire-lead,
+//   - Public writes (rate-limited and Turnstile-verified): POST /api/subscribe, POST /api/hire-lead,
 //     POST /api/community/join, POST /api/community/activate,
-//     POST /api/airdrop/register, GET /api/user, GET /api/referral,
+//   - Public reads: GET /api/user, GET /api/referral,
 //     GET /api/community/scoreboard, GET /api/airdrop/status,
 //     GET /api/ads/campaigns, GET /api/health
+//   - Retired: POST /api/airdrop/register returns 410; no new reward enrollments.
 //   - Bearer API_SECRET (owner): POST /api/ad-view, POST /api/referral/claim,
 //     POST /api/ads/campaigns, POST /api/community/funding,
 //     POST /api/community/weekly-metrics, GET /api/pending-rewards
@@ -18,6 +19,7 @@
 
 import { EmailMessage } from "cloudflare:email";
 import { createMimeMessage } from "mimetext";
+import { PUBLIC_ACTIONS, readPublicJson, validateTurnstile } from "./public-write.mjs";
 
 // ── Security helpers ─────────────────────────────────────────
 
@@ -132,6 +134,18 @@ export default {
     }
 
     try {
+      let publicBody;
+      const publicAction = PUBLIC_ACTIONS[path];
+      if (request.method === "POST" && publicAction) {
+        if (!(await rateLimitOk(env, request, publicAction))) {
+          return jsonResponse({ error: "Too many requests" }, corsHeaders, 429);
+        }
+        const parsed = await readPublicJson(request);
+        if (parsed.error) return jsonResponse({ error: parsed.error }, corsHeaders, parsed.status);
+        const verified = await validateTurnstile(request, env, parsed.body, publicAction);
+        if (verified.status !== 200) return jsonResponse({ error: verified.error }, corsHeaders, verified.status);
+        publicBody = parsed.body;
+      }
       // Legacy mining endpoint — owner-only. Rewards must never be creditable
       // by anonymous callers (pending_claims feeds the on-chain dispenser).
       if (path === "/api/ad-view" && request.method === "POST") {
@@ -144,16 +158,16 @@ export default {
         return await handleGetUser(request, env, corsHeaders);
       }
       if (path === "/api/subscribe" && request.method === "POST") {
-        return await handleSubscribe(request, env, corsHeaders);
+        return await handleSubscribe(publicBody, env, corsHeaders);
       }
       if (path === "/api/hire-lead" && request.method === "POST") {
-        return await handleHireLead(request, env, corsHeaders);
+        return await handleHireLead(publicBody, env, corsHeaders);
       }
       if (path === "/api/community/join" && request.method === "POST") {
-        return await handleCommunityJoin(request, env, corsHeaders);
+        return await handleCommunityJoin(publicBody, env, corsHeaders);
       }
       if (path === "/api/community/activate" && request.method === "POST") {
-        return await handleCommunityActivation(request, env, corsHeaders);
+        return await handleCommunityActivation(publicBody, env, corsHeaders);
       }
       if (path === "/api/community/scoreboard" && request.method === "GET") {
         return await handleCommunityScoreboard(env, corsHeaders);
@@ -192,7 +206,7 @@ export default {
         return await handleCreateCampaign(request, env, corsHeaders);
       }
       if (path === "/api/airdrop/register" && request.method === "POST") {
-        return await handleAirdropRegister(request, env, corsHeaders);
+        return jsonResponse({ error: "Legacy JGT airdrop registration is retired." }, corsHeaders, 410);
       }
       if (path === "/api/airdrop/status" && request.method === "GET") {
         return await handleAirdropStatus(request, env, corsHeaders);
@@ -382,12 +396,7 @@ async function handleGetUser(request, env, corsHeaders) {
 }
 
 // Newsletter subscription
-async function handleSubscribe(request, env, corsHeaders) {
-  if (!(await rateLimitOk(env, request, "subscribe"))) {
-    return jsonResponse({ error: "Too many requests" }, corsHeaders, 429);
-  }
-
-  const body = await request.json();
+async function handleSubscribe(body, env, corsHeaders) {
   const { email, walletAddress } = body;
 
   if (!email || typeof email !== "string" || email.length > 254) {
@@ -440,12 +449,7 @@ function cleanText(value, maxLength) {
 
 // Founding-community join. This also upserts the owned email list so a person
 // has one coherent identity and can receive the weekly operating loop.
-async function handleCommunityJoin(request, env, corsHeaders) {
-  if (!(await rateLimitOk(env, request, "community-join"))) {
-    return jsonResponse({ error: "Too many requests" }, corsHeaders, 429);
-  }
-
-  const body = await request.json();
+async function handleCommunityJoin(body, env, corsHeaders) {
   const email = cleanText(body.email, 254).toLowerCase();
   const discordName = cleanText(body.discordName, 80);
   const audienceType = AUDIENCE_TYPES.has(body.audienceType) ? body.audienceType : "curious";
@@ -506,12 +510,7 @@ async function handleCommunityJoin(request, env, corsHeaders) {
   }, corsHeaders);
 }
 
-async function handleCommunityActivation(request, env, corsHeaders) {
-  if (!(await rateLimitOk(env, request, "community-activate"))) {
-    return jsonResponse({ error: "Too many requests" }, corsHeaders, 429);
-  }
-
-  const body = await request.json();
+async function handleCommunityActivation(body, env, corsHeaders) {
   const email = cleanText(body.email, 254).toLowerCase();
   const action = cleanText(body.action, 40);
   const note = cleanText(body.note, 500);
@@ -625,12 +624,7 @@ async function handleWeeklyMetrics(request, env, corsHeaders) {
 }
 
 // "Hire me" lead capture (popup on the public site)
-async function handleHireLead(request, env, corsHeaders) {
-  if (!(await rateLimitOk(env, request, "hire-lead"))) {
-    return jsonResponse({ error: "Too many requests" }, corsHeaders, 429);
-  }
-
-  const body = await request.json();
+async function handleHireLead(body, env, corsHeaders) {
   const { email, phone, interest, message } = body;
 
   const emailVal = typeof email === "string" ? email.trim().toLowerCase().slice(0, 254) : "";

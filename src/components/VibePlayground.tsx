@@ -296,35 +296,35 @@ contract ${tokenName}MultiSig${useReentrancy ? " is ReentrancyGuard" : ""} {
     }
     
     setCompileState("synthesizing");
-    await addLog("⚡ Initializing abstract syntax tree (AST) construction...", 400);
-    await addLog("🧠 Executing zero-shot compilation LLM (13.7B Mixture of Experts)...", 600);
+    await addLog("⚡ Demo: selecting the browser's source template...", 400);
+    await addLog("🧠 Demo: inserting your configuration; no AI model is running.", 600);
     
     setCompileState("auditing");
-    await addLog("🛡️ Routing AST logic blocks to Adversarial Auditor Node (Daedalus)...", 500);
-    await addLog("🔍 Security: Running static vulnerability sweeps...", 400);
+    await addLog("🛡️ Demo: applying selected template options...", 500);
+    await addLog("🔍 No security audit is performed by this demonstration.", 400);
     
     // Log active auditor configurations
     if (security.reentrancy) {
-      await addLog("🔐 Auditor: Checked external call trees. ReentrancyGuard nonReentrant modifiers injected.", 300);
+      await addLog("🔐 Template option: reentrancy protection requested; review the generated source.", 300);
     }
     if (security.gasOptimization) {
-      await addLog("⚡ Auditor: Arithmetic bounds audited. Injecting unchecked loops, pre-increments, and memory short-circuit parameters.", 300);
+      await addLog("⚡ Template option: optimization requested; gas use has not been measured.", 300);
     }
     if (security.ownerPrivilege) {
-      await addLog("🛡️ Auditor: Verifying administrative access controls. Ownable structure securely mapped.", 300);
+      await addLog("🛡️ Template option: administrative access requested; permissions require review.", 300);
     }
     if (security.flashLoanGuard) {
-      await addLog("💰 Auditor: Flash loan frontrunning checks injected. Restricting tx.origin calling mechanisms.", 300);
+      await addLog("💰 Template option: caller restriction requested; this does not establish flash-loan safety.", 300);
     }
     
-    await addLog("✅ Audits Completed successfully: No security risks identified. Rating: 10/10.", 400);
+    await addLog("Draft prepared. Security, correctness, and compiler compatibility remain unverified.", 400);
     
     setCompileState("compiling");
-    await addLog("📦 Packing Solidity source code structures and compiling EVM bytecode...", 400);
-    await addLog("🔋 Calibrating contract deployment gas parameters...", 300);
+    await addLog("📦 Formatting draft Solidity source; no compiler is invoked.", 400);
+    await addLog("🔋 No bytecode, deployment, or gas estimate is produced.", 300);
     
     setCompileState("completed");
-    await addLog(`🚀 Compilation Success! Synthesized in 4.12 seconds. Gas optimized: ${security.gasOptimization ? "YES" : "NO"}.`, 200);
+    await addLog("Draft template ready. Do not deploy it with real funds.", 200);
 
     // Dynamic typing effect — scales speed to target ~2s total regardless of code length
     let currentIdx = 0;
@@ -344,14 +344,14 @@ contract ${tokenName}MultiSig${useReentrancy ? " is ReentrancyGuard" : ""} {
   return (
     <div className="glass-container" style={{ gridColumn: "span 2" }}>
       <h3 style={{ fontSize: "20px", marginBottom: "8px", display: "flex", alignItems: "center", gap: "8px" }}>
-        <span style={{ color: "var(--color-cyan)" }}>⚡</span> Interactive Vibe-Coding Compiler
+        <span style={{ color: "var(--color-cyan)" }}>⚡</span> Contract template demo
       </h3>
       <p style={{ color: "var(--text-secondary)", fontSize: "14px", marginBottom: "20px" }}>
-        Select a template, customize structural settings, toggle advanced static audit guardrails, and let the multi-agent AI system compile gas-optimized smart contracts instantly.
+        Browser template demonstration. Output is draft source code; this demo does not run an AI model, compile bytecode, audit security, or deploy contracts. Do not use its output with real funds.
       </p>
 
       {/* Grid Settings Layout */}
-      <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: "24px", marginBottom: "24px" }}>
+      <div className="jg-template-settings">
         
         {/* Left Side: Parameters & Prompts */}
         <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
@@ -531,15 +531,15 @@ contract ${tokenName}MultiSig${useReentrancy ? " is ReentrancyGuard" : ""} {
           
           <div>
             <h4 style={{ fontSize: "12px", color: "var(--text-muted)", textTransform: "uppercase", marginBottom: "12px", letterSpacing: "0.03em" }}>
-              🛡️ Toggle Security Guardrails (AST Auditor)
+              🛡️ Template options (not an audit)
             </h4>
 
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
               {[
-                { key: "reentrancy", label: "🔐 Reentrancy Protections", desc: "Injects ReentrancyGuard checks on calls." },
-                { key: "gasOptimization", label: "⚡ Dynamic Gas Optimization", desc: "Short-circuits checks, uses unchecked loops." },
-                { key: "ownerPrivilege", label: "🛡️ Administrative Access", desc: "Ensures Ownable modifier strict compliance." },
-                { key: "flashLoanGuard", label: "💰 Flash Loan Slippage Shield", desc: "Restricts flash dynamic tx.origin calling." }
+                { key: "reentrancy", label: "🔐 Reentrancy template", desc: "Requests a guard pattern; correctness is unverified." },
+                { key: "gasOptimization", label: "⚡ Optimization template", desc: "Gas use and arithmetic safety are unverified." },
+                { key: "ownerPrivilege", label: "🛡️ Administrative access", desc: "Requests an ownership pattern; review permissions." },
+                { key: "flashLoanGuard", label: "💰 Caller restriction example", desc: "Does not establish flash-loan or slippage safety." }
               ].map((sec) => (
                 <div 
                   key={sec.key} 
@@ -585,24 +585,24 @@ contract ${tokenName}MultiSig${useReentrancy ? " is ReentrancyGuard" : ""} {
             disabled={compileState !== "idle" && compileState !== "completed"}
             style={{ width: "100%", height: "50px", marginTop: "auto" }}
           >
-            {compileState === "idle" || compileState === "completed" ? "🚀 Compile Secure Smart Contract" : "Processing compilation..."}
+            {compileState === "idle" || compileState === "completed" ? "Generate draft template" : "Generating draft..."}
           </button>
         </div>
 
       </div>
 
       {/* Compiler Output Terminals */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
+      <div className="jg-template-settings">
         
         {/* Compilation Terminal Output */}
         <div>
           <h4 style={{ fontSize: "12px", color: "var(--text-muted)", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-            EVM Synthesis Compilation Terminal
+            Template demonstration log
           </h4>
           <div className="console-terminal">
             {logs.length === 0 && (
               <div style={{ color: "var(--text-muted)", fontStyle: "italic" }}>
-                Terminal inactive. Click compile to trigger multi-agent contract synthesis...
+                Select a template and generate draft source to see the demonstration.
               </div>
             )}
             {logs.map((log, i) => {
@@ -644,7 +644,7 @@ contract ${tokenName}MultiSig${useReentrancy ? " is ReentrancyGuard" : ""} {
               </pre>
             ) : (
               <div style={{ color: "var(--text-muted)", fontStyle: "italic" }}>
-                Waiting for compilation bytecode...
+                Generate a template to view draft Solidity source.
               </div>
             )}
           </div>
