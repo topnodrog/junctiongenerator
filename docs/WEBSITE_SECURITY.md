@@ -10,6 +10,8 @@ before any database write or owner notification. Acceptance requires success,
 the expected form action, and an explicitly allowed hostname. Cloudflare
 enforces token lifetime and single use; forms reset verification after an
 attempt. Missing configuration and verification outages fail closed.
+Each form initializes when the shared loader finishes, including multiple
+forms mounted together and forms reached through client navigation.
 
 Requests must be JSON objects of at most 16 KiB. Rate limiting runs before
 parsing and verification. No token, secret, or contact detail is logged by the
