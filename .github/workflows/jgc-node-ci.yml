@@ -18,6 +18,35 @@ permissions:
   contents: read
 
 jobs:
+  hosted-monitor:
+    name: Hosted monitor container
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: packages/jgc-node
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: npm run build
+      - run: node deploy/monitor/stage.mjs .tmp/monitor-ci
+      - name: Build and start the isolated monitor image
+        run: |
+          docker build -f .tmp/monitor-ci/deploy/monitor/Dockerfile -t jgc-monitor-ci .tmp/monitor-ci
+          docker run -d --name jgc-monitor-ci -p 18080:8080 -e GOOGLE_CLOUD_PROJECT=ci-project -e MONITOR_BUCKET=ci-bucket -e MONITOR_WINDOW_ID=ci-window -e MONITOR_DEADLINE_UTC=2030-01-01T00:00:00Z -e MONITOR_SCHEDULER_JOB=projects/ci-project/locations/us-central1/jobs/ci-window jgc-monitor-ci
+          for attempt in $(seq 1 20); do
+            if curl --fail --silent http://localhost:18080/healthz; then exit 0; fi
+            sleep 1
+          done
+          docker logs jgc-monitor-ci
+          exit 1
+      - name: Stop monitor container
+        if: always()
+        run: docker rm -f jgc-monitor-ci || true
+
   codegen:
     name: Deterministic code generator
     runs-on: ubuntu-latest
@@ -62,6 +91,8 @@ jobs:
       - run: npm run typecheck
       - run: npm test -- --ci
       - run: npm run build
+      - name: Gemini monitor review boundaries
+        run: node --test deploy/monitor/review.test.mjs
       - name: Consensus and genesis vectors
         run: npm test -- --ci --runTestsByPath src/tests/canonical.test.ts src/tests/network-identity.test.ts
 
