@@ -1,0 +1,10 @@
+{
+  "name": "jgc-gemini-soak-monitor",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "dependencies": { "@google-cloud/storage": "8.1.0" },
+  "overrides": { "gaxios": { "uuid": "11.1.1" } },
+  "scripts": { "start": "node server.mjs", "test": "node --test review.test.mjs" }
+}
