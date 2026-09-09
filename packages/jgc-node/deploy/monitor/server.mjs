@@ -174,7 +174,7 @@ createServer(async (req, res) => {
   res.setHeader('Content-Type', 'application/json'); res.setHeader('Cache-Control', 'no-store');
   try {
     const path = new URL(req.url, 'http://localhost').pathname;
-    if (req.method === 'GET' && path === '/healthz') { res.end('{"ok":true}'); return; }
+    if (req.method === 'GET' && (path === '/health' || path === '/healthz')) { res.end('{"ok":true}'); return; }
     if (req.method === 'GET' && path === '/status') {
       const state = await readJson(stateName);
       const review = await readJson(`${control}/latest-review.json`);

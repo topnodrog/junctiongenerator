@@ -4,7 +4,7 @@ export function reviewRequest(input) {
   const text = JSON.stringify(input);
   if (Buffer.byteLength(text) > 12000) throw new Error("Review input exceeds its bound");
   return {
-    systemInstruction: { parts: [{ text: REVIEW_SYSTEM }] },
+    systemInstruction: { parts: [{ text: REVIEW_SYSTEM + (input.scope === 'connection-check' ? ' This is only a connection test: report connection successful and node health untested; do not say the checks are healthy.' : '') }] },
     contents: [{ role: "user", parts: [{ text }] }],
     generationConfig: {
       temperature: 0, maxOutputTokens: 384, thinkingConfig: { thinkingBudget: 0 },

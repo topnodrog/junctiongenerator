@@ -38,7 +38,7 @@ jobs:
           docker build -f .tmp/monitor-ci/deploy/monitor/Dockerfile -t jgc-monitor-ci .tmp/monitor-ci
           docker run -d --name jgc-monitor-ci -p 18080:8080 -e GOOGLE_CLOUD_PROJECT=ci-project -e MONITOR_BUCKET=ci-bucket -e MONITOR_WINDOW_ID=ci-window -e MONITOR_DEADLINE_UTC=2030-01-01T00:00:00Z -e MONITOR_SCHEDULER_JOB=projects/ci-project/locations/us-central1/jobs/ci-window jgc-monitor-ci
           for attempt in $(seq 1 20); do
-            if curl --fail --silent http://localhost:18080/healthz; then exit 0; fi
+            if curl --fail --silent http://localhost:18080/health; then exit 0; fi
             sleep 1
           done
           docker logs jgc-monitor-ci

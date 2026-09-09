@@ -9,7 +9,7 @@ $observerConfigPath = (Resolve-Path -LiteralPath $ConfigPath).Path
 $observerNodePath = (Resolve-Path -LiteralPath $NodePath).Path
 $observerConfig = Get-Content -LiteralPath $observerConfigPath -Raw | ConvertFrom-Json
 if ($observerConfig.windowId -notmatch '^[a-z0-9][a-z0-9-]{0,79}$') { throw 'Invalid window id' }
-$observerEnd = [DateTimeOffset]::Parse($observerConfig.expiresAt)
+$observerEnd = if ($observerConfig.expiresAt -is [DateTime]) { [DateTimeOffset]$observerConfig.expiresAt } else { [DateTimeOffset]::Parse($observerConfig.expiresAt) }
 $observerRemaining = $observerEnd - [DateTimeOffset]::UtcNow
 if ($observerRemaining.TotalMinutes -le 1 -or $observerRemaining.TotalDays -gt 6) { throw 'Observer expiry must be within six days' }
 $observerPackageRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..\..')).Path
@@ -23,6 +23,7 @@ $observerWrapper = Join-Path $PSScriptRoot 'Run-JgcSoakObserver.ps1'
 $observerArguments = "-NoProfile -NonInteractive -WindowStyle Hidden -File `"$observerWrapper`" -NodePath `"$observerNodePath`" -ScriptPath `"$observerScript`" -ConfigPath `"$observerConfigPath`""
 $observerAction = New-ScheduledTaskAction -Execute $observerPowerShell -Argument $observerArguments -WorkingDirectory $observerPackageRoot
 $observerTrigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) -RepetitionInterval (New-TimeSpan -Minutes 5) -RepetitionDuration $observerRemaining
+$observerTrigger.EndBoundary = $observerEnd.LocalDateTime.ToString('s')
 $observerPrincipal = New-ScheduledTaskPrincipal -UserId $observerAccount -LogonType Interactive -RunLevel Limited
 $observerSettings = New-ScheduledTaskSettingsSet -Hidden -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Minutes 2)
 $observerTask = New-ScheduledTask -Action $observerAction -Trigger $observerTrigger -Principal $observerPrincipal -Settings $observerSettings -Description 'Saves the existing JGC back-checker status every five minutes; does not start, stop, or modify the node.'
