@@ -1,6 +1,6 @@
 import { TESTNET_GENESIS_HASH } from "../config/networks.js";
 import type { ExplorerSnapshot, ExplorerBlock } from "../network/public-testnet-api.js";
-import { startMonitor, advanceMonitor, validateRunner, observationFindings, type MonitorObservation, type MonitorState } from "../ops/hosted-soak-monitor.js";
+import { startMonitor, advanceMonitor, validateRunner, observationFindings, TRANSIENT_FAILURE_THRESHOLD, type MonitorObservation, type MonitorState } from "../ops/hosted-soak-monitor.js";
 
 const WINDOW = "owner-test-window";
 const PARTICIPANTS = ["1QGC" + "a".repeat(40), "1QGC" + "b".repeat(40)];
@@ -33,6 +33,7 @@ function observation(height = START_HEIGHT, milliseconds = BASE + (height - STAR
   };
   return { capturedAt, explorer, transport: [{ seed: "seed-a", reachable: true, latencyMs: 5 }, { seed: "seed-b", reachable: true, latencyMs: 10 }],
     runner: { windowId: WINDOW, capturedAt, running: true, network: "jgtc-testnet-v2", height, peerCount: 2, producerEnabled: false,
+      role: "back-checker",
       uptimeSec: 1000 + (milliseconds - BASE) / 1000, nodeVersion: "0.1.0", platform: "win32", architecture: "x64", runtimeVersion: "v22.0.0" } };
 }
 
@@ -75,6 +76,48 @@ describe("hosted owner soak monitor", () => {
     const result = advanceMonitor(state, row);
     expect(result.findings.map(f => f.id)).toEqual(expect.arrayContaining(["chain.changed", "participant.missing"]));
     expect(state.blocks["1008"].hash).toBe(hash(1008));
+    expect(result.state.missingParticipantBlocks["1009"]?.missingAddresses).toEqual([PARTICIPANTS[1]]);
+  });
+
+  test("records each missing participant block once instead of once per later poll", () => {
+    let state = startMonitor(WINDOW, PARTICIPANTS, observation());
+    const first = observation(1008, BASE + 20 * 60_000);
+    first.explorer!.recentBlocks[0]!.participants = [PARTICIPANTS[0]];
+    state = advanceMonitor(state, first).state;
+    const repeat = observation(1008, BASE + 25 * 60_000);
+    repeat.explorer!.recentBlocks[0]!.participants = [PARTICIPANTS[0]];
+    const result = advanceMonitor(state, repeat);
+    expect(result.findings.map(f => f.id)).not.toContain("participant.missing");
+    expect(result.state.findingsById["participant.missing"]).toMatchObject({ count: 1, severity: "fail" });
+    expect(result.state.missingParticipantBlocks["1008"]?.lastObservedAt).toBe(repeat.capturedAt);
+  });
+
+  test("records a one-off availability fault without making a healthy completed window incomplete", () => {
+    let state: MonitorState = startMonitor(WINDOW, PARTICIPANTS, observation());
+    const blip = observation(1007);
+    blip.transport[1]!.reachable = false;
+    state = advanceMonitor(state, blip).state;
+    expect(state.findingsById["seed-b.transport"]).toMatchObject({ count: 1, severity: "warn" });
+    for (let height = 1008; height <= 1439; height++) state = advanceMonitor(state, observation(height)).state;
+    expect(state.phase).toBe("completed");
+    expect(state.findingsById["seed-b.transport"]?.severity).toBe("warn");
+  });
+
+  test("escalates sustained availability faults and tolerates one missing upload while the prior runner is fresh", () => {
+    let state = startMonitor(WINDOW, PARTICIPANTS, observation());
+    for (let attempt = 1; attempt <= TRANSIENT_FAILURE_THRESHOLD; attempt++) {
+      const row = observation(1006 + attempt, BASE + attempt * 5 * 60_000);
+      row.runner!.peerCount = 0;
+      state = advanceMonitor(state, row).state;
+    }
+    expect(state.findingsById["runner.role"]).toMatchObject({ severity: "fail", count: TRANSIENT_FAILURE_THRESHOLD });
+
+    const fresh = startMonitor(WINDOW, PARTICIPANTS, observation());
+    const delayed = observation(1007, BASE + 5 * 60_000);
+    delayed.runner = null;
+    const result = advanceMonitor(fresh, delayed);
+    expect(result.findings.map(f => f.id)).toContain("runner.upload-delayed");
+    expect(result.findings.map(f => f.id)).not.toContain("runner.missing");
   });
 
   test("completes three fully observed contribution epochs but never certifies payout bytes or formal acceptance", () => {
@@ -104,5 +147,6 @@ describe("hosted owner soak monitor", () => {
     expect(validateRunner({ ...observation().runner, secret: "do-not-copy" }, WINDOW)).not.toHaveProperty("secret");
     expect(() => validateRunner(observation().runner, "different-window")).toThrow();
     expect(() => validateRunner({ ...observation().runner, height: "1006" }, WINDOW)).toThrow();
+    expect(() => validateRunner({ ...observation().runner, role: "unknown" }, WINDOW)).toThrow();
   });
 });

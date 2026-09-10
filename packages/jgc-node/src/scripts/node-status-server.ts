@@ -129,6 +129,8 @@ async function main(): Promise<void> {
       balanceJGC,
       pendingJGC,
       model: process.env.JUNCTIONING_MODEL ?? null,
+      role: "status-observer",
+      participating: false,
     };
   };
 

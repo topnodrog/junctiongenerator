@@ -150,7 +150,7 @@ async function tick() {
     if (participants.some(address => !visible.has(address))) findings.push({ id: 'participant.baseline', severity: 'fail', message: 'Both owner participants must be visible before starting' });
     const modelCheck = await readJson(`${control}/model-preflight.json`);
     if (modelCheck?.value.status !== 'reviewed') findings.push({ id: 'gemini.preflight', severity: 'fail', message: 'Gemini must complete its connection check before starting' });
-    if (!armed || findings.length) {
+    if (!armed || findings.some(finding => finding.severity === 'fail')) {
       await updateJson(`${control}/preflight.json`, { capturedAt: observation.capturedAt, armed, findings, evidenceName });
       return { phase: 'preflight', armed, findings };
     }

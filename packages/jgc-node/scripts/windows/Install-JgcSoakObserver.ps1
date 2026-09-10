@@ -25,7 +25,7 @@ $observerAction = New-ScheduledTaskAction -Execute $observerPowerShell -Argument
 $observerTrigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) -RepetitionInterval (New-TimeSpan -Minutes 5) -RepetitionDuration $observerRemaining
 $observerTrigger.EndBoundary = $observerEnd.LocalDateTime.ToString('s')
 $observerPrincipal = New-ScheduledTaskPrincipal -UserId $observerAccount -LogonType Interactive -RunLevel Limited
-$observerSettings = New-ScheduledTaskSettingsSet -Hidden -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Minutes 2)
+$observerSettings = New-ScheduledTaskSettingsSet -Hidden -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Minutes 2) -RestartCount 2 -RestartInterval (New-TimeSpan -Minutes 1)
 $observerTask = New-ScheduledTask -Action $observerAction -Trigger $observerTrigger -Principal $observerPrincipal -Settings $observerSettings -Description 'Saves the existing JGC back-checker status every five minutes; does not start, stop, or modify the node.'
 Register-ScheduledTask -TaskName $observerTaskName -InputObject $observerTask | Out-Null
 Start-ScheduledTask -TaskName $observerTaskName

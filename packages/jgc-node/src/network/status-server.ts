@@ -56,6 +56,10 @@ export interface NodeStatus {
   pendingJGC: string;
   /** configured junctioning model (informational), or null. */
   model: string | null;
+  /** Active process role; this distinguishes a participant from a back-checker. */
+  role: "back-checker" | "participant" | "designated-producer" | "status-observer";
+  /** Whether this process is currently submitting pilot participation receipts. */
+  participating: boolean;
   /** Present when this process can act as the designated testnet producer. */
   producer?: {
     enabled: boolean;

@@ -140,7 +140,12 @@ Look for:
 - `"running": true`
 - `"network": "jgtc-testnet-v2"`
 - `"peerCount": 1` or higher
+- `"role": "back-checker"` and `"participating": false` for the ordinary runner
 - `"producer": { "enabled": false, ... }`
+
+Participant mode instead reports `"role": "participant"`,
+`"participating": true`, and its public `1QGC...` address. The status endpoint
+is loopback-only by default, so this exposes no private key material.
 
 The designated producer targets one block every ten minutes and includes signed
 pilot participation receipts. Seed A

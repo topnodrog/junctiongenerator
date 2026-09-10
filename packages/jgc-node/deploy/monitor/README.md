@@ -35,6 +35,16 @@ restarts, changed blocks and gaps remain in the result even after recovery.
 Cloud Scheduler is paused when collection completes or reaches its deadline.
 Repeated requests after closure cannot extend the window.
 
+Every raw observation is saved. A chain identity, supply, canonical-history, or
+participant-coverage failure is immediately terminal. A single failed public
+transport probe or delayed back-checker upload is retained as a warning and
+escalates only after three consecutive five-minute samples; this avoids treating
+one client-side timeout or observer/upload race as proof of a sustained outage.
+The monitor records each missing participant once per canonical block, including
+the public address and height, rather than inflating one absence on every poll.
+Warnings remain visible for operator disposition but do not silently become
+acceptance failures.
+
 WebSocket upgrade success does not prove node admission or Fly chain agreement.
 Private seed logs, backup restoration, bans, independent operator provenance,
 and serialized payout verification require separate evidence. Monitor findings
