@@ -5,9 +5,10 @@ import { validateRunner } from "../ops/hosted-soak-monitor.js";
 const position = process.argv.indexOf("--config");
 if (position < 0 || !process.argv[position + 1]) throw new Error("--config is required");
 const config = JSON.parse(readFileSync(resolve(process.argv[position + 1]), "utf8")) as {
-  windowId: string; expiresAt: string; uploadUrl: string; historyPath: string;
+  windowId: string; participantAddress: string; expiresAt: string; uploadUrl: string; historyPath: string;
 };
 if (!Number.isFinite(Date.parse(config.expiresAt))) throw new Error("Invalid upload expiry");
+if (!/^1QGC[a-f0-9]{40}$/.test(config.participantAddress)) throw new Error("Invalid participant recorder address");
 if (Date.now() >= Date.parse(config.expiresAt)) process.exit(0);
 const upload = new URL(config.uploadUrl);
 if (upload.protocol !== "https:" || !(upload.hostname === "storage.googleapis.com" || upload.hostname.endsWith(".storage.googleapis.com"))) throw new Error("Unexpected upload destination");
@@ -52,12 +53,15 @@ try {
   const raw = await readLocalStatus();
   const producer = raw.producer as { enabled?: boolean } | undefined;
   const observation = validateRunner({ windowId: config.windowId, capturedAt,
-    running: raw.running, network: raw.network, height: raw.height, peerCount: raw.peerCount,
+    running: raw.running, network: raw.network, address: raw.address, height: raw.height, peerCount: raw.peerCount,
     producerEnabled: producer?.enabled ?? raw.producerEnabled, uptimeSec: raw.uptimeSec,
-    role: raw.role,
+    role: raw.role, participating: raw.participating,
     nodeVersion: raw.version, platform: process.platform, architecture: process.arch,
     runtimeVersion: process.version,
   }, config.windowId);
+  if (observation.role !== "participant" || !observation.participating || observation.address !== config.participantAddress) {
+    throw new Error("Local node is not the participant recorded in this observer configuration");
+  }
   appendFileSync(history, JSON.stringify({ kind: "runner-observation", ...observation }) + "\n");
   await uploadObservation(observation);
   console.log(`Runner evidence saved and uploaded for ${config.windowId}`);

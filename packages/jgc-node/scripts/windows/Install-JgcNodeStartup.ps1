@@ -42,6 +42,7 @@ if ($existingStatus -and $existingStatus.running) {
 $account = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
 $arguments = @(
   "dist/scripts/testnet-node.js",
+  "--participate",
   "--seed", "wss://seed-a.junctiongenerator.net",
   "--seed", "wss://jgc-testnet-seed-b.fly.dev"
 ) -join " "
@@ -59,7 +60,7 @@ $settings = New-ScheduledTaskSettingsSet `
   -MultipleInstances IgnoreNew
 
 $task = New-ScheduledTask -Action $action -Trigger $trigger -Principal $principal -Settings $settings `
-  -Description "Runs the outbound-only JGTC validator after Windows sign-in."
+  -Description "Runs the outbound-only JGTC participant node after Windows sign-in."
 
 if ($existingTask) {
   Unregister-ScheduledTask -TaskName $script:JgcNodeTaskName -Confirm:$false

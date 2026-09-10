@@ -14,11 +14,15 @@ export interface RunnerObservation {
   capturedAt: string;
   running: boolean;
   network: string;
+  /** Public participant address, when this node is a participating recorder. */
+  address: string | null;
   height: number | null;
   peerCount: number | null;
   producerEnabled: boolean;
   /** The node reports this from its private loopback status endpoint. */
   role: "back-checker" | "participant" | "designated-producer" | "status-observer";
+  /** Whether the node is submitting pilot participation receipts. */
+  participating: boolean;
   uptimeSec: number;
   nodeVersion: string;
   platform: string;
@@ -37,7 +41,8 @@ export interface MonitorObservation {
   explorer: ExplorerSnapshot | null;
   explorerError?: string;
   transport: TransportObservation[];
-  runner: RunnerObservation | null;
+  /** One independently uploaded, address-bound status per required participant. */
+  recorders: Record<string, RunnerObservation | null>;
 }
 
 export interface MonitorFinding {
@@ -67,7 +72,7 @@ interface MissingParticipantBlock {
 }
 
 export interface MonitorState {
-  schemaVersion: 1 | 2;
+  schemaVersion: 1 | 2 | 3;
   windowId: string;
   scope: "owner-observation";
   phase: "observing" | "completed" | "incomplete";
@@ -81,7 +86,8 @@ export interface MonitorState {
   lastCapturedAt: string;
   lastHeight: number;
   lastAdvanceAt: string;
-  previousRunner: RunnerObservation | null;
+  /** Last usable status from each participant's own recorder. */
+  previousRecorders: Record<string, RunnerObservation>;
   observations: number;
   observationGaps: number;
   findingsById: Record<string, FindingSummary>;
@@ -102,17 +108,18 @@ export function validateRunner(value: unknown, windowId: string): RunnerObservat
   if (!value || typeof value !== "object") throw new Error("Runner observation is missing");
   const r = value as RunnerObservation;
   if (r.windowId !== windowId || !Number.isFinite(Date.parse(r.capturedAt)) ||
-      typeof r.running !== "boolean" || typeof r.producerEnabled !== "boolean" ||
+      typeof r.running !== "boolean" || typeof r.producerEnabled !== "boolean" || typeof r.participating !== "boolean" ||
       typeof r.network !== "string" || !Number.isInteger(r.height) || Number(r.height) < 0 ||
       !Number.isInteger(r.peerCount) || Number(r.peerCount) < 0 ||
+      (r.address !== null && (typeof r.address !== "string" || !/^1QGC[a-f0-9]{40}$/.test(r.address))) ||
       !["back-checker", "participant", "designated-producer", "status-observer"].includes(r.role) ||
       !Number.isFinite(r.uptimeSec) || r.uptimeSec < 0 ||
       ![r.nodeVersion, r.platform, r.architecture, r.runtimeVersion].every(v => typeof v === "string" && v.length <= 100)) {
     throw new Error("Runner observation failed validation");
   }
   return { windowId: r.windowId, capturedAt: r.capturedAt, running: r.running,
-    network: r.network, height: r.height, peerCount: r.peerCount, producerEnabled: r.producerEnabled,
-    role: r.role,
+    network: r.network, address: r.address, height: r.height, peerCount: r.peerCount, producerEnabled: r.producerEnabled,
+    role: r.role, participating: r.participating,
     uptimeSec: r.uptimeSec, nodeVersion: r.nodeVersion, platform: r.platform,
     architecture: r.architecture, runtimeVersion: r.runtimeVersion };
 }
@@ -120,7 +127,7 @@ export function validateRunner(value: unknown, windowId: string): RunnerObservat
 /** Availability findings must persist across several samples before they fail a window. */
 function isTransientAvailabilityFinding(id: string): boolean {
   return id === "seed-a.transport" || id === "seed-b.transport" ||
-    id === "runner.missing" || id === "runner.stale" || id === "runner.role" || id === "runner.height";
+    /^recorder\.1QGC[a-f0-9]{40}\.(missing|stale|role|height)$/.test(id);
 }
 
 function hasFailure(findings: Iterable<Pick<MonitorFinding, "severity">>): boolean {
@@ -130,9 +137,13 @@ function hasFailure(findings: Iterable<Pick<MonitorFinding, "severity">>): boole
 function initialiseState(state: MonitorState): void {
   // State V1 evidence remains stricter on migration: an old summary had no
   // severity, so it is treated as a failure rather than silently downgraded.
-  state.schemaVersion = 2;
+  state.schemaVersion = 3;
   state.transientFailuresById ??= {};
   state.missingParticipantBlocks ??= {};
+  // V1/V2 windows had one shared back-checker. Do not infer a participant
+  // recorder from it: only a status explicitly bound to the public address is
+  // usable for the participant-recorder topology.
+  state.previousRecorders ??= {};
   for (const summary of Object.values(state.findingsById)) {
     if (summary.severity !== "warn" && summary.severity !== "fail") summary.severity = "fail";
   }
@@ -164,7 +175,8 @@ function classifyFindings(state: MonitorState, findings: MonitorFinding[], captu
     else direct.push(finding);
   }
 
-  for (const id of ["seed-a.transport", "seed-b.transport", "runner.missing", "runner.stale", "runner.role", "runner.height"]) {
+  const transientIds = new Set([...Object.keys(state.transientFailuresById), ...transient.keys()]);
+  for (const id of transientIds) {
     const finding = transient.get(id);
     const prior = state.transientFailuresById[id] ?? { consecutive: 0, maxConsecutive: 0, lastAt: capturedAt };
     if (!finding) {
@@ -187,10 +199,15 @@ function classifyFindings(state: MonitorState, findings: MonitorFinding[], captu
   return direct;
 }
 
+function recorderFindingId(address: string, kind: "missing" | "stale" | "role" | "height" | "upload-delayed" | "restart"): string {
+  return `recorder.${address}.${kind}`;
+}
+
 export function observationFindings(
   observation: MonitorObservation,
   windowId: string,
-  fallbackRunner: RunnerObservation | null = null,
+  participants: string[],
+  fallbackRecorders: Record<string, RunnerObservation> = {},
 ): MonitorFinding[] {
   const findings: MonitorFinding[] = [];
   const time = Date.parse(observation.capturedAt);
@@ -206,14 +223,20 @@ export function observationFindings(
     const rows = observation.transport.filter(r => r.seed === seed);
     if (rows.length !== 1 || !rows[0].reachable) findings.push({ id: `${seed}.transport`, severity: "fail", message: `${seed} WebSocket upgrade did not pass` });
   }
-  const runner = observation.runner ?? fallbackRunner;
-  if (!runner || runner.windowId !== windowId) findings.push({ id: "runner.missing", severity: "fail", message: "Back-checker observation is missing" });
-  else {
-    if (!observation.runner) findings.push({ id: "runner.upload-delayed", severity: "warn", message: "Latest back-checker upload is unavailable; evaluating the last saved observation" });
-    const age = time - Date.parse(runner.capturedAt);
-    if (!Number.isFinite(age) || age < -120_000 || age > 15 * 60_000) findings.push({ id: "runner.stale", severity: "fail", message: "Back-checker observation is not current" });
-    if (!runner.running || runner.producerEnabled || runner.role !== "back-checker" || runner.network !== "jgtc-testnet-v2" || !runner.peerCount) findings.push({ id: "runner.role", severity: "fail", message: "Back-checker is not running in its expected connected non-producing role" });
-    if (observation.explorer && (runner.height === null || Math.abs(runner.height - observation.explorer.height) > 1)) findings.push({ id: "runner.height", severity: "fail", message: "Back-checker and public tip differ by more than one block" });
+  for (const address of participants) {
+    const fresh = observation.recorders[address] ?? null;
+    const recorder = fresh ?? fallbackRecorders[address] ?? null;
+    if (!recorder || recorder.windowId !== windowId) {
+      findings.push({ id: recorderFindingId(address, "missing"), severity: "fail", message: `Participant recorder ${address} is missing` });
+      continue;
+    }
+    if (!fresh) findings.push({ id: recorderFindingId(address, "upload-delayed"), severity: "warn", message: `Latest participant recorder upload is unavailable for ${address}; evaluating its last saved observation` });
+    const age = time - Date.parse(recorder.capturedAt);
+    if (!Number.isFinite(age) || age < -120_000 || age > 15 * 60_000) findings.push({ id: recorderFindingId(address, "stale"), severity: "fail", message: `Participant recorder ${address} is not current` });
+    if (!recorder.running || recorder.producerEnabled || recorder.role !== "participant" || !recorder.participating || recorder.address !== address || recorder.network !== "jgtc-testnet-v2" || !recorder.peerCount) {
+      findings.push({ id: recorderFindingId(address, "role"), severity: "fail", message: `Participant recorder ${address} is not running in its expected connected, non-producing participant role` });
+    }
+    if (observation.explorer && (recorder.height === null || Math.abs(recorder.height - observation.explorer.height) > 1)) findings.push({ id: recorderFindingId(address, "height"), severity: "fail", message: `Participant recorder ${address} and public tip differ by more than one block` });
   }
   return findings;
 }
@@ -221,19 +244,23 @@ export function observationFindings(
 export function startMonitor(windowId: string, participants: string[], observation: MonitorObservation): MonitorState {
   if (!/^[a-z0-9][a-z0-9-]{0,79}$/.test(windowId) || participants.length !== 2 || new Set(participants).size !== 2 ||
       participants.some(address => !/^1QGC[a-f0-9]{40}$/.test(address))) throw new Error("Invalid owner window configuration");
-  const findings = observationFindings(observation, windowId);
+  const findings = observationFindings(observation, windowId, participants);
   if (hasFailure(findings) || !observation.explorer) throw new Error("Owner-observation baseline must pass before its clock starts");
   const visible = new Set(observation.explorer.epoch.participants.map(p => p.address));
   if (participants.some(address => !visible.has(address))) throw new Error("Both owner participants must be visible at baseline");
   const now = Date.parse(observation.capturedAt);
   const first = (Math.floor(observation.explorer.height / 144) + 1) * 144;
   const state: MonitorState = {
-    schemaVersion: 2, windowId, scope: "owner-observation", phase: "observing",
+    schemaVersion: 3, windowId, scope: "owner-observation", phase: "observing",
     startedAt: observation.capturedAt, minimumEndAt: new Date(now + MIN_WINDOW_MS).toISOString(),
     hardEndAt: new Date(now + MAX_WINDOW_MS).toISOString(), startHeight: observation.explorer.height,
     firstFullEpochHeight: first, targetSettlementHeights: [first + 143, first + 287, first + 431],
     participants: [...participants], lastCapturedAt: observation.capturedAt, lastHeight: observation.explorer.height,
-    lastAdvanceAt: observation.capturedAt, previousRunner: observation.runner,
+    lastAdvanceAt: observation.capturedAt,
+    previousRecorders: Object.fromEntries(participants.flatMap((address) => {
+      const recorder = observation.recorders[address];
+      return recorder ? [[address, recorder]] : [];
+    })),
     observations: 0, observationGaps: 0, findingsById: {}, transientFailuresById: {}, missingParticipantBlocks: {}, blocks: {}, completeContributionEpochs: 0,
     reviewAttempts: 0, lastReviewHour: null, evidenceHash: "0".repeat(64),
     formalAcceptancePassed: false, settlementPayoutBytesVerified: false,
@@ -251,7 +278,7 @@ export function advanceMonitor(previous: MonitorState, observation: MonitorObser
   const time = Date.parse(observation.capturedAt);
   const elapsed = time - Date.parse(previous.lastCapturedAt);
   if (!Number.isFinite(time) || elapsed < 0) throw new Error("Observation time moved backwards");
-  const rawFindings = observationFindings(observation, state.windowId, state.previousRunner);
+  const rawFindings = observationFindings(observation, state.windowId, state.participants, state.previousRecorders);
   if (elapsed > MAX_OBSERVATION_GAP_MS) {
     state.observationGaps++;
     rawFindings.push({ id: "coverage.gap", severity: "fail", message: "More than one hour elapsed between saved observations" });
@@ -282,11 +309,14 @@ export function advanceMonitor(previous: MonitorState, observation: MonitorObser
     }
     state.lastHeight = snapshot.height;
   }
-  const runner = observation.runner;
-  if (runner && previous.previousRunner && Date.parse(runner.capturedAt) > Date.parse(previous.previousRunner.capturedAt) && runner.uptimeSec < previous.previousRunner.uptimeSec) {
-    rawFindings.push({ id: "runner.restart", severity: "warn", message: "Back-checker uptime decreased; verify and document the restart" });
+  for (const address of state.participants) {
+    const recorder = observation.recorders[address];
+    const prior = state.previousRecorders[address];
+    if (recorder && prior && Date.parse(recorder.capturedAt) > Date.parse(prior.capturedAt) && recorder.uptimeSec < prior.uptimeSec) {
+      rawFindings.push({ id: recorderFindingId(address, "restart"), severity: "warn", message: `Participant recorder ${address} uptime decreased; verify and document the restart` });
+    }
+    if (recorder) state.previousRecorders[address] = recorder;
   }
-  if (runner) state.previousRunner = runner;
   state.completeContributionEpochs = state.targetSettlementHeights.filter(boundary => {
     for (let h = boundary - 143; h <= boundary; h++) {
       const block = state.blocks[String(h)];

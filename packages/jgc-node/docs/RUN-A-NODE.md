@@ -2,9 +2,11 @@
 
 This guide is for anyone who wants to run the JGTC network: JGC monetary and
 settlement rules with valueless test coins. The
-safest default is an outbound-only validator/back-checker: it connects to the
-public seed, verifies what it receives, keeps its own chain data, and does not
-open an inbound peer port on your computer.
+safest owner-operated default is an outbound-only participant: it contributes
+signed pilot receipts, keeps its own chain data, and does not open an inbound
+peer port on your computer. Each owner participant should also run its own
+recorder, so a Windows update or one offline machine cannot be hidden by a
+shared back-checker.
 
 ## Before you start
 
@@ -40,7 +42,7 @@ Open Terminal, PowerShell, or Command Prompt and run:
 git clone https://github.com/topnodrog/junctiongenerator.git
 cd junctiongenerator/packages/jgc-node
 npm ci
-npm run testnet:public
+npm run testnet:participate
 ```
 
 The last command builds the node automatically and starts it. A successful
@@ -49,7 +51,7 @@ startup prints lines like these:
 ```text
 [testnet] network: jgtc-testnet-v2 (simnet-receipts-v1)
 [testnet] seeds:   wss://seed-a.junctiongenerator.net, wss://jgc-testnet-seed-b.fly.dev
-[testnet] role:    validator/back-checker
+[testnet] role:    participant
 ```
 
 Leave that terminal open. Press `Ctrl+C` to stop the node cleanly. Its chain
@@ -70,7 +72,8 @@ The included `RELEASE-MANIFEST.json` must report:
 
 ### Record your participation
 
-To do more than validate, stop the ordinary runner and start participant mode:
+The standard owner setup already starts participant mode. To switch an existing
+ordinary validator into participant mode, stop it and run:
 
 ```text
 npm run testnet:participate
@@ -115,10 +118,17 @@ npm run windows:install
 ```
 
 This builds the node with the active supported Node.js executable, registers a
-per-user Windows scheduled task that starts after sign-in, starts the node now,
-and creates a branded `JGC Node On-Off` shortcut on the desktop. The task runs
-with normal user permissions and keeps the status and peer ports bound to
-loopback unless you explicitly change the node configuration.
+per-user Windows scheduled task that starts the participant node after sign-in,
+starts the node now, and creates a branded `JGC Node On-Off` shortcut on the
+desktop. The task runs with normal user permissions and keeps the status and
+peer ports bound to loopback unless you explicitly change the node configuration.
+
+For an owner rehearsal, install the address-bound participant-recorder
+configuration provided by the monitor on every participating computer. Confirm
+the local status address before accepting the configuration: it must be that
+machine's intended `1QGC...` address. A recorder uploads only sanitized status;
+it does not start, stop, or modify the node. Never enroll a machine you suspect
+is compromised—rebuild and independently check it first.
 
 Use the desktop shortcut to switch the node off or on. Off disables the task so
 it remains off after a restart; on re-enables automatic startup and launches the
@@ -140,12 +150,13 @@ Look for:
 - `"running": true`
 - `"network": "jgtc-testnet-v2"`
 - `"peerCount": 1` or higher
-- `"role": "back-checker"` and `"participating": false` for the ordinary runner
+- `"role": "participant"`, `"participating": true`, and the intended public
+  `1QGC...` address for an owner participant-recorder
 - `"producer": { "enabled": false, ... }`
 
-Participant mode instead reports `"role": "participant"`,
-`"participating": true`, and its public `1QGC...` address. The status endpoint
-is loopback-only by default, so this exposes no private key material.
+An ordinary observer can instead run `npm run testnet:public`; it reports
+`"role": "back-checker"` and `"participating": false`. The status endpoint is
+loopback-only by default, so neither mode exposes private key material.
 
 The designated producer targets one block every ten minutes and includes signed
 pilot participation receipts. Seed A
@@ -191,7 +202,7 @@ Stop the node, then run these commands from `packages/jgc-node`:
 ```text
 git pull --ff-only
 npm ci
-npm run testnet:public
+npm run testnet:participate
 ```
 
 For Docker, stop it, pull the update, and repeat the `docker compose ... up

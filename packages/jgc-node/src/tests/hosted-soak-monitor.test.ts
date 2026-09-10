@@ -32,14 +32,16 @@ function observation(height = START_HEIGHT, milliseconds = BASE + (height - STAR
       accountedSupplyJGTC: String(total), expectedSupplyJGTC: String(total), supplyConserved: true }, recentBlocks: blocks,
   };
   return { capturedAt, explorer, transport: [{ seed: "seed-a", reachable: true, latencyMs: 5 }, { seed: "seed-b", reachable: true, latencyMs: 10 }],
-    runner: { windowId: WINDOW, capturedAt, running: true, network: "jgtc-testnet-v2", height, peerCount: 2, producerEnabled: false,
-      role: "back-checker",
-      uptimeSec: 1000 + (milliseconds - BASE) / 1000, nodeVersion: "0.1.0", platform: "win32", architecture: "x64", runtimeVersion: "v22.0.0" } };
+    recorders: Object.fromEntries(PARTICIPANTS.map((address) => [address, {
+      windowId: WINDOW, capturedAt, running: true, network: "jgtc-testnet-v2", address, height, peerCount: 2, producerEnabled: false,
+      role: "participant", participating: true,
+      uptimeSec: 1000 + (milliseconds - BASE) / 1000, nodeVersion: "0.1.0", platform: "win32", architecture: "x64", runtimeVersion: "v22.0.0",
+    }])) };
 }
 
 describe("hosted owner soak monitor", () => {
   test("refuses an unhealthy or incomplete baseline", () => {
-    const missing = observation(); missing.runner = null;
+    const missing = observation(); missing.recorders[PARTICIPANTS[0]!] = null;
     expect(() => startMonitor(WINDOW, PARTICIPANTS, missing)).toThrow(/baseline/);
     const absent = observation(); absent.explorer!.epoch.participants = []; absent.explorer!.epoch.totalParticipationWeight = 0;
     expect(() => startMonitor(WINDOW, PARTICIPANTS, absent)).toThrow(/participants/);
@@ -55,8 +57,15 @@ describe("hosted owner soak monitor", () => {
   });
 
   test("retains transport failures and stale runner evidence", () => {
-    const row = observation(); row.transport[1].reachable = false; row.runner!.capturedAt = new Date(BASE - 16 * 60_000).toISOString();
-    expect(observationFindings(row, WINDOW).map(f => f.id)).toEqual(expect.arrayContaining(["seed-b.transport", "runner.stale"]));
+    const row = observation(); row.transport[1].reachable = false; row.recorders[PARTICIPANTS[0]!]!.capturedAt = new Date(BASE - 16 * 60_000).toISOString();
+    expect(observationFindings(row, WINDOW, PARTICIPANTS).map(f => f.id)).toEqual(expect.arrayContaining(["seed-b.transport", `recorder.${PARTICIPANTS[0]}.stale`]));
+  });
+
+  test("requires every recorder to attest only to its own participant address", () => {
+    const row = observation();
+    row.recorders[PARTICIPANTS[1]!] = { ...row.recorders[PARTICIPANTS[1]!]!, address: PARTICIPANTS[0] };
+    expect(observationFindings(row, WINDOW, PARTICIPANTS).map(f => f.id)).toContain(`recorder.${PARTICIPANTS[1]}.role`);
+    expect(() => startMonitor(WINDOW, PARTICIPANTS, row)).toThrow(/baseline/);
   });
 
   test("detects a missing hourly observation even when later chain data is valid", () => {
@@ -103,21 +112,21 @@ describe("hosted owner soak monitor", () => {
     expect(state.findingsById["seed-b.transport"]?.severity).toBe("warn");
   });
 
-  test("escalates sustained availability faults and tolerates one missing upload while the prior runner is fresh", () => {
+  test("escalates sustained recorder faults and tolerates one delayed participant upload while the prior status is fresh", () => {
     let state = startMonitor(WINDOW, PARTICIPANTS, observation());
     for (let attempt = 1; attempt <= TRANSIENT_FAILURE_THRESHOLD; attempt++) {
       const row = observation(1006 + attempt, BASE + attempt * 5 * 60_000);
-      row.runner!.peerCount = 0;
+      row.recorders[PARTICIPANTS[0]!]!.peerCount = 0;
       state = advanceMonitor(state, row).state;
     }
-    expect(state.findingsById["runner.role"]).toMatchObject({ severity: "fail", count: TRANSIENT_FAILURE_THRESHOLD });
+    expect(state.findingsById[`recorder.${PARTICIPANTS[0]}.role`]).toMatchObject({ severity: "fail", count: TRANSIENT_FAILURE_THRESHOLD });
 
     const fresh = startMonitor(WINDOW, PARTICIPANTS, observation());
     const delayed = observation(1007, BASE + 5 * 60_000);
-    delayed.runner = null;
+    delayed.recorders[PARTICIPANTS[0]!] = null;
     const result = advanceMonitor(fresh, delayed);
-    expect(result.findings.map(f => f.id)).toContain("runner.upload-delayed");
-    expect(result.findings.map(f => f.id)).not.toContain("runner.missing");
+    expect(result.findings.map(f => f.id)).toContain(`recorder.${PARTICIPANTS[0]}.upload-delayed`);
+    expect(result.findings.map(f => f.id)).not.toContain(`recorder.${PARTICIPANTS[0]}.missing`);
   });
 
   test("completes three fully observed contribution epochs but never certifies payout bytes or formal acceptance", () => {
@@ -139,14 +148,15 @@ describe("hosted owner soak monitor", () => {
 
   test("does not turn an observed restart into proof of an identity-preservation drill", () => {
     const state = startMonitor(WINDOW, PARTICIPANTS, observation());
-    const row = observation(1007); row.runner!.uptimeSec = 2;
-    expect(advanceMonitor(state, row).findings.map(f => f.id)).toContain("runner.restart");
+    const row = observation(1007); row.recorders[PARTICIPANTS[0]!]!.uptimeSec = 2;
+    expect(advanceMonitor(state, row).findings.map(f => f.id)).toContain(`recorder.${PARTICIPANTS[0]}.restart`);
   });
 
-  test("sanitizes runner data and rejects another window or malformed status", () => {
-    expect(validateRunner({ ...observation().runner, secret: "do-not-copy" }, WINDOW)).not.toHaveProperty("secret");
-    expect(() => validateRunner(observation().runner, "different-window")).toThrow();
-    expect(() => validateRunner({ ...observation().runner, height: "1006" }, WINDOW)).toThrow();
-    expect(() => validateRunner({ ...observation().runner, role: "unknown" }, WINDOW)).toThrow();
+  test("sanitizes participant-recorder data and rejects another window or malformed status", () => {
+    const recorder = observation().recorders[PARTICIPANTS[0]!]!;
+    expect(validateRunner({ ...recorder, secret: "do-not-copy" }, WINDOW)).not.toHaveProperty("secret");
+    expect(() => validateRunner(recorder, "different-window")).toThrow();
+    expect(() => validateRunner({ ...recorder, height: "1006" }, WINDOW)).toThrow();
+    expect(() => validateRunner({ ...recorder, role: "unknown" }, WINDOW)).toThrow();
   });
 });
