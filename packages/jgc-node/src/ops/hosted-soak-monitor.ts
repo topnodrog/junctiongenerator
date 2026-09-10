@@ -71,8 +71,17 @@ interface MissingParticipantBlock {
   lastObservedAt: string;
 }
 
+/** Availability history is resilience evidence, never a substitute for blocks. */
+export interface RecorderContinuity {
+  disconnections: number;
+  reconnections: number;
+  currentDisconnectedAt: string | null;
+  lastReconnectedAt: string | null;
+  longestDisconnectionMs: number;
+}
+
 export interface MonitorState {
-  schemaVersion: 1 | 2 | 3;
+  schemaVersion: 1 | 2 | 3 | 4;
   windowId: string;
   scope: "owner-observation";
   phase: "observing" | "completed" | "incomplete";
@@ -88,6 +97,8 @@ export interface MonitorState {
   lastAdvanceAt: string;
   /** Last usable status from each participant's own recorder. */
   previousRecorders: Record<string, RunnerObservation>;
+  /** Explicit recovery history for independently recorded participant nodes. */
+  recorderContinuity: Record<string, RecorderContinuity>;
   observations: number;
   observationGaps: number;
   findingsById: Record<string, FindingSummary>;
@@ -124,10 +135,9 @@ export function validateRunner(value: unknown, windowId: string): RunnerObservat
     architecture: r.architecture, runtimeVersion: r.runtimeVersion };
 }
 
-/** Availability findings must persist across several samples before they fail a window. */
+/** Public endpoint faults need several samples before they fail a window. */
 function isTransientAvailabilityFinding(id: string): boolean {
-  return id === "seed-a.transport" || id === "seed-b.transport" ||
-    /^recorder\.1QGC[a-f0-9]{40}\.(missing|stale|role|height)$/.test(id);
+  return id === "seed-a.transport" || id === "seed-b.transport";
 }
 
 function hasFailure(findings: Iterable<Pick<MonitorFinding, "severity">>): boolean {
@@ -137,13 +147,17 @@ function hasFailure(findings: Iterable<Pick<MonitorFinding, "severity">>): boole
 function initialiseState(state: MonitorState): void {
   // State V1 evidence remains stricter on migration: an old summary had no
   // severity, so it is treated as a failure rather than silently downgraded.
-  state.schemaVersion = 3;
+  state.schemaVersion = 4;
   state.transientFailuresById ??= {};
   state.missingParticipantBlocks ??= {};
-  // V1/V2 windows had one shared back-checker. Do not infer a participant
-  // recorder from it: only a status explicitly bound to the public address is
-  // usable for the participant-recorder topology.
+  // V1/V2/V3 windows had no address-bound continuity record. Do not infer one
+  // from the shared back-checker: only a status explicitly bound to the public
+  // address is usable for the participant-recorder topology.
   state.previousRecorders ??= {};
+  state.recorderContinuity ??= Object.fromEntries(state.participants.map((address) => [address, {
+    disconnections: 0, reconnections: 0, currentDisconnectedAt: null,
+    lastReconnectedAt: null, longestDisconnectionMs: 0,
+  }]));
   for (const summary of Object.values(state.findingsById)) {
     if (summary.severity !== "warn" && summary.severity !== "fail") summary.severity = "fail";
   }
@@ -199,8 +213,19 @@ function classifyFindings(state: MonitorState, findings: MonitorFinding[], captu
   return direct;
 }
 
-function recorderFindingId(address: string, kind: "missing" | "stale" | "role" | "height" | "upload-delayed" | "restart"): string {
+function recorderFindingId(address: string, kind: "missing" | "stale" | "identity" | "disconnected" | "height" | "upload-delayed" | "restart" | "reconnected"): string {
   return `recorder.${address}.${kind}`;
+}
+
+function recorderAvailable(
+  recorder: RunnerObservation | null,
+  capturedAt: string,
+  explorer: ExplorerSnapshot | null,
+): boolean {
+  if (!recorder) return false;
+  const age = Date.parse(capturedAt) - Date.parse(recorder.capturedAt);
+  return Number.isFinite(age) && age >= -120_000 && age <= 15 * 60_000 && recorder.running &&
+    Boolean(recorder.peerCount) && (!explorer || (recorder.height !== null && Math.abs(recorder.height - explorer.height) <= 1));
 }
 
 export function observationFindings(
@@ -208,6 +233,7 @@ export function observationFindings(
   windowId: string,
   participants: string[],
   fallbackRecorders: Record<string, RunnerObservation> = {},
+  strictRecorderAvailability = false,
 ): MonitorFinding[] {
   const findings: MonitorFinding[] = [];
   const time = Date.parse(observation.capturedAt);
@@ -227,16 +253,17 @@ export function observationFindings(
     const fresh = observation.recorders[address] ?? null;
     const recorder = fresh ?? fallbackRecorders[address] ?? null;
     if (!recorder || recorder.windowId !== windowId) {
-      findings.push({ id: recorderFindingId(address, "missing"), severity: "fail", message: `Participant recorder ${address} is missing` });
+      findings.push({ id: recorderFindingId(address, "missing"), severity: strictRecorderAvailability ? "fail" : "warn", message: `Participant recorder ${address} is missing` });
       continue;
     }
     if (!fresh) findings.push({ id: recorderFindingId(address, "upload-delayed"), severity: "warn", message: `Latest participant recorder upload is unavailable for ${address}; evaluating its last saved observation` });
     const age = time - Date.parse(recorder.capturedAt);
-    if (!Number.isFinite(age) || age < -120_000 || age > 15 * 60_000) findings.push({ id: recorderFindingId(address, "stale"), severity: "fail", message: `Participant recorder ${address} is not current` });
-    if (!recorder.running || recorder.producerEnabled || recorder.role !== "participant" || !recorder.participating || recorder.address !== address || recorder.network !== "jgtc-testnet-v2" || !recorder.peerCount) {
-      findings.push({ id: recorderFindingId(address, "role"), severity: "fail", message: `Participant recorder ${address} is not running in its expected connected, non-producing participant role` });
+    if (!Number.isFinite(age) || age < -120_000 || age > 15 * 60_000) findings.push({ id: recorderFindingId(address, "stale"), severity: strictRecorderAvailability ? "fail" : "warn", message: `Participant recorder ${address} is not current` });
+    if (recorder.producerEnabled || recorder.role !== "participant" || !recorder.participating || recorder.address !== address || recorder.network !== "jgtc-testnet-v2") {
+      findings.push({ id: recorderFindingId(address, "identity"), severity: "fail", message: `Participant recorder ${address} is not bound to its expected non-producing participant identity` });
     }
-    if (observation.explorer && (recorder.height === null || Math.abs(recorder.height - observation.explorer.height) > 1)) findings.push({ id: recorderFindingId(address, "height"), severity: "fail", message: `Participant recorder ${address} and public tip differ by more than one block` });
+    if (!recorder.running || !recorder.peerCount) findings.push({ id: recorderFindingId(address, "disconnected"), severity: strictRecorderAvailability ? "fail" : "warn", message: `Participant recorder ${address} is temporarily disconnected` });
+    if (observation.explorer && (recorder.height === null || Math.abs(recorder.height - observation.explorer.height) > 1)) findings.push({ id: recorderFindingId(address, "height"), severity: strictRecorderAvailability ? "fail" : "warn", message: `Participant recorder ${address} is catching up to the public tip` });
   }
   return findings;
 }
@@ -244,14 +271,14 @@ export function observationFindings(
 export function startMonitor(windowId: string, participants: string[], observation: MonitorObservation): MonitorState {
   if (!/^[a-z0-9][a-z0-9-]{0,79}$/.test(windowId) || participants.length !== 2 || new Set(participants).size !== 2 ||
       participants.some(address => !/^1QGC[a-f0-9]{40}$/.test(address))) throw new Error("Invalid owner window configuration");
-  const findings = observationFindings(observation, windowId, participants);
+  const findings = observationFindings(observation, windowId, participants, {}, true);
   if (hasFailure(findings) || !observation.explorer) throw new Error("Owner-observation baseline must pass before its clock starts");
   const visible = new Set(observation.explorer.epoch.participants.map(p => p.address));
   if (participants.some(address => !visible.has(address))) throw new Error("Both owner participants must be visible at baseline");
   const now = Date.parse(observation.capturedAt);
   const first = (Math.floor(observation.explorer.height / 144) + 1) * 144;
   const state: MonitorState = {
-    schemaVersion: 3, windowId, scope: "owner-observation", phase: "observing",
+    schemaVersion: 4, windowId, scope: "owner-observation", phase: "observing",
     startedAt: observation.capturedAt, minimumEndAt: new Date(now + MIN_WINDOW_MS).toISOString(),
     hardEndAt: new Date(now + MAX_WINDOW_MS).toISOString(), startHeight: observation.explorer.height,
     firstFullEpochHeight: first, targetSettlementHeights: [first + 143, first + 287, first + 431],
@@ -261,6 +288,10 @@ export function startMonitor(windowId: string, participants: string[], observati
       const recorder = observation.recorders[address];
       return recorder ? [[address, recorder]] : [];
     })),
+    recorderContinuity: Object.fromEntries(participants.map((address) => [address, {
+      disconnections: 0, reconnections: 0, currentDisconnectedAt: null,
+      lastReconnectedAt: null, longestDisconnectionMs: 0,
+    }])),
     observations: 0, observationGaps: 0, findingsById: {}, transientFailuresById: {}, missingParticipantBlocks: {}, blocks: {}, completeContributionEpochs: 0,
     reviewAttempts: 0, lastReviewHour: null, evidenceHash: "0".repeat(64),
     formalAcceptancePassed: false, settlementPayoutBytesVerified: false,
@@ -316,6 +347,27 @@ export function advanceMonitor(previous: MonitorState, observation: MonitorObser
       rawFindings.push({ id: recorderFindingId(address, "restart"), severity: "warn", message: `Participant recorder ${address} uptime decreased; verify and document the restart` });
     }
     if (recorder) state.previousRecorders[address] = recorder;
+    const continuity = state.recorderContinuity[address] ?? {
+      disconnections: 0, reconnections: 0, currentDisconnectedAt: null,
+      lastReconnectedAt: null, longestDisconnectionMs: 0,
+    };
+    // A fresh, connected participant status after an interruption is positive
+    // resilience evidence. It does not erase any independent public-block
+    // contribution finding.
+    if (!recorderAvailable(recorder, observation.capturedAt, snapshot)) {
+      if (!continuity.currentDisconnectedAt) {
+        continuity.disconnections++;
+        continuity.currentDisconnectedAt = observation.capturedAt;
+      }
+    } else if (continuity.currentDisconnectedAt) {
+      const duration = Math.max(0, time - Date.parse(continuity.currentDisconnectedAt));
+      continuity.reconnections++;
+      continuity.lastReconnectedAt = observation.capturedAt;
+      continuity.longestDisconnectionMs = Math.max(continuity.longestDisconnectionMs, duration);
+      rawFindings.push({ id: recorderFindingId(address, "reconnected"), severity: "warn", message: `Participant recorder ${address} reconnected after ${Math.floor(duration / 1000)} seconds` });
+      continuity.currentDisconnectedAt = null;
+    }
+    state.recorderContinuity[address] = continuity;
   }
   state.completeContributionEpochs = state.targetSettlementHeights.filter(boundary => {
     for (let h = boundary - 143; h <= boundary; h++) {
@@ -350,5 +402,6 @@ export function geminiReviewInput(state: MonitorState, findings: MonitorFinding[
     historicalFindings: Object.entries(state.findingsById).map(([id, summary]) => ({ id, severity: summary.severity })),
     historicalFindingIds: Object.keys(state.findingsById),
     missingParticipantBlocks,
+    recorderContinuity: state.recorderContinuity,
     limitations: ["Owner-operated rehearsal, not independent closed-beta acceptance", "WebSocket upgrades do not establish node admission", "Serialized payout verification and recovery drills require separate evidence", "Simulation receipts do not establish useful AI compute"] };
 }

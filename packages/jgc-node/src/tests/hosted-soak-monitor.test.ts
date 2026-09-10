@@ -1,6 +1,6 @@
 import { TESTNET_GENESIS_HASH } from "../config/networks.js";
 import type { ExplorerSnapshot, ExplorerBlock } from "../network/public-testnet-api.js";
-import { startMonitor, advanceMonitor, validateRunner, observationFindings, TRANSIENT_FAILURE_THRESHOLD, type MonitorObservation, type MonitorState } from "../ops/hosted-soak-monitor.js";
+import { startMonitor, advanceMonitor, validateRunner, observationFindings, type MonitorObservation, type MonitorState } from "../ops/hosted-soak-monitor.js";
 
 const WINDOW = "owner-test-window";
 const PARTICIPANTS = ["1QGC" + "a".repeat(40), "1QGC" + "b".repeat(40)];
@@ -56,7 +56,7 @@ describe("hosted owner soak monitor", () => {
     expect(state.settlementPayoutBytesVerified).toBe(false);
   });
 
-  test("retains transport failures and stale runner evidence", () => {
+  test("retains transport failures and stale participant-recorder evidence", () => {
     const row = observation(); row.transport[1].reachable = false; row.recorders[PARTICIPANTS[0]!]!.capturedAt = new Date(BASE - 16 * 60_000).toISOString();
     expect(observationFindings(row, WINDOW, PARTICIPANTS).map(f => f.id)).toEqual(expect.arrayContaining(["seed-b.transport", `recorder.${PARTICIPANTS[0]}.stale`]));
   });
@@ -64,7 +64,7 @@ describe("hosted owner soak monitor", () => {
   test("requires every recorder to attest only to its own participant address", () => {
     const row = observation();
     row.recorders[PARTICIPANTS[1]!] = { ...row.recorders[PARTICIPANTS[1]!]!, address: PARTICIPANTS[0] };
-    expect(observationFindings(row, WINDOW, PARTICIPANTS).map(f => f.id)).toContain(`recorder.${PARTICIPANTS[1]}.role`);
+    expect(observationFindings(row, WINDOW, PARTICIPANTS).map(f => f.id)).toContain(`recorder.${PARTICIPANTS[1]}.identity`);
     expect(() => startMonitor(WINDOW, PARTICIPANTS, row)).toThrow(/baseline/);
   });
 
@@ -112,15 +112,23 @@ describe("hosted owner soak monitor", () => {
     expect(state.findingsById["seed-b.transport"]?.severity).toBe("warn");
   });
 
-  test("escalates sustained recorder faults and tolerates one delayed participant upload while the prior status is fresh", () => {
+  test("records sustained disconnects and reconnections as resilience evidence without making a healthy window incomplete", () => {
     let state = startMonitor(WINDOW, PARTICIPANTS, observation());
-    for (let attempt = 1; attempt <= TRANSIENT_FAILURE_THRESHOLD; attempt++) {
+    for (let attempt = 1; attempt <= 3; attempt++) {
       const row = observation(1006 + attempt, BASE + attempt * 5 * 60_000);
       row.recorders[PARTICIPANTS[0]!]!.peerCount = 0;
       state = advanceMonitor(state, row).state;
     }
-    expect(state.findingsById[`recorder.${PARTICIPANTS[0]}.role`]).toMatchObject({ severity: "fail", count: TRANSIENT_FAILURE_THRESHOLD });
+    expect(state.findingsById[`recorder.${PARTICIPANTS[0]}.disconnected`]).toMatchObject({ severity: "warn", count: 3 });
+    const recovered = advanceMonitor(state, observation(1010, BASE + 20 * 60_000));
+    expect(recovered.findings.map(f => f.id)).toContain(`recorder.${PARTICIPANTS[0]}.reconnected`);
+    expect(recovered.state.recorderContinuity[PARTICIPANTS[0]!]).toMatchObject({ disconnections: 1, reconnections: 1, currentDisconnectedAt: null });
+    state = recovered.state;
+    for (let height = 1011; height <= 1439; height++) state = advanceMonitor(state, observation(height)).state;
+    expect(state.phase).toBe("completed");
+  });
 
+  test("tolerates one delayed participant upload while the prior status is fresh", () => {
     const fresh = startMonitor(WINDOW, PARTICIPANTS, observation());
     const delayed = observation(1007, BASE + 5 * 60_000);
     delayed.recorders[PARTICIPANTS[0]!] = null;
