@@ -966,11 +966,11 @@ export class JGCNode extends EventEmitter {
   ): Promise<void> {
     const checked = this.validatePendingContribution(contrib);
     if (!checked.ok) return;
-    // Lightweight duplicate check.
-    if (this.pendingProofs.some(p =>
-      p.proof.taskCommitment === contrib.proof.taskCommitment &&
-      p.minerAddress === contrib.minerAddress
-    )) {
+    // A valid block allows one contribution per participant, not merely one
+    // copy of each task. Keep the first accepted contribution for this height
+    // so a reconnecting peer cannot poison the designated producer's template
+    // with a second task from the same participant.
+    if (this.pendingProofs.some((pending) => pending.minerAddress === contrib.minerAddress)) {
       return;
     }
 
@@ -1655,7 +1655,19 @@ export class JGCNode extends EventEmitter {
   }
 
   getPendingProofs(): MinerComputeContribution[] {
-    return [...this.pendingProofs];
+    // Defensive candidate boundary: old queues or an in-process caller cannot
+    // turn duplicate participant receipts into a consensus-invalid block.
+    // Canonical order makes a template reproducible across producers.
+    const byMiner = new Map<string, MinerComputeContribution>();
+    for (const contribution of this.pendingProofs) {
+      const current = byMiner.get(contribution.minerAddress);
+      if (!current || compareCanonicalBytes(contribution.proof.taskCommitment, current.proof.taskCommitment) < 0) {
+        byMiner.set(contribution.minerAddress, contribution);
+      }
+    }
+    return [...byMiner.values()].sort((left, right) =>
+      compareCanonicalBytes(left.minerAddress, right.minerAddress),
+    );
   }
 
   /**

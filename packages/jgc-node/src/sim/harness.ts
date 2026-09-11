@@ -67,8 +67,8 @@ export function sha256d(data: Buffer): Hash256 {
 
 /** Build a simulation contribution: a research receipt plus a real ML-DSA
  *  signature binding the claimed work to this miner and height. */
-export function makeContribution(miner: SimMinerSpec, height: number): MinerComputeContribution {
-  const outputCommitment = sha256d(Buffer.from(`${miner.address}:task:${height}`));
+export function makeContribution(miner: SimMinerSpec, height: number, taskLabel = ""): MinerComputeContribution {
+  const outputCommitment = sha256d(Buffer.from(`${miner.address}:task:${height}${taskLabel ? `:${taskLabel}` : ""}`));
   const pqProof = pqProveCompute("PQ_CIRCUIT_AI_INFERENCE_V1", outputCommitment, {
     taskCommitment: outputCommitment,
     tflopsWeight: miner.tflops,
