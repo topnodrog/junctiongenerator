@@ -111,6 +111,33 @@ Remove the task and shortcut without deleting chain data with:
 npm run windows:uninstall
 ```
 
+### Linux desktop switch and visible terminal
+
+On Cinnamon or GNOME Linux desktops, install a per-user desktop switch and
+automatic sign-in launcher with:
+
+```text
+npm run linux:install
+```
+
+It creates `JGC Node On-Off.desktop` on the desktop. Turning it on opens a
+visible GNOME Terminal running the participant, validator, and back-checker;
+turning it off shuts down that managed runner and disables automatic startup.
+The launcher preserves `data/testnet`, including the participant identity. It
+uses the active supported Node.js runtime (including an NVM Node 24 install).
+
+To install the switch without starting the node immediately, run:
+
+```text
+bash scripts/linux/Install-JgcNodeDesktop.sh --no-start
+```
+
+Remove the launchers and automatic startup without deleting local chain data:
+
+```text
+npm run linux:uninstall
+```
+
 Simulation receipts exercise networking and consensus plumbing but do not prove
 that useful computation occurred. Strict production verification rejects them.
 

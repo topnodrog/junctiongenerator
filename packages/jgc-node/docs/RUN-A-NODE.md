@@ -131,6 +131,24 @@ participant identity, run:
 npm run windows:uninstall
 ```
 
+### Linux desktop switch and visible terminal
+
+On Cinnamon or GNOME, run this from `packages/jgc-node`:
+
+```text
+npm run linux:install
+```
+
+This creates a `JGC Node On-Off.desktop` launcher on the desktop and enables a
+per-user graphical-session autostart entry. Turning the launcher on opens a
+GNOME Terminal showing the participating node's live output. Turning it off
+cleanly stops the managed node and disables automatic startup. It preserves
+`data/testnet` and its participant identity.
+
+Use `bash scripts/linux/Install-JgcNodeDesktop.sh --no-start` to install the
+launcher without starting it, or `npm run linux:uninstall` to remove the
+launchers and autostart while keeping local node data.
+
 ## Check that it is working
 
 While the node is running, open

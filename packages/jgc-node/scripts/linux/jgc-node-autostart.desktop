@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=JGC Node
+Comment=Start the JGC participant, validator, and back-checker in a visible terminal
+Exec=@JGC_NODE_TOGGLE@ --on
+Icon=utilities-terminal
+Terminal=false
+Categories=Network;Utility;
+StartupNotify=false
