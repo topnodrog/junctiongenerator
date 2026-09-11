@@ -81,6 +81,16 @@ and post-quantum security must be independently reviewed before activation.
   fail-closed mainnet readiness record.
 - Supply the two required synthetic participant addresses to the monitor's CI
   container; keep the monitor unarmed during its health test.
+- Update release checks to require the same 12 incomplete mainnet gates.
+- Patch the nine dependency alerts reported by GitHub: Next.js and its ESLint
+  config to 16.3.3, sharp to 0.35.4, js-yaml to 4.3.2 (website) and 3.15.2
+  (node), and browser baseline metadata to a compatible patched version.
+  Website, API and node dependency audits report zero known vulnerabilities.
+
+Local validation: 45 node suites / 374 tests, four release-manifest tests,
+typecheck, node build, staged release verification, website lint and production
+build all pass. Mainnet preflight correctly remains blocked. Audit results
+are dependency database checks, not external cryptographic review.
 
 This increment repairs foundations. It does not constitute a finished chain,
 a deployment of new consensus, a completed soak, or a mainnet launch.
