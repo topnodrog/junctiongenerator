@@ -23,6 +23,10 @@ chain identity exactly.
 | Gate | Meaning |
 | --- | --- |
 | `proofSystem` | Mainnet accepts only sound, registered proofs; simulation receipts and placeholder keys are impossible. |
+| `postQuantumSecurity` | Reviewed end-to-end post-quantum security, including proofs, address commitments, transport, and upgrade keys. ML-DSA alone is insufficient. |
+| `paymentPrivacy` | Reviewed recipient-exclusive spending, viewing-key separation, encrypted notes and shielded value conservation; wallet and consensus integration pass adversarial tests. |
+| `usefulServices` | Compute, inference and storage have assigned work, verifiable completion/availability, replay prevention and funded, exactly-once settlement. |
+| `governance` | The central intelligence has explicit authority limits, accountable proposals, versioned upgrades, budget controls and tested recovery. |
 | `deterministicConsensus` | Consensus arithmetic, encoding, replay, and fork choice are deterministic across supported builds. |
 | `permissionlessProduction` | Block production does not depend on one designated operator. |
 | `peerAuthentication` | P2P identities, sessions, messages, and replay protection are authenticated and bounded. |
@@ -47,6 +51,11 @@ chain identity exactly.
   not yet enforced by block validation or fork choice.
 
 These are release blockers, not documentation-only tasks.
+
+The 2026-09-11 product requirements are tracked in
+[the completion plan](../JGC_COMPLETION_PLAN.md). The four added product gates
+are mandatory; old readiness records omitting them are rejected. None is
+satisfied by the repaired experimental stealth primitive or the testnet soak.
 
 ## Solo preparation policy
 

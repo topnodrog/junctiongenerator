@@ -10,6 +10,16 @@ import { JGCNode } from "../network/node.js";
 import { createNetworkGenesis } from "../config/networks.js";
 
 describe("mainnet readiness guard", () => {
+  test.each(["postQuantumSecurity", "paymentPrivacy", "usefulServices", "governance"])(
+    "cannot launch with the product requirement %s incomplete or omitted", (key) => {
+      const gates = Object.fromEntries(MAINNET_GATE_KEYS.map((gate) => [gate, true]));
+      const record = { ...MAINNET_READINESS, status: "ready", gates };
+      gates[key] = false;
+      expect(() => assertMainnetLaunchAllowed(record)).toThrow(key);
+      delete gates[key];
+      expect(() => assertMainnetLaunchAllowed(record)).toThrow(/invalid mainnet readiness record/);
+    },
+  );
   test("the checked-in baseline is blocked and identifies every incomplete gate", () => {
     const result = evaluateMainnetReadiness(MAINNET_READINESS);
 

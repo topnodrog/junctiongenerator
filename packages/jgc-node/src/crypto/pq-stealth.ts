@@ -1,149 +1,107 @@
 /**
- * @file src/crypto/pq-stealth.ts
- * @description Quantum-safe, privacy-preserving one-time ("stealth") addresses
- * for JGC — Zcash-style unlinkable payments WITHOUT pairing-based crypto, so
- * no heavy rig and no trusted setup are required.
- *
- * THE PRIVACY GOAL
- * ────────────────
- * A plain address ("1QGC" + hash of a public key) is a persistent identifier:
- * every payment to it is linkable on-chain. Zcash solves this with shielded
- * notes; we achieve the same *unlinkability* property with one-time addresses:
- * each payment derives a FRESH address that only the recipient can recognise
- * and spend from. To an outside observer, two payments to the same person look
- * like payments to two unrelated strangers.
- *
- * WHY THIS IS QUANTUM-SAFE AND LIGHTWEIGHT
- * ────────────────────────────────────────
- * Classic stealth addresses (CryptoNote) use ECDH over secp256k1 — broken by
- * Shor. We instead derive the shared secret with a HASH-based KDF over an
- * ML-DSA-signed ephemeral value:
- *   shared = SHA3-256( domain | ephemeralPub | recipientViewPub | sig )
- * Only the holder of the recipient's view secret can recompute the same digest
- * and recognise the output. Everything is SHA3-256 / ML-DSA — both
- * post-quantum — and verification runs in microseconds on commodity hardware.
- *
- * MODEL: each recipient has a long-term VIEW keypair (for scanning) whose
- * public half is their published "stealth meta-address". The sender picks an
- * ephemeral secret, computes a one-time ML-DSA keypair as
- *   oneTimeSeed = SHA3-256( shared | ephemeralSecret )
- * and pays to pqAddressFromPublicKey(oneTimePub). The recipient scans the
- * chain, recomputes candidate seeds from their view key, and spends any
- * output whose derived address matches.
+ * Experimental ML-KEM-768 one-time destinations. V1 was unsafe: public data
+ * sufficed to reconstruct spending keys. V2 rejects V1 records and keys.
+ * This is NOT a shielded payment protocol: amounts and spends remain public,
+ * and the sender knows the spending seed. Do not use for valuable payments.
+ * Production needs recipient-exclusive spending authority and external review.
+ * The historically named "view" secret here grants spending authority.
  */
-
 import { createHash, randomBytes } from "crypto";
-import {
-  pqGenerateKeyPair,
-  pqAddressFromPublicKey,
-  pqSignHash,
-  pqVerifyHashSignature,
-} from "./pq-signatures.js";
+import { ml_kem768 } from "@noble/post-quantum/ml-kem.js";
+import { pqGenerateKeyPair, pqAddressFromPublicKey } from "./pq-signatures.js";
 
-const toBytes = (hex: string): Uint8Array => Uint8Array.from(Buffer.from(hex, "hex"));
-const toHex = (b: Uint8Array): string => Buffer.from(b).toString("hex");
+const DOMAIN = "JGC-PQ-STEALTH-v2";
+const hex = (bytes: Uint8Array): string => Buffer.from(bytes).toString("hex");
 
-const STEALTH_DOMAIN = "JGC-PQ-STEALTH-v1";
+function decode(value: string, length: number, label: string): Uint8Array {
+  if (typeof value !== "string" || value.length !== length * 2 || !/^[0-9a-f]+$/i.test(value)) {
+    throw new Error(`invalid stealth ${label}`);
+  }
+  return Uint8Array.from(Buffer.from(value, "hex"));
+}
 
-function H(...parts: (Uint8Array | string | Buffer)[]): Buffer {
-  const h = createHash("sha3-256");
-  for (const p of parts) h.update(p as any);
+function hash(label: string, ...parts: Uint8Array[]): Buffer {
+  const h = createHash("sha3-256").update(DOMAIN).update(label);
+  for (const part of parts) h.update(part);
   return h.digest();
 }
 
-/** A recipient's published stealth meta-address (their view public key). */
 export interface StealthMetaAddress {
-  /** ML-DSA view public key (hex) — safe to publish. */
+  /** ML-KEM-768 public key; V1 ML-DSA keys are incompatible. */
   viewPublicKey: string;
-  /** Human/display form: "st1qgc" + hash of the view pubkey. */
   metaAddress: string;
 }
 
-/** A one-time payment instruction a sender constructs. */
 export interface StealthPayment {
-  /** Ephemeral public value published with the tx so the recipient can scan. */
-  ephemeralPublic: string;
-  /** Sender's ML-DSA signature over the shared-secret digest (auth + binding). */
-  ephemeralSignature: string;
-  /** The one-time destination address to pay (unlinkable to the meta-address). */
+  version: 2;
+  kemCiphertext: string;
   oneTimeAddress: string;
 }
 
-/** Generate a recipient stealth identity (view keypair + meta-address). */
+/** Deterministic identities accept a 32-byte backup seed; never publish it. */
 export function pqStealthGenerateIdentity(seedHex?: string): {
-  viewSecretKey: string;
-  viewPublicKey: string;
-  metaAddress: string;
+  viewSecretKey: string; viewPublicKey: string; metaAddress: string;
 } {
-  const kp = pqGenerateKeyPair(seedHex);
-  return {
-    viewSecretKey: kp.privateKey,
-    viewPublicKey: kp.publicKey,
-    metaAddress: pqStealthMetaAddress(kp.publicKey),
-  };
+  const seed = seedHex === undefined ? randomBytes(32) : decode(seedHex, 32, "seed");
+  const kemSeed = createHash("sha3-512").update(DOMAIN).update("identity").update(seed).digest();
+  const kp = ml_kem768.keygen(kemSeed);
+  kemSeed.fill(0);
+  seed.fill(0);
+  const viewPublicKey = hex(kp.publicKey);
+  const viewSecretKey = hex(kp.secretKey);
+  kp.secretKey.fill(0);
+  return { viewSecretKey, viewPublicKey, metaAddress: pqStealthMetaAddress(viewPublicKey) };
 }
 
-/** The publishable stealth meta-address for a view public key. */
 export function pqStealthMetaAddress(viewPublicKeyHex: string): string {
-  return "st1qgc" + H(STEALTH_DOMAIN, "meta", toBytes(viewPublicKeyHex)).subarray(0, 20).toString("hex");
+  return "st2qgc" + hex(hash("meta", decode(viewPublicKeyHex, 1184, "public key")));
 }
 
-/**
- * Sender side: build a one-time payment to a recipient's view public key.
- * Returns the payment (ephemeral data + one-time address) and, for the demo /
- * wallet, the derived one-time keypair the *recipient* will be able to
- * recompute. We never need the recipient's secret to SEND.
- */
 export function pqStealthCreatePayment(recipientViewPublicKeyHex: string): {
   payment: StealthPayment;
-  /** One-time seed (hex) the recipient can also derive; exposed for wallet use. */
+  /** Also known to the sender: experimental destinations only. */
   oneTimeSeed: string;
 } {
-  const ephemeral = pqGenerateKeyPair(); // ephemeral keypair, discarded after send
-  // Shared secret digest: bound to both parties, authenticated by the sender.
-  const sharedDigest = H(STEALTH_DOMAIN, "shared", toBytes(recipientViewPublicKeyHex), toBytes(ephemeral.publicKey));
-  const ephemeralSignature = pqSignHash(ephemeral.privateKey, Uint8Array.from(sharedDigest));
-  const oneTimeSeed = toHex(H(STEALTH_DOMAIN, "seed", sharedDigest, ephemeralSignature));
-  const oneTime = pqGenerateKeyPair(oneTimeSeed);
-  return {
-    payment: {
-      ephemeralPublic: ephemeral.publicKey,
-      ephemeralSignature,
-      oneTimeAddress: pqAddressFromPublicKey(oneTime.publicKey),
-    },
-    oneTimeSeed,
-  };
-}
-
-/**
- * Recipient side: scan a payment and, if it belongs to us, recover the
- * one-time secret key needed to spend it. Returns null if not ours / invalid.
- *
- * NOTE: recognition requires the recipient to verify the ephemeral signature
- * and re-derive the seed. Because the shared digest commits to the recipient's
- * view public key, only the intended recipient's scan succeeds in practice —
- * but crucially, ANY observer can verify the signature is well-formed while
- * only the recipient knows it is *theirs* (unlinkability).
- */
-export function pqStealthScanAndRecover(
-  _viewSecretKeyHex: string,
-  viewPublicKeyHex: string,
-  payment: StealthPayment
-): { oneTimeSecretKey: string; oneTimePublicKey: string; oneTimeAddress: string } | null {
-  // Recompute the shared digest with OUR view pubkey; if the sender addressed
-  // it to us, the signature over it verifies under the ephemeral key.
-  const sharedDigest = H(STEALTH_DOMAIN, "shared", toBytes(viewPublicKeyHex), toBytes(payment.ephemeralPublic));
-  if (!pqVerifyHashSignature(payment.ephemeralSignature, Uint8Array.from(sharedDigest), payment.ephemeralPublic)) {
-    return null; // not addressed to us (or malformed)
+  const publicKey = decode(recipientViewPublicKeyHex, 1184, "public key");
+  const { cipherText, sharedSecret } = ml_kem768.encapsulate(publicKey);
+  try {
+    const oneTimeSeed = hex(hash("seed", sharedSecret, publicKey, cipherText));
+    const oneTime = pqGenerateKeyPair(oneTimeSeed);
+    return {
+      payment: { version: 2, kemCiphertext: hex(cipherText), oneTimeAddress: pqAddressFromPublicKey(oneTime.publicKey) },
+      oneTimeSeed,
+    };
+  } finally {
+    sharedSecret.fill(0);
   }
-  const oneTimeSeed = toHex(H(STEALTH_DOMAIN, "seed", sharedDigest, payment.ephemeralSignature));
-  const oneTime = pqGenerateKeyPair(oneTimeSeed);
-  const addr = pqAddressFromPublicKey(oneTime.publicKey);
-  if (addr !== payment.oneTimeAddress) return null;
-  return { oneTimeSecretKey: oneTime.privateKey, oneTimePublicKey: oneTime.publicKey, oneTimeAddress: addr };
 }
 
-/** Convenience: fresh random 32-byte seed (hex) for identity generation. */
+/** Invalid, legacy, tampered, and other-recipient records fail closed. */
+export function pqStealthScanAndRecover(
+  viewSecretKeyHex: string,
+  viewPublicKeyHex: string,
+  payment: StealthPayment,
+): { oneTimeSecretKey: string; oneTimePublicKey: string; oneTimeAddress: string } | null {
+  let secretKey: Uint8Array | undefined;
+  let sharedSecret: Uint8Array | undefined;
+  try {
+    if (!payment || payment.version !== 2 || !/^1QGC[0-9a-f]{40}$/.test(payment.oneTimeAddress)) return null;
+    const publicKey = decode(viewPublicKeyHex, 1184, "public key");
+    secretKey = decode(viewSecretKeyHex, 2400, "secret key");
+    const ciphertext = decode(payment.kemCiphertext, 1088, "ciphertext");
+    sharedSecret = ml_kem768.decapsulate(ciphertext, secretKey);
+    const oneTime = pqGenerateKeyPair(hex(hash("seed", sharedSecret, publicKey, ciphertext)));
+    const address = pqAddressFromPublicKey(oneTime.publicKey);
+    if (address !== payment.oneTimeAddress) return null;
+    return { oneTimeSecretKey: oneTime.privateKey, oneTimePublicKey: oneTime.publicKey, oneTimeAddress: address };
+  } catch {
+    return null;
+  } finally {
+    secretKey?.fill(0);
+    sharedSecret?.fill(0);
+  }
+}
+
 export function pqStealthNewSeed(): string {
   return randomBytes(32).toString("hex");
 }
