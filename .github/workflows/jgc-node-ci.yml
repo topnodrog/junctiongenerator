@@ -18,6 +18,42 @@ permissions:
   contents: read
 
 jobs:
+  native-wallets:
+    name: Native Bitcoin and Ethereum wallet round trips
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: packages/jgc-node
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: packages/jgc-node/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - name: Fetch pinned, checksum-verified local test nodes
+        shell: bash
+        run: |
+          mkdir -p .tmp/native-binaries
+          cd .tmp/native-binaries
+          curl --fail --location --retry 2 -o bitcoin.tar.gz https://bitcoincore.org/bin/bitcoin-core-31.1/bitcoin-31.1-x86_64-linux-gnu.tar.gz
+          printf '%s\n' 'b80d9c3e04da78fb6f0569685673418cf686fadba9042d926d13fb87ff503f9e  bitcoin.tar.gz' | sha256sum --check
+          tar -xzf bitcoin.tar.gz
+          curl --fail --location --retry 2 -o foundry.tar.gz https://github.com/foundry-rs/foundry/releases/download/v1.8.1/foundry_v1.8.1_linux_amd64.tar.gz
+          printf '%s\n' '37b45855232e57624d90113b049ca54f0c92055bb5c1997fcbdc3076c7b89c10  foundry.tar.gz' | sha256sum --check
+          tar -xzf foundry.tar.gz anvil
+      - name: Receive, restore and send native Bitcoin test coins
+        env:
+          BITCOIND_BIN: ${{ github.workspace }}/packages/jgc-node/.tmp/native-binaries/bitcoin-31.1/bin/bitcoind
+        run: node scripts/bitcoin-regtest-smoke.mjs
+      - name: Receive, restore and send native ETH on a local chain
+        env:
+          ANVIL_BIN: ${{ github.workspace }}/packages/jgc-node/.tmp/native-binaries/anvil
+        run: node scripts/ethereum-local-smoke.mjs
+
   hosted-monitor:
     name: Hosted monitor container
     runs-on: ubuntu-latest

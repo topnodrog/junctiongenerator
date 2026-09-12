@@ -78,6 +78,32 @@ and post-quantum security must be independently reviewed before activation.
 
 ## Current implementation increment
 
+### Wallet recovery and participation direction (2026-09-12)
+
+Keep every mainnet gate mandatory. Build a native multi-network wallet, with
+BTC remaining on Bitcoin and other assets on their own networks; bridges are
+not required for native deposit/withdrawal. Native Bitcoin and Ethereum
+test-network adapters now pass local receive/restore/send rehearsals against
+Bitcoin Core and Anvil. Public test-network rehearsals, Base and other networks,
+and real-asset activation remain outstanding. See
+[wallet and participation requirements](mainnet/WALLET_AND_PARTICIPATION.md).
+
+The JGTC CLI now supports 24-word recovery wallets with mandatory full-word
+confirmation before setup completes, hidden secret input, sequential account
+recovery and versioned encrypted metadata. Existing keystores retain their
+file-based recovery path. Imports and decrypted files validate matching ML-DSA
+keypairs. Key generation uses OS-backed cryptographic randomness and rejects
+malformed seed input. These changes do not repair the pilot's truncated address
+commitments or satisfy the end-to-end quantum-security gate.
+
+Validation: the full release rehearsal passed 49 node suites / 409 tests plus
+four release-manifest tests, including a pinned recovery-derivation fixture.
+Bitcoin Core 31.1 and Anvil 1.8.1 local native-asset round trips passed,
+including recovery, wrong-network checks and reverted-state handling. The CLI
+refuses noninteractive setup, preserves existing destination files and blocks
+mainnet. The node dependency audit reports zero known vulnerabilities. CI now
+includes the pinned native-network rehearsals; its new run must pass separately.
+
 ### Owner clarification and assigned-work foundation (2026-09-11)
 
 “Intelligence must be free” is the founder's prediction about intelligence
