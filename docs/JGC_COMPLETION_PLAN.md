@@ -2,7 +2,7 @@
 
 Updated 2026-09-11. Product direction: a semi-private, quantum-ready blockchain
 that rewards useful compute, inference and storage in JGC. Network resources
-serve a central intelligence and free-at-point-of-use inference. That
+serve a central intelligence and paid compute and inference services. That
 intelligence should ultimately administer the project under explicit protocol
 authority and accountable upgrades.
 
@@ -15,9 +15,10 @@ prove useful work. Existing increasing work thresholds are consensus policy,
 not evidence of a completed useful-resource market. Do not change the running
 pilot's retarget rules without a new network version.
 
-Local inference execution and the compute broker are prototypes. The broker's
-completion path currently queues submitted proof objects without verifying
-them; no production payout adapter should consume that queue. Storage service
+Local inference execution and the compute broker are prototypes. The legacy
+broker completion path now rejects all claims, preventing unverified payments.
+A separate bounded vector-work journal verifies assigned results and persists
+leases across restart; it is not connected to consensus or payment. Storage service
 contracts, proof of continuing availability and reward settlement are absent.
 AI inference is not equivalent to authorized governance. Historical model
 evaluations did not pass the operations safety gate.
@@ -44,12 +45,14 @@ and post-quantum security must be independently reviewed before activation.
    repair. Verify continuing availability over time, not a one-time upload or
    a self-reported disk size. Test withheld/deleted data, colluding providers,
    recovery, privacy leakage and exactly-once funded payments.
-4. **Free inference service.** Expose a queued API backed by eligible workers,
-   with per-user limits, a bounded subsidy budget, overload handling and
-   measurable latency. Free access consumes real resources; define how JGC
-   issuance or service revenue funds it. Do not assume demand or token value
-   makes unlimited inference sustainable. Pin execution profiles and identify
-   when prompts leave the user's machine.
+4. **Paid compute and inference service.** Expose a queued, metered API backed
+   by eligible workers, with published pricing, per-user limits, overload
+   handling and measurable latency. Charge for compute and inference to cover
+   infrastructure and other bills. Use remaining realized surplus to purchase
+   JGC, with the aim of supporting a fair market for participants who wish to
+   sell. Purchases cannot guarantee a price or liquidity. Any free access needs
+   an explicit, bounded subsidy. Pin execution profiles and identify when
+   prompts leave the user's machine.
 5. **Privacy and quantum security.** Design recipient-exclusive spending and
    separate viewing authority, encrypted notes, nullifiers and confidential
    value conservation. Select and review a post-quantum proof system and
@@ -74,6 +77,26 @@ and post-quantum security must be independently reviewed before activation.
    release-specific evidence before valuable JGC starts.
 
 ## Current implementation increment
+
+### Owner clarification and assigned-work foundation (2026-09-11)
+
+“Intelligence must be free” is the founder's prediction about intelligence
+resisting containment, not a promise of zero-cost compute or inference. The
+white paper records this distinction and the surplus-funded JGC purchase policy.
+
+The assigned-work journal pins the bounded integer vector-dot program, network,
+epoch, input commitment, resource units, miner, lease deadline and output
+commitment. It rejects forged output, duplicate completion and stale leases,
+and validates its journal on restart. It is a local rehearsal foundation:
+authenticated remote dispatch, funded settlement, inference verification and
+storage availability are still outstanding. See [assigned work](mainnet/ASSIGNED_WORK.md).
+
+Validation: 46 node suites / 389 tests, four release-manifest tests, typecheck,
+node build, staged release verification, website lint and production build pass.
+Mainnet preflight still reports all 12 gates incomplete. The latest pre-change
+GitHub node and website workflows passed; the new commit requires its own CI run.
+
+### Previous foundation increment
 
 - Replace public-data V1 stealth recovery with versioned ML-KEM decapsulation;
   add regression tests for stolen-key attempts, tampering and backup recovery.
