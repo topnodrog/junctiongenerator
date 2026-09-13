@@ -32,17 +32,14 @@ cryptographic construction. No mainnet gate may be waived to accelerate launch.
 - **Transport queues needed bounds.** Frame-size checks alone did not bound the
   serialized incoming backlog or outbound buffered bytes. Explicit queue limits
   pass adversarial tests with the session changes.
-- **Deterministic consensus is not yet signed off.** Exact candidate retarget
-  arithmetic, canonical encoding and cross-platform tests exist. Evidence still
-  needs to cover the complete active validation/replay/fork-choice path. Preserve
-  the published pilot's separate difficulty policy.
-  Specifically, `network/node.ts` retains the first-seen tip on equal work;
-  document whether candidate nodes must converge on the same equal-work tip
-  regardless of arrival order before choosing a versioned tie-break rule.
-  `consensus/validation.ts` converts the per-proof minimum from BigInt micros
-  to Number before passing it to `verifyPortableComputeProof`; audit the
-  representable range and verifier boundary with pinned extreme-value vectors.
-  These are audit targets, not a claim that a consensus split was reproduced.
+- **Deterministic consensus repairs pass locally; CI acceptance is pending.**
+  The candidate now uses exact proof thresholds, canonical equal-work fork
+  ordering and complete restart validation. The audit also found and repaired
+  snapshot trust, asynchronous state-application, inactive-parent orphan,
+  compact-encoding and inner/outer receipt-accounting defects. Tests pin the
+  settlement state across live execution and restart. The published pilot's
+  first-seen tie and retarget policy remains separate. See
+  [the acceptance record](DETERMINISTIC_CONSENSUS.md) for evidence and limits.
 
 Paths above are relative to `packages/jgc-node`. Gate status is authoritative in
 `src/config/mainnet-readiness.ts`; in-progress work is not completed evidence.

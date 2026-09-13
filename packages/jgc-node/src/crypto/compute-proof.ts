@@ -7,6 +7,7 @@
  */
 
 import type { ComputeProof } from "../types/index.js";
+import { DIFFICULTY_SCALE } from "../consensus/emission.js";
 import {
   pqFromComputeProof,
   pqVerifyProofForConsensus,
@@ -26,6 +27,29 @@ export interface PortableProofContext {
 
 export interface PortableProofResult extends VerificationResult {
   scheme: ComputeProofScheme;
+}
+
+/** Consensus entry point: compare integer work against exact micro-unit targets.
+ * The underlying scheme still enforces its own bounds and cryptographic proof.
+ * No BigInt threshold is rounded through Number at this boundary.
+ */
+export function verifyPortableComputeProofExact(
+  proof: ComputeProof,
+  context: Omit<PortableProofContext, "minimumWork"> & { minimumWorkMicros: bigint },
+): PortableProofResult {
+  const scheme = identifyComputeProofScheme(proof);
+  if (typeof context.minimumWorkMicros !== "bigint" || context.minimumWorkMicros < 0n
+      || !Number.isSafeInteger(proof.tflopsWeight) || proof.tflopsWeight < 0
+      || BigInt(proof.tflopsWeight) * DIFFICULTY_SCALE < context.minimumWorkMicros) {
+    return { valid: false, error: "work below exact minimum or outside integer range", verifiedTFLOPS: 0, scheme };
+  }
+  const result = verifyPortableComputeProof(proof, { ...context, minimumWork: 0 });
+  if (result.valid && (!Number.isSafeInteger(result.verifiedTFLOPS) || result.verifiedTFLOPS < 0
+      || result.verifiedTFLOPS !== proof.tflopsWeight
+      || BigInt(result.verifiedTFLOPS) * DIFFICULTY_SCALE < context.minimumWorkMicros)) {
+    return { valid: false, error: "verified work does not match committed work or exact minimum", verifiedTFLOPS: 0, scheme };
+  }
+  return result;
 }
 
 export function identifyComputeProofScheme(proof: ComputeProof): ComputeProofScheme {

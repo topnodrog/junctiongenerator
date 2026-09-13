@@ -78,6 +78,22 @@ and post-quantum security must be independently reviewed before activation.
 
 ## Current implementation increment
 
+### Deterministic-consensus acceptance work (2026-09-13)
+
+Candidate fork ties now choose the lowest header hash at equal exact work;
+inactive-parent orphan handling no longer strands heavier descendants.
+Synchronous verification/application removes an interleaving gap. Candidate
+restart fully verifies the active log and rebuilds balances instead of trusting
+a snapshot's matching tip. Exact proof thresholds, receipt-context binding and
+canonical header/difficulty boundaries have regression coverage. Published
+pilot retargeting and first-seen ties remain unchanged.
+
+The local release rehearsal passed 53 suites / 451 tests plus four manifest
+tests. The real Conv1D mining demonstration now passes six proofs in three
+blocks after repairing its admission path; that demonstration is also in CI.
+The gate is awaiting supported-platform evidence. See
+[deterministic-consensus acceptance](mainnet/DETERMINISTIC_CONSENSUS.md).
+
 ### Peer-authentication gate and privacy priorities (2026-09-13)
 
 The candidate peer-authentication engineering gate is complete: fresh challenge

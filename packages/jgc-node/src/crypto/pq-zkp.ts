@@ -398,9 +398,7 @@ export function pqFromComputeProof(cp: ComputeProof): PQComputeProof | null {
  * consensus ComputeProof, extracts the embedded PQ proof, and verifies it.
  */
 export function pqVerifyComputeProofFromConsensus(cp: ComputeProof, blockHeight: number): boolean {
-  const p = pqFromComputeProof(cp);
-  if (!p) return false;
-  return pqVerifyComputeProof(p, blockHeight).valid;
+  return pqVerifyProofForConsensus(cp, blockHeight, 0).valid;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -426,6 +424,14 @@ export function pqVerifyProofForConsensus(
 ): PQProofVerification {
   const p = pqFromComputeProof(cp);
   if (!p) return { valid: false, error: "not a PQ-HASH-IOP-v1 simulation receipt", verifiedTFLOPS: 0 };
+  if (!Number.isSafeInteger(cp.tflopsWeight) || cp.tflopsWeight < 0
+      || cp.tflopsWeight !== p.tflopsWeight || cp.circuitId !== p.circuitId
+      || cp.taskCommitment !== p.outputCommitment
+      || !Array.isArray(cp.publicInputs) || cp.publicInputs.length !== 3
+      || cp.publicInputs[0] !== p.outputCommitment || cp.publicInputs[1] !== String(p.tflopsWeight)
+      || cp.publicInputs[2] !== "0" || !Number.isFinite(perProofMinTFLOPS) || perProofMinTFLOPS < 0) {
+    return { valid: false, error: "simulation receipt does not match committed work context", verifiedTFLOPS: 0 };
+  }
   const r = pqVerifyComputeProof(p, blockHeight);
   if (!r.valid) return { valid: false, error: r.reason ?? "invalid", verifiedTFLOPS: 0 };
   const tf = r.tflopsWeight ?? 0;

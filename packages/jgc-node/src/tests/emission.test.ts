@@ -194,6 +194,23 @@ describe("quartering interval", () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe("difficulty bits encoding", () => {
+  test.each([[1n, 0x01010000], [255n, 0x01ff0000], [256n, 0x02010000], [65535n, 0x02ffff00], [65536n, 0x03010000]] as const)("encodes the small exact target %s without discarding its mantissa", (target, bits) => {
+    expect(encodeDifficultyBitsExact(target)).toBe(bits);
+    expect(decodeDifficultyBitsExact(bits)).toBe(target);
+    expect(isCanonicalDifficultyBits(bits)).toBe(true);
+  });
+
+  test("keeps every supported compact exponent unsigned and canonical", () => {
+    for (let exponent = 3; exponent <= 255; exponent++) {
+      const target = 0x123456n << BigInt(8 * (exponent - 3));
+      const bits = encodeDifficultyBitsExact(target);
+      expect(bits).toBeGreaterThanOrEqual(0);
+      expect(decodeDifficultyBitsExact(bits)).toBe(target);
+      expect(isCanonicalDifficultyBits(bits)).toBe(true);
+    }
+    const floor = calculateNextDifficultyTargetExact(1n, Number.MAX_SAFE_INTEGER);
+    expect(decodeDifficultyBitsExact(encodeDifficultyBitsExact(floor))).toBe(1n);
+  });
   test("uses the canonical mainnet compact vector", () => {
     const targetMicros = 1_000n * DIFFICULTY_SCALE;
     expect(encodeDifficultyBitsExact(targetMicros)).toBe(0x043b9aca);

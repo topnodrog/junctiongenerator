@@ -201,6 +201,15 @@ jobs:
       - name: Install pinned wasm-pack
         run: cargo install wasm-pack --version 0.15.0 --locked
       - run: wasm-pack build rust --target nodejs --out-dir pkg --release
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: packages/jgc-node/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - name: Strict proof admission and complete block validation
+        run: npm run strict-mine-demo
 
   docker-compose-smoke:
     name: Docker Compose testnet smoke

@@ -7,6 +7,8 @@ See [findings and prioritized todo](FINDINGS_AND_TODO.md) for the current audit,
 including the owner's mandatory Zcash-like privacy and quantum requirements,
 and [peer authentication evidence](PEER_AUTHENTICATION.md) for the candidate
 connection protocol and its acceptance checks.
+Candidate arithmetic, fork ordering and replay are tracked in the
+[deterministic-consensus acceptance record](DETERMINISTIC_CONSENSUS.md).
 
 The release guard is intentionally fail-closed. Run this from
 `packages/jgc-node`:
