@@ -23,10 +23,11 @@ Two engineering gates are satisfied: `peerAuthentication` and
 Read [SHIELDED_PAYMENTS_V3_DESIGN.md](SHIELDED_PAYMENTS_V3_DESIGN.md) first.
 Revision 0 now records the bounded gap audit and versioned design requirements.
 Crypto facade/signature/receipt/Groth16 claims were corrected without runtime
-changes. Next: evaluate a candidate explicitly zero-knowledge PQ proof backend
-in an isolated harness, with exact parameters, resource measurements and review
-gaps. Resolve descriptor/nullifier binding and recipient-private encryption
-before implementing a payment protocol. No construction is approved; all ten
+changes. The next increment adds an isolated Triton VM 8.0.0 balance-proof
+harness and [backend evaluation](PQ_BACKEND_EVALUATION.md). Read its measurements
+and limitations before further implementation. Next: establish version-specific
+ZK/quantum security evidence and resolve descriptor/nullifier binding and
+recipient-private encryption before expanding to a complete payment relation. No construction is approved; all ten
 remaining gates stay blocked. Preserve the published pilot.
 
 ## Continuing design requirements

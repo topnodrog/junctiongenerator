@@ -23,6 +23,10 @@ cryptographic construction. No mainnet gate may be waived to accelerate launch.
   [Shielded payments V3 draft](SHIELDED_PAYMENTS_V3_DESIGN.md) records the
   authority model, transaction relation, migration and unresolved review choices.
   This is a design draft, not an accepted construction or completed gate.
+- **PQ backend evaluation is underway.** The isolated Triton VM 8.0.0
+  harness exercises a real proof of bounded private-value arithmetic, with
+  claim-tampering and invalid-value tests. It has no note or ownership checks
+  and is not admitted by consensus. See [evaluation and review gaps](PQ_BACKEND_EVALUATION.md).
 - **Useful-work correctness now has worker authentication.** Key-assigned
   bounded vector jobs require persisted ML-DSA signatures. This is neither
   a funded service nor a proof of general inference correctness.

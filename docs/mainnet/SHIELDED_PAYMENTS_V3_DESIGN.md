@@ -188,6 +188,10 @@ do not promise anonymity solely because the proof hides its witness.
 
 ## Acceptance and next bounded work
 
+The first [backend evaluation](PQ_BACKEND_EVALUATION.md) now records an isolated
+Triton VM 8.0.0 balance-proof experiment, measurements and review blockers.
+It is not the complete relation described here and does not approve a backend.
+
 First select and benchmark a candidate proof backend against the relation above
 in an isolated, valueless harness, recording parameters and review gaps. Then
 freeze the reviewed descriptor, nullifier, encryption and encoding specification

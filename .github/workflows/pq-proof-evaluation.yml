@@ -1,0 +1,25 @@
+name: Isolated PQ proof evaluation
+
+on:
+  pull_request:
+    paths:
+      - "tools/pq-proof-evaluation/**"
+      - ".github/workflows/pq-proof-evaluation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  research-harness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      RAYON_NUM_THREADS: "2"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7; matches node CI
+      - name: Install pinned compiler
+        run: rustup toolchain install 1.96.0 --profile minimal
+      - name: Check isolated constraints and real proof rejection
+        working-directory: tools/pq-proof-evaluation
+        run: cargo +1.96.0 test --release --locked

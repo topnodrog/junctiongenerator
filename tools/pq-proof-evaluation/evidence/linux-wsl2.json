@@ -1,0 +1,105 @@
+{
+  "measuredAtDate": "2026-09-13",
+  "cpu": "13th Gen Intel(R) Core(TM) i5-1335U",
+  "compiler": "rustc 1.96.0 (ac68faa20 2026-05-25)",
+  "profile": "release",
+  "lockfileSha256": "4e1626759fc9e6bbe48b78daa2c32b71509592c5c793f2b4ac99467662a7e32a",
+  "runs": [
+    {
+      "schemaVersion": 1,
+      "backend": "triton-vm",
+      "backendVersion": "8.0.0",
+      "experiment": "two-input-two-output-u32-balance-only",
+      "productionReady": false,
+      "arch": "x86_64",
+      "os": "linux",
+      "kernel": "6.18.33.2-microsoft-standard-WSL2",
+      "rayonThreads": "2",
+      "paddedHeight": 512,
+      "claim": {
+        "input": [
+          1
+        ],
+        "output": [],
+        "program_digest": "ff65f54d9c639ec5c25e12e0b4bf9597134a7c7e7ef4644e22228e5eabe0a91b234ffabbaaa0b420",
+        "version": 8
+      },
+      "parameters": {
+        "fri_expansion_factor": 4,
+        "num_collinearity_checks": 80,
+        "num_trace_randomizers": 105,
+        "security_level": 160
+      },
+      "memoryMeasurement": "whole-process maximum RSS; prover and verifier combined",
+      "proofFieldElements": 71821,
+      "proofRawU64Bytes": 574568,
+      "proveMs": 302.935544,
+      "verifyMs": 11.724161,
+      "peakMemoryBytes": 34484224
+    },
+    {
+      "schemaVersion": 1,
+      "backend": "triton-vm",
+      "backendVersion": "8.0.0",
+      "experiment": "two-input-two-output-u32-balance-only",
+      "productionReady": false,
+      "arch": "x86_64",
+      "os": "linux",
+      "kernel": "6.18.33.2-microsoft-standard-WSL2",
+      "rayonThreads": "2",
+      "paddedHeight": 512,
+      "claim": {
+        "input": [
+          1
+        ],
+        "output": [],
+        "program_digest": "ff65f54d9c639ec5c25e12e0b4bf9597134a7c7e7ef4644e22228e5eabe0a91b234ffabbaaa0b420",
+        "version": 8
+      },
+      "parameters": {
+        "fri_expansion_factor": 4,
+        "num_collinearity_checks": 80,
+        "num_trace_randomizers": 105,
+        "security_level": 160
+      },
+      "memoryMeasurement": "whole-process maximum RSS; prover and verifier combined",
+      "proofFieldElements": 71871,
+      "proofRawU64Bytes": 574968,
+      "proveMs": 376.07980200000003,
+      "verifyMs": 13.886626,
+      "peakMemoryBytes": 34361344
+    },
+    {
+      "schemaVersion": 1,
+      "backend": "triton-vm",
+      "backendVersion": "8.0.0",
+      "experiment": "two-input-two-output-u32-balance-only",
+      "productionReady": false,
+      "arch": "x86_64",
+      "os": "linux",
+      "kernel": "6.18.33.2-microsoft-standard-WSL2",
+      "rayonThreads": "2",
+      "paddedHeight": 512,
+      "claim": {
+        "input": [
+          1
+        ],
+        "output": [],
+        "program_digest": "ff65f54d9c639ec5c25e12e0b4bf9597134a7c7e7ef4644e22228e5eabe0a91b234ffabbaaa0b420",
+        "version": 8
+      },
+      "parameters": {
+        "fri_expansion_factor": 4,
+        "num_collinearity_checks": 80,
+        "num_trace_randomizers": 105,
+        "security_level": 160
+      },
+      "memoryMeasurement": "whole-process maximum RSS; prover and verifier combined",
+      "proofFieldElements": 71571,
+      "proofRawU64Bytes": 572568,
+      "proveMs": 306.64495600000004,
+      "verifyMs": 12.114236,
+      "peakMemoryBytes": 34799616
+    }
+  ]
+}
