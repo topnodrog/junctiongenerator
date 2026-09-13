@@ -46,9 +46,10 @@ chain identity exactly.
 - The testnet proof path uses simulation receipts that are not proofs of useful
   computation.
 - The production loop is a testnet-only designated producer.
-- ML-DSA message authentication is implemented, but proposer identity is not
-  yet bound into the block header and the authenticated mode is not the default
-  testnet mode.
+- Peer authentication passes its engineering gate: candidate authenticated mode
+  requires a fresh challenge handshake and connection-bound signed sequences.
+  Proposer identity is still not bound into the block header; that remains a
+  permissionless-production blocker. The unsigned pilot keeps its existing mode.
 - There is no mainnet node launcher or mainnet release bundle.
 - The isolated `@jg/codegen` package now emits deterministic bounded artifacts,
   but it intentionally does not run a pinned Solidity compiler or deployer.

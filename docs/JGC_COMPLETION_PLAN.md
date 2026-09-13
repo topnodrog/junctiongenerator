@@ -78,6 +78,21 @@ and post-quantum security must be independently reviewed before activation.
 
 ## Current implementation increment
 
+### Peer-authentication gate and privacy priorities (2026-09-13)
+
+The candidate peer-authentication engineering gate is complete: fresh challenge
+handshakes bind full ML-DSA keys to connections; signed session sequences reject
+replay across reconnects/restart. Handshakes expire, discovery waits for proof,
+and transport queues and host-defense records have explicit bounds. Local tests
+and Node 20 on Windows/macOS/Linux plus Node 22/24 on Linux passed, including
+authenticated WebSocket block sync. See the [acceptance record](mainnet/PEER_AUTHENTICATION.md).
+
+Eleven launch gates remain incomplete. The owner reaffirmed Zcash-like payment
+privacy and end-to-end quantum readiness as essential. The existing stealth
+prototype, public amounts/spends, truncated wallet addresses and simulation
+receipts do not fulfill them. The [findings and todo list](mainnet/FINDINGS_AND_TODO.md)
+records their design, implementation and review criteria before further launch work.
+
 ### Signed useful-work results (2026-09-13)
 
 Key-assigned vector jobs now require ML-DSA-65 result signatures. Worker

@@ -1,6 +1,6 @@
 # Peer authentication acceptance record
 
-Scope: the `peerAuthentication` engineering gate for the candidate node.
+Status: **complete** for the `peerAuthentication` engineering gate in the candidate node.
 Independent network/security review and end-to-end quantum security are separate
 mandatory gates. This protocol does not encrypt traffic, prevent traffic analysis,
 prove independent operators, or grant a peer consensus authority.
@@ -52,7 +52,16 @@ upgrade together. This is not a deployed mainnet launcher.
 - `peer-guard.test.ts`: rate/host limits, host-capacity pressure and ban retention.
 - Existing mainnet guard tests require authenticated mode, with no gate bypass.
 
-Local release rehearsal: 51 suites / 427 tests plus four release-manifest tests,
-typecheck, build and staged bundle verification passed before the additional
-block-sync assertion. The final focused test and CI evidence must be recorded
-before this gate is marked complete.
+Implementation commit: `c3fa5f67a56e219b610f119f3ebc6c653746c07a`.
+Local release rehearsal passed 51 suites / 427 tests plus four release-manifest
+tests, typecheck, build and staged bundle verification, including the strengthened
+block-sync/network-identity test and the updated eleven-blocker preflight.
+
+[CI acceptance run](https://github.com/topnodrog/junctiongenerator/actions/runs/34738614400)
+passed Node 20 on Windows, macOS and Linux, Node 22/24 on Linux, the release
+bundle, Docker topology, Rust/WASM, monitor and native-wallet jobs. Each Node job runs
+the complete session, transport and guard tests, including block sync. The
+entire implementation run completed successfully.
+
+The readiness baseline now completes this one gate. The remaining eleven,
+including privacy, quantum security and independent review, still block launch.

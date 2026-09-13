@@ -25,7 +25,8 @@ describe("mainnet readiness guard", () => {
 
     expect(result.ready).toBe(false);
     expect(result.status).toBe("blocked");
-    expect(result.missingGates).toEqual([...MAINNET_GATE_KEYS]);
+    expect(MAINNET_READINESS.gates.peerAuthentication).toBe(true);
+    expect(result.missingGates).toEqual(MAINNET_GATE_KEYS.filter(key => key !== "peerAuthentication"));
   });
 
   test("the default launch guard fails closed", () => {

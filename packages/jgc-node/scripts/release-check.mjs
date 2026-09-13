@@ -17,7 +17,6 @@ const requiredMissingGates = [
   "governance",
   "deterministicConsensus",
   "permissionlessProduction",
-  "peerAuthentication",
   "validatorEconomics",
   "reproducibleArtifacts",
   "soloSoak",

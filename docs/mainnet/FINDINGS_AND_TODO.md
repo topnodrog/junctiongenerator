@@ -27,14 +27,22 @@ cryptographic construction. No mainnet gate may be waived to accelerate launch.
 - **Peer authentication had connection replay gaps.** The prior node accepted
   the first signed message without challenge-response, and evicted replay-cache
   entries while their timestamps could remain acceptable. Connection challenges,
-  sequence checks, handshake expiry and deferred discovery are being verified.
+  sequence checks, handshake expiry and deferred discovery now pass acceptance
+  tests; see [peer-authentication evidence](PEER_AUTHENTICATION.md).
 - **Transport queues needed bounds.** Frame-size checks alone did not bound the
   serialized incoming backlog or outbound buffered bytes. Explicit queue limits
-  are being tested with the session changes.
+  pass adversarial tests with the session changes.
 - **Deterministic consensus is not yet signed off.** Exact candidate retarget
   arithmetic, canonical encoding and cross-platform tests exist. Evidence still
   needs to cover the complete active validation/replay/fork-choice path. Preserve
   the published pilot's separate difficulty policy.
+  Specifically, `network/node.ts` retains the first-seen tip on equal work;
+  document whether candidate nodes must converge on the same equal-work tip
+  regardless of arrival order before choosing a versioned tie-break rule.
+  `consensus/validation.ts` converts the per-proof minimum from BigInt micros
+  to Number before passing it to `verifyPortableComputeProof`; audit the
+  representable range and verifier boundary with pinned extreme-value vectors.
+  These are audit targets, not a claim that a consensus split was reproduced.
 
 Paths above are relative to `packages/jgc-node`. Gate status is authoritative in
 `src/config/mainnet-readiness.ts`; in-progress work is not completed evidence.
@@ -64,12 +72,13 @@ Paths above are relative to `packages/jgc-node`. Gate status is authoritative in
 
 ### 2. Finish a tractable engineering gate
 
-- [ ] Complete peer session tests: mutual handshake, unsigned/early messages,
+- [x] Complete peer session tests: mutual handshake, unsigned/early messages,
   tampering, wrong key/network, reflection, reconnect/restart replay, sequence
   gaps/duplicates, timeout cleanup and actual WebSocket exchange.
-- [ ] Verify incoming/outgoing queue bounds and retained defensive state.
-- [ ] Run release checks and the supported-platform CI matrix; record immutable
-  commit/run evidence and only then update `peerAuthentication` if satisfied.
+- [x] Verify incoming/outgoing queue bounds and retained defensive state.
+- [x] Run release checks and the supported-platform CI matrix; record immutable
+  commit/run evidence and update `peerAuthentication`: complete, with eleven
+  other gates still blocking launch. See the linked acceptance record.
 - [ ] Audit deterministic validation, encoding, arithmetic, fork choice and
   replay; extend pinned vectors to any uncovered consensus paths before
   considering `deterministicConsensus` complete.
