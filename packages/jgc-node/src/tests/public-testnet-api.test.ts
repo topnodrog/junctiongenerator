@@ -117,6 +117,8 @@ describe("public JGTC testnet explorer", () => {
       balanceJGC: "0",
       pendingJGC: "0",
       model: null,
+      role: "back-checker",
+      participating: false,
     }), {
       host: "127.0.0.1",
       port: 0,

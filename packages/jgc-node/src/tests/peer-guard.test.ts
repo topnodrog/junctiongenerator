@@ -1,6 +1,18 @@
-import { PeerGuard, peerHost } from "../network/peer-guard.js";
+import { PeerGuard, peerHost, MAX_PEER_GUARD_HOSTS } from "../network/peer-guard.js";
 
 describe("peer guard", () => {
+  test("bounds retained hosts without evicting live connections or active bans", () => {
+    let now = 0;
+    const guard = new PeerGuard({ maxInboundPerHost: 4, messagesPerWindow: 10, messageWindowMs: 1000, banScore: 20, banDurationMs: 1000 }, () => now);
+    guard.admit("live", false);
+    guard.penalize("banned", "malformed-frame");
+    for (let i = 2; i < MAX_PEER_GUARD_HOSTS; i++) { guard.admit(`host-${i}`, true); guard.release(`host-${i}`, true); }
+    expect(guard.admit("overflow", true)).toBe(false);
+    expect(guard.isBanned("banned")).toBe(true);
+    now = 1001;
+    expect(guard.admit("overflow", true)).toBe(true);
+    expect(guard.admit("live", false)).toBe(true);
+  });
   test("normalizes reconnecting hosts across ports and URL forms", () => {
     expect(peerHost("127.0.0.1:1234")).toBe("127.0.0.1");
     expect(peerHost("ws://EXAMPLE.com:19444")).toBe("example.com");

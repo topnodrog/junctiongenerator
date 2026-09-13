@@ -26,18 +26,16 @@
  */
 
 import { EventEmitter } from "events";
+import { AuthSession } from "./auth-session.js";
 import {
   peerMessageSignatureHash,
-  isPeerMessageTimestampFresh,
-  MAX_AUTH_MESSAGE_AGE_SECONDS,
-  MAX_AUTHENTICATED_MESSAGE_CACHE,
 } from "./wire.js";
 import type {
   Block, BlockHeader, PeerMessage, Transaction,
   MinerComputeContribution, ComputeBid, NodeConfig,
 } from "../types/index.js";
 import { MessageType as MT } from "../types/index.js";
-import { validateAuditVerdicts, validateBlock } from "../consensus/validation.js";
+import { validateAuditVerdicts, validateBlockSync } from "../consensus/validation.js";
 import {
   hashBlockHeader,
   computeAuditVerdictsMerkleRoot,
@@ -74,17 +72,16 @@ import { computeAuditClaimId } from "../broker/audit-schedule.js";
 import { AuditStore } from "../storage/audit-store.js";
 import { PeerGuard, DEFAULT_PEER_GUARD_POLICY, type PeerViolation } from "./peer-guard.js";
 import { MAINNET_NETWORK, networkGenesisHash } from "../config/networks.js";
-import { networkBlockWork, nextNetworkDifficultyBits } from "../config/difficulty-policy.js";
+import { networkBlockWork, nextNetworkDifficultyBits, prefersChainTip } from "../config/difficulty-policy.js";
 import { assertMainnetLaunchAllowed } from "../config/mainnet-readiness.js";
 import { validatorStakeSnapshot } from "../consensus/validator-bonds.js";
 import {
   quantumVerifyContributionSignature,
-  quantumVerifyProofForConsensus,
 } from "../crypto/pq.js";
+import { verifyPortableComputeProofExact } from "../crypto/compute-proof.js";
 import {
   pqIsValidPrivateKey,
   pqIsValidPublicKey,
-  pqIsValidSignature,
   pqSignHash,
   pqVerifyHashSignature,
 } from "../crypto/pq-signatures.js";
@@ -237,8 +234,7 @@ export class JGCNode extends EventEmitter {
   private auditStore?: AuditStore;
   private readonly peerGuard: PeerGuard;
   private readonly peerAuthenticationRequired: boolean;
-  /** Digest -> expiry for accepted authenticated messages (replay defense). */
-  private readonly authenticatedMessageCache = new Map<string, number>();
+  private readonly authSessions = new Map<string, { session: AuthSession; timer: ReturnType<typeof setTimeout> }>();
 
   constructor(config: NodeConfig, genesisBlock: Block) {
     super();
@@ -391,8 +387,8 @@ export class JGCNode extends EventEmitter {
    * Rebuild chain/UTXO/epoch state by replaying the persisted block log. The log
    * is always the linear active chain (a reorg rewrites it via
    * rewriteStoreToActiveChain), so each block must extend the current tip. The
-   * synchronous integrity checks (no ZK) catch tampering: changing a tx, proof,
-   * epoch commitment, or coinbase amount changes one of the committed roots.
+   * Candidate networks use full synchronous validation. Legacy replay retains
+   * integrity checks over the committed bodies and epoch/non-mint rules.
    */
   private replayFromStore(): void {
     const blocks = this.store!.loadAll();
@@ -415,7 +411,9 @@ export class JGCNode extends EventEmitter {
       );
     }
     let applyFromHeight = 1;
-    if (snap) {
+    // The unpublished candidate rebuilds state and fully verifies every block.
+    // A snapshot's matching tip hash does not authenticate its balances or epoch.
+    if (snap && this.config.chainId !== MAINNET_NETWORK.chainId) {
       const atHeight = blocks.find(b => b.header.height === snap.tipHeight);
       const consistent = atHeight !== undefined && hashBlockHeader(atHeight.header) === snap.tipHash;
       if (consistent) {
@@ -446,7 +444,10 @@ export class JGCNode extends EventEmitter {
       if (h < applyFromHeight) continue;  // covered by the snapshot
 
       if (block.header.prevHash !== this.chain.tipHash) fail("does not extend current tip");
-      if (!this.integrityCheck(this.chain, block)) fail("integrity check failed (root mismatch or non-boundary mint)");
+      const valid = this.config.chainId === MAINNET_NETWORK.chainId
+        ? this.validateAgainst(this.chain, block)
+        : this.integrityCheck(this.chain, block);
+      if (!valid) fail("integrity or full candidate validation failed");
       this.applyBlockState(this.chain, block, blockHash);
       applied++;
     }
@@ -494,6 +495,7 @@ export class JGCNode extends EventEmitter {
   // ─────────────────────────────────────────────────────────────────────────
 
   connectPeer(peer: PeerConnection): boolean {
+    if (this.peers.has(peer.info.peerId)) { peer.disconnect(); return false; }
     if (this.peers.size >= this.config.maxPeers) {
       console.warn(`[Node] Max peers (${this.config.maxPeers}) reached — rejecting ${peer.info.address}`);
       peer.disconnect();
@@ -505,6 +507,18 @@ export class JGCNode extends EventEmitter {
       return false;
     }
 
+    if (this.peerAuthenticationRequired) {
+      const session = new AuthSession(this.config.p2pPublicKey!, this.config.p2pPrivateKey!, this.config.networkMagic);
+      const transportSend = peer.send.bind(peer);
+      peer = { ...peer, send: async message => {
+        const sealed = session.seal(message);
+        if (sealed) await transportSend(sealed);
+      } };
+      peer.info.authenticatedPublicKey = undefined;
+      const timer = setTimeout(() => this.disconnectPeer(peer.info.peerId), 10_000);
+      timer.unref();
+      this.authSessions.set(peer.info.peerId, { session, timer });
+    }
     this.peers.set(peer.info.peerId, peer);
     peer.info.networkIdentityVerified = !this.config.requireNetworkIdentity;
     this.emit("peer:connect", peer.info);
@@ -518,6 +532,9 @@ export class JGCNode extends EventEmitter {
     const peer = this.peers.get(peerId);
     if (!peer) return;
     this.peers.delete(peerId);
+    const auth = this.authSessions.get(peerId);
+    if (auth) clearTimeout(auth.timer);
+    this.authSessions.delete(peerId);
     this.peerGuard.release(peer.info.address, peer.info.inbound);
     this.peerGuard.forgetPeer(peerId);
     peer.disconnect();
@@ -561,32 +578,18 @@ export class JGCNode extends EventEmitter {
     peer.info.lastSeen   = Math.floor(Date.now() / 1000);
 
     if (this.peerAuthenticationRequired) {
-      const now = Math.floor(Date.now() / 1000);
-      const unsigned = {
-        type: msg.type,
-        payload: msg.payload,
-        timestamp: msg.timestamp,
-        senderPublicKey: msg.senderPublicKey,
-      };
-      const messageHash = peerMessageSignatureHash(unsigned, this.config.networkMagic);
-      const messageId = Buffer.from(messageHash).toString("hex");
-      const valid = pqIsValidPublicKey(msg.senderPublicKey) &&
-        pqIsValidSignature(msg.signature) &&
-        pqVerifyHashSignature(
-          msg.signature,
-          messageHash,
-          msg.senderPublicKey,
-        ) &&
-        (peer.info.authenticatedPublicKey === undefined ||
-          peer.info.authenticatedPublicKey === msg.senderPublicKey) &&
-        isPeerMessageTimestampFresh(msg.timestamp, now) &&
-        !this.isAuthenticatedMessageReplay(messageId, now);
-      if (!valid) {
+      try {
+        const auth = this.authSessions.get(peerId)!;
+        msg = auth.session.open(msg);
+        if (auth.session.ready) {
+          peer.info.authenticatedPublicKey = auth.session.authenticatedPublicKey;
+          clearTimeout(auth.timer);
+        }
+      } catch {
         console.warn(`[Node] Disconnecting ${peerId}: invalid or replayed P2P message authentication`);
         this.disconnectPeer(peerId);
         return;
       }
-      peer.info.authenticatedPublicKey ??= msg.senderPublicKey;
     }
 
     if (this.config.requireNetworkIdentity &&
@@ -662,6 +665,8 @@ export class JGCNode extends EventEmitter {
         break;
 
       case MT.VERACK:
+        if (this.peerAuthenticationRequired) await this.beginPeerSync(peer);
+        break;
       case MT.PONG:
         // Handshake ack / ping reply — lastSeen was already refreshed above.
         break;
@@ -669,19 +674,6 @@ export class JGCNode extends EventEmitter {
       default:
         console.debug(`[Node] Unknown message type ${msg.type} from peer ${peerId}`);
     }
-  }
-
-  private isAuthenticatedMessageReplay(messageId: string, now: number): boolean {
-    for (const [id, expiry] of this.authenticatedMessageCache) {
-      if (expiry < now) this.authenticatedMessageCache.delete(id);
-    }
-    if (this.authenticatedMessageCache.has(messageId)) return true;
-    if (this.authenticatedMessageCache.size >= MAX_AUTHENTICATED_MESSAGE_CACHE) {
-      const oldest = this.authenticatedMessageCache.keys().next().value as string | undefined;
-      if (oldest !== undefined) this.authenticatedMessageCache.delete(oldest);
-    }
-    this.authenticatedMessageCache.set(messageId, now + MAX_AUTH_MESSAGE_AGE_SECONDS);
-    return false;
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -724,10 +716,14 @@ export class JGCNode extends EventEmitter {
     // addresses it knows, so the network can form without a central seed.
     if (payload.listenUrl) {
       peer.info.advertisedUrl = payload.listenUrl;
-      this.addAddr(payload.listenUrl);
     }
 
     await peer.send(this.buildMessage(MT.VERACK, {}));
+    if (!this.peerAuthenticationRequired) await this.beginPeerSync(peer);
+  }
+
+  private async beginPeerSync(peer: PeerConnection): Promise<void> {
+    if (peer.info.advertisedUrl) this.addAddr(peer.info.advertisedUrl);
     await peer.send(this.buildMessage(MT.GETADDR, {}));
 
     // If peer is ahead of us, request headers (headers-first sync).
@@ -786,8 +782,10 @@ export class JGCNode extends EventEmitter {
     if (connected) {
       await this.relayBlock(block, peer.info.peerId);
       this.emit("block", block);
-      await this.drainOrphans(blockHash);
     }
+    // A known inactive parent can lead to a heavier descendant. Waiting only
+    // for active-tip changes makes final fork choice depend on arrival order.
+    if (this.chain.blocks.has(blockHash)) await this.drainOrphans(blockHash);
   }
 
   /** Re-process orphans that were waiting on `parentHash` now that it's known. */
@@ -800,8 +798,8 @@ export class JGCNode extends EventEmitter {
       const connected = await this.ingestBlock(orphan, h, (chain, b) => this.validateAgainst(chain, b));
       if (connected) {
         this.emit("block", orphan);
-        await this.drainOrphans(h);
       }
+      if (this.chain.blocks.has(h)) await this.drainOrphans(h);
     }
   }
 
@@ -813,14 +811,14 @@ export class JGCNode extends EventEmitter {
    *  - otherwise               → retain as an inactive branch (no state change).
    *
    * `verify(chain, block)` returns whether the block is valid against `chain`'s
-   * state — async full validation for live blocks, a sync integrity check for
-   * replay. Returns whether the block became part of the active chain.
+   * state. Validation and mutation never yield between reading and applying
+   * state. Returns whether the block became part of the active chain.
    */
-  private async ingestBlock(
+  private ingestBlock(
     block: Block,
     blockHash: Hash256,
-    verify: (chain: ChainState, block: Block) => boolean | Promise<boolean>,
-  ): Promise<boolean> {
+    verify: (chain: ChainState, block: Block) => boolean,
+  ): boolean {
     // Record knowledge + cumulative work (parent is known by the caller's guard).
     this.chain.headers.set(blockHash, block.header);
     this.chain.blocks.set(blockHash, block);
@@ -832,21 +830,21 @@ export class JGCNode extends EventEmitter {
 
     if (block.header.prevHash === this.chain.tipHash) {
       // Fast path: extends the active tip.
-      if (!(await verify(this.chain, block))) { forget(); return false; }
+      if (!verify(this.chain, block)) { forget(); return false; }
       this.applyLiveBlock(block, blockHash);
       return true;
     }
 
     const work    = this.chain.chainWork.get(blockHash)!;
     const tipWork = this.chain.chainWork.get(this.chain.tipHash) ?? 0n;
-    if (work > tipWork) {
-      // Heavier branch that doesn't extend the tip → reorganize onto it.
-      const ok = await this.reorgToBlock(blockHash, verify);
+    if (prefersChainTip(this.config.chainId, work, blockHash, tipWork, this.chain.tipHash)) {
+      // Higher-ranked branch that doesn't extend the tip → reorganize onto it.
+      const ok = this.reorgToBlock(blockHash, verify);
       if (!ok) { forget(); return false; }
       return true;
     }
 
-    // Equal or lighter: keep as a known inactive branch (first-seen tip wins ties).
+    // Lower-ranked tip: retain as a known inactive branch.
     return false;
   }
 
@@ -966,11 +964,11 @@ export class JGCNode extends EventEmitter {
   ): Promise<void> {
     const checked = this.validatePendingContribution(contrib);
     if (!checked.ok) return;
-    // Lightweight duplicate check.
-    if (this.pendingProofs.some(p =>
-      p.proof.taskCommitment === contrib.proof.taskCommitment &&
-      p.minerAddress === contrib.minerAddress
-    )) {
+    // A valid block allows one contribution per participant, not merely one
+    // copy of each task. Keep the first accepted contribution for this height
+    // so a reconnecting peer cannot poison the designated producer's template
+    // with a second task from the same participant.
+    if (this.pendingProofs.some((pending) => pending.minerAddress === contrib.minerAddress)) {
       return;
     }
 
@@ -1271,8 +1269,8 @@ export class JGCNode extends EventEmitter {
   }
 
   /** Full (ZK) validation of `block` against `chain`'s state — the live verifier. */
-  private async validateAgainst(chain: ChainState, block: Block): Promise<boolean> {
-    const result = await validateBlock(block, {
+  private validateAgainst(chain: ChainState, block: Block): boolean {
+    const result = validateBlockSync(block, {
       prevHash:               chain.tipHash,
       expectedHeight:         chain.tipHeight + 1,
       nowUnix:                Math.floor(Date.now() / 1000),
@@ -1361,10 +1359,10 @@ export class JGCNode extends EventEmitter {
    * this.chain is left untouched (no partial mutation). On success the scratch is
    * swapped in and the mempool reconciled (disconnected txs re-added, then pruned).
    */
-  private async reorgToBlock(
+  private reorgToBlock(
     targetHash: Hash256,
-    verify: (chain: ChainState, block: Block) => boolean | Promise<boolean>,
-  ): Promise<boolean> {
+    verify: (chain: ChainState, block: Block) => boolean,
+  ): boolean {
     const oldChain = this.chain;
     const targetPath = this.ancestryFromGenesis(targetHash); // genesis-first
 
@@ -1391,7 +1389,7 @@ export class JGCNode extends EventEmitter {
     for (const hash of targetPath.slice(1)) {
       const block = oldChain.blocks.get(hash)!;
       const onActiveChain = oldChain.heightIndex.get(block.header.height) === hash;
-      if (!onActiveChain && !(await verify(scratch, block))) {
+      if (!onActiveChain && !verify(scratch, block)) {
         return false; // invalid branch — abort, this.chain untouched
       }
       this.applyBlockState(scratch, block, hash);
@@ -1655,7 +1653,19 @@ export class JGCNode extends EventEmitter {
   }
 
   getPendingProofs(): MinerComputeContribution[] {
-    return [...this.pendingProofs];
+    // Defensive candidate boundary: old queues or an in-process caller cannot
+    // turn duplicate participant receipts into a consensus-invalid block.
+    // Canonical order makes a template reproducible across producers.
+    const byMiner = new Map<string, MinerComputeContribution>();
+    for (const contribution of this.pendingProofs) {
+      const current = byMiner.get(contribution.minerAddress);
+      if (!current || compareCanonicalBytes(contribution.proof.taskCommitment, current.proof.taskCommitment) < 0) {
+        byMiner.set(contribution.minerAddress, contribution);
+      }
+    }
+    return [...byMiner.values()].sort((left, right) =>
+      compareCanonicalBytes(left.minerAddress, right.minerAddress),
+    );
   }
 
   /**
@@ -1698,12 +1708,11 @@ export class JGCNode extends EventEmitter {
     }
     const targetMicros = decodeDifficultyBitsExact(this.chain.currentDifficultyBits);
     const minimumWorkMicros = (targetMicros + 9n) / 10n;
-    const minimumWork = Number(minimumWorkMicros) / Number(DIFFICULTY_SCALE);
-    const proof = quantumVerifyProofForConsensus(
-      contribution.proof,
-      nextHeight,
-      minimumWork,
-    );
+    const proof = verifyPortableComputeProofExact(contribution.proof, {
+      blockHeight: nextHeight,
+      epochBlockIndex: nextHeight % BLOCKS_PER_EPOCH,
+      minimumWorkMicros,
+    });
     return proof.valid
       ? { ok: true }
       : { ok: false, error: proof.error ?? "invalid contribution proof" };

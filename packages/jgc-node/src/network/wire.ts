@@ -36,11 +36,10 @@ export const MAX_DECODED_PAYLOAD_OBJECT_KEYS = 256;
 export const MAX_DECODED_PAYLOAD_STRING_BYTES = 1_048_576;
 
 // Signed messages must be recent enough to prevent replay while allowing for
-// normal clock skew and short network delays. The node also caches accepted
-// message digests for this age window (see network/node.ts).
+// normal clock skew and short network delays. Connection-bound sequence numbers
+// provide replay defense independently of timestamps (see auth-session.ts).
 export const MAX_AUTH_MESSAGE_AGE_SECONDS = 15 * 60;
 export const MAX_AUTH_MESSAGE_FUTURE_SKEW_SECONDS = 120;
-export const MAX_AUTHENTICATED_MESSAGE_CACHE = 10_000;
 
 const BIGINT_TAG = "$jgc:bigint";
 const MAP_TAG = "$jgc:map";

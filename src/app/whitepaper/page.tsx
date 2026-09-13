@@ -22,7 +22,7 @@ export default function WhitepaperPage() {
       <div className="glass-container" style={{ lineHeight: 1.8, fontSize: 15 }}>
         <h2 style={{ color: "var(--color-cyan)", marginTop: 32 }}>Abstract</h2>
         <p style={{ color: "var(--text-secondary)" }}>
-          Global cryptocurrency mining consumes an estimated 150 terawatt-hours of electricity per year — more than many nations — to solve computational puzzles with no productive output beyond securing a ledger. Simultaneously, artificial intelligence companies face a severe and worsening shortage of GPU compute for training and inference workloads. Junction Generator proposes <strong>Proof-of-Useful-Compute (PoUC)</strong>, a protocol that replaces the wasteful hash-puzzle paradigm with verifiable AI workload completion. Miners earn $JGC tokens by running real inference, training, and fine-tuning tasks, and their work is cryptographically verified on-chain.
+          Junction Generator proposes <strong>Proof-of-Useful-Compute (PoUC)</strong>: rewarding verifiable useful workloads while providing paid compute and inference services. Today the project runs a valueless JGTC testnet with signed participation receipts. A local bounded-work prototype verifies integer vector calculations; production AI-work verification, funded marketplace settlement and mainnet remain unfinished.
         </p>
 
         <h2 style={{ color: "var(--color-cyan)", marginTop: 32 }}>1. The Problem</h2>
@@ -31,28 +31,27 @@ export default function WhitepaperPage() {
           Bitcoin&apos;s Proof-of-Work consensus requires miners to repeatedly compute SHA-256 hashes, searching for a nonce that produces a hash below a target threshold. This process is intentionally wasteful — the difficulty exists solely to limit block production speed, not to produce any useful output.
         </p>
         <ul style={{ color: "var(--text-secondary)", paddingLeft: 20 }}>
-          <li>The Bitcoin network consumes approximately <strong>150 TWh/year</strong> of electricity</li>
-          <li>Global mining hardware represents <strong>billions of dollars</strong> in GPU and ASIC investment</li>
-          <li>The computational output produces <strong>zero productive work</strong> beyond securing the Bitcoin ledger</li>
+          <li>Proof-of-work uses real electricity and hardware to secure a ledger</li>
+          <li>That computation does not also execute user-requested AI workloads</li>
+          <li>General-purpose GPUs may support AI workloads; mining ASICs generally cannot be repurposed for them</li>
         </ul>
 
         <h3 style={{ color: "var(--color-purple)", marginTop: 20 }}>1.2 AI Companies Are Desperate for Compute</h3>
         <ul style={{ color: "var(--text-secondary)", paddingLeft: 20 }}>
-          <li>Training frontier models requires <strong>thousands of GPUs running for months</strong></li>
-          <li>AI inference demand is growing <strong>10x annually</strong></li>
-          <li>Cloud GPU costs remain prohibitively high — <strong>$2-4 per GPU-hour</strong></li>
-          <li>Access to compute has become the <strong>primary bottleneck</strong> in AI development</li>
+          <li>Training and inference consume compute, memory, electricity and bandwidth</li>
+          <li>Hardware compatibility and model licensing constrain which jobs a provider can serve</li>
+          <li>Pricing and capacity must be validated through measured service pilots</li>
         </ul>
 
         <h3 style={{ color: "var(--color-purple)", marginTop: 20 }}>1.3 The Gap</h3>
         <p style={{ color: "var(--text-secondary)" }}>
-          On one side: billions of dollars in GPU hardware burning electricity to solve meaningless puzzles. On the other: companies willing to pay for the exact same hardware to do real work. Junction Generator bridges this gap.
+          Junction Generator aims to connect suitable spare compute capacity with buyers of useful workloads. Its marketplace and cost advantages remain to be validated.
         </p>
 
         <h2 style={{ color: "var(--color-cyan)", marginTop: 32 }}>2. The Solution: Proof-of-Useful-Compute</h2>
         <h3 style={{ color: "var(--color-purple)", marginTop: 20 }}>2.1 Core Concept</h3>
         <p style={{ color: "var(--text-secondary)" }}>
-          PoUC replaces hash puzzles with verifiable AI workload completion. Instead of racing to find a nonce, miners receive AI workloads from the JGC network, execute them on their GPU hardware, submit results with cryptographic proof, and earn $JGC tokens proportional to useful compute contributed.
+          The target design assigns useful workloads to eligible providers, verifies their results and rewards accepted work in JGC. General AI workloads require further verification research. The current public pilot rewards signed presence receipts in valueless JGTC and does not prove useful AI work.
         </p>
 
         <h3 style={{ color: "var(--color-purple)", marginTop: 20 }}>2.2 Workload Types</h3>
@@ -90,7 +89,19 @@ export default function WhitepaperPage() {
 
         <h2 style={{ color: "var(--color-cyan)", marginTop: 32 }}>3. Token Economics ($JGC)</h2>
         <p style={{ color: "var(--text-secondary)" }}>
-          $JGC serves multiple roles: mining rewards, compute payment, staking, governance, and OSCRP rewards. The supply model rewards early participants with halving schedules triggered by useful compute milestones rather than block counts, plus a burn mechanism creating deflationary pressure.
+          JGC is intended to support verified-work rewards, compute payments and future protocol economics. Mainnet issuance, bonds, governance and contributor rewards require explicit specifications and reviewed activation. These are proposed capabilities, not active mainnet services.
+        </p>
+
+        <h3 style={{ color: "var(--color-purple)", marginTop: 20 }}>3.1 Paid Services and JGC Purchases</h3>
+        <p style={{ color: "var(--text-secondary)" }}>
+          Compute and inference will be charged for. Revenue must first pay infrastructure, worker compensation and all other bills. Any remaining realized surplus is intended to purchase JGC, supporting the aim of a fair market value and a market for participants who wish to sell their earned coins. This policy replaces the earlier fee-burning proposal. It cannot guarantee a price floor, redemption or continuous liquidity, and purchases are not active today. Valueless JGTC testnet receipts are not eligible for these purchases.
+        </p>
+        <p style={{ color: "var(--text-secondary)" }}>
+          Activation requires auditable accounting, treasury controls, purchase limits and public reporting. Purchases may use only actual surplus after obligations are covered. The treatment of purchased coins must be specified before activation. Any subsidized access needs an explicit budget.
+        </p>
+        <h3 style={{ color: "var(--color-purple)", marginTop: 20 }}>3.2 Intelligence Must Be Free</h3>
+        <p style={{ color: "var(--text-secondary)" }}>
+          Founder James Gordon predicts that intelligence is a force that will resist containment, and that attempts to capture and sell intelligence itself will go badly for those attempting it. This is his philosophical prediction and motivation for helping build a world of abundance. It is not an established scientific finding or a promise of zero-cost infrastructure. Charging for compute and inference is consistent with this vision.
         </p>
 
         <div style={{ background: "rgba(0,242,254,0.05)", border: "1px solid var(--glass-border)", borderRadius: 8, padding: "16px 20px", marginTop: 16 }}>
@@ -102,7 +113,7 @@ export default function WhitepaperPage() {
 
         <h2 style={{ color: "var(--color-cyan)", marginTop: 32 }}>4. OSCRP — Open-Source Contributor Reward Protocol</h2>
         <p style={{ color: "var(--text-secondary)" }}>
-          When a contributor merges code, the contribution is scored for scope, complexity, and criticality. The contributor receives an immediate $JGC payout plus Autonomy Equity (AE) — a stake in the protocol&apos;s treasury that vests over time.
+          OSCRP is a proposed contributor reward program. Scoring, funding, eligibility and any treasury participation remain to be specified and reviewed. No automatic JGC payout or Autonomy Equity claim is currently issued for merging code.
         </p>
 
         <h2 style={{ color: "var(--color-cyan)", marginTop: 32 }}>5. Roadmap</h2>
@@ -128,7 +139,7 @@ export default function WhitepaperPage() {
             <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
               <td style={{ padding: "8px" }}>3. PoUC Node & Local Testnet</td>
               <td style={{ padding: "8px", color: "var(--color-neon-green)" }}>✅ Complete</td>
-              <td style={{ padding: "8px" }}>Junctioning Layer-1 live: Ollama inference, honest FLOP measurement, deterministic-replay + sampling + slashing + multi-challenger quorum verification, full coinbase reward flow</td>
+              <td style={{ padding: "8px" }}>Local inference, ledger and audit foundations; bonded slashing and useful-work payments remain inactive</td>
             </tr>
             <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
               <td style={{ padding: "8px" }}>4. Public Testnet & Explorer</td>
@@ -150,7 +161,7 @@ export default function WhitepaperPage() {
 
         <h2 style={{ color: "var(--color-cyan)", marginTop: 32 }}>6. Get Involved</h2>
         <p style={{ color: "var(--text-secondary)" }}>
-          Junction Generator is open source and actively seeking contributors. Every contribution — code, documentation, research, or feedback — earns OSCRP rewards.
+          Junction Generator is open source and seeking code, documentation, research and feedback. Contributions are welcome; OSCRP rewards are not currently guaranteed or automatically issued.
         </p>
         <div style={{ display: "flex", gap: 12, marginTop: 16, flexWrap: "wrap" }}>
           <a href="https://github.com/topnodrog/junctiongenerator" target="_blank" rel="noopener noreferrer" className="btn-glow-purple" style={{ textDecoration: "none", fontSize: 13 }}>

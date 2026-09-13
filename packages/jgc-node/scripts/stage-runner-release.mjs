@@ -40,6 +40,8 @@ const paths = [
   "rust/rust-toolchain.toml",
   "rust/src",
   "scripts/compose-smoke.mjs",
+  "scripts/bitcoin-regtest-smoke.mjs",
+  "scripts/ethereum-local-smoke.mjs",
   "scripts/release-check.mjs",
   "scripts/release-manifest.mjs",
   "scripts/release-manifest.test.mjs",

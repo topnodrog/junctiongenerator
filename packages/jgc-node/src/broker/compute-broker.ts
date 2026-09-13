@@ -15,8 +15,8 @@
  *        b. Commercial bidders (ranked by price/TFLOPS, highest first)
  *        c. Scientific fallback platforms (Folding@Home, Rosetta@Home, etc.)
  *   3. ASSIGNS work units to available nodes.
- *   4. VERIFIES completion via ZK proofs submitted by nodes.
- *   5. RELEASES payment to nodes upon verified completion.
+ *   4. Completion and payment are disabled until assignment-bound verification
+ *      and funded settlement are integrated. Submitted proof objects are not evidence.
  *
  * INCENTIVE MODEL:
  *   - Nodes earn JGC for consensus PoUC work (epoch settlement).
@@ -355,45 +355,20 @@ export class ComputeBroker {
   }
 
   /**
-   * Accept a completed task from a node (with ZK proof).
-   * Marks assignment as COMPLETED and queues it for payment.
+   * Legacy completion endpoint, disabled until assignment-bound verification
+   * and funded settlement are integrated. Always rejects without state changes.
    *
    * @param assignmentId  The assignment ID issued during allocation.
    * @param proof         ZK proof of computation completion.
    */
   completeAssignment(
-    assignmentId: string,
-    proof:        import("../types/index.js").ComputeProof,
+    _assignmentId: string,
+    _proof:        import("../types/index.js").ComputeProof,
   ): boolean {
-    const assignment = this.assignments.get(assignmentId);
-    if (!assignment) return false;
-    if (assignment.status !== "IN_PROGRESS") return false;
-
-    const now = Math.floor(Date.now() / 1000);
-    if (now > assignment.deadlineAt) {
-      assignment.status = "EXPIRED";
-      return false;
-    }
-
-    assignment.completionProof = proof;
-    assignment.status          = "COMPLETED";
-    this.pendingPayments.set(assignmentId, assignment);
-
-    // Free node capacity.
-    const node = this.nodes.get(assignment.nodePublicKey);
-    if (node) {
-      node.brokerTFLOPS = Math.max(0, node.brokerTFLOPS - assignment.assignedTFLOPS);
-      node.idleTFLOPS   += assignment.assignedTFLOPS;
-    }
-
-    console.log(
-      `[Broker] Assignment ${assignmentId} completed — queued for payment ` +
-      `(${assignment.assignedTFLOPS} TFLOPS)`
-    );
-
-    // Trigger re-allocation with freed capacity.
-    this.runAllocationCycle();
-    return true;
+    // Legacy ComputeProof does not bind network, lease, miner, input and output.
+    // Even a valid circuit proof cannot safely authorize this assignment's payment.
+    // Keep this entry point fail-closed, including when no verifier is configured.
+    return false;
   }
 
   /**

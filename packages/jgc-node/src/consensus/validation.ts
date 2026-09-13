@@ -55,6 +55,7 @@ import {
   computeTransactionMerkleRoot,
   GENESIS_BLOCK_VERSION,
   hashBlockHeader,
+  serializeBlockHeader,
 } from "./block.js";
 import { computeContributionsMerkleRoot, computeEpochRoot, computeEpochSettlement, applyBlockToEpoch } from "./epoch.js";
 import {
@@ -65,7 +66,7 @@ import {
   isCanonicalDifficultyBits,
 } from "./emission.js";
 import { quantumVerifyContributionSignature } from "../crypto/pq.js";
-import { verifyPortableComputeProof } from "../crypto/compute-proof.js";
+import { verifyPortableComputeProofExact } from "../crypto/compute-proof.js";
 import { txid, UTXOSet, validateSpend } from "./utxo.js";
 import { verifyMerkleProof, getMerkleProof, buildMerkleTree, hashComputeProof } from "../crypto/merkle.js";
 import { validateAuditVerdictRecord } from "../broker/audit-protocol.js";
@@ -79,6 +80,7 @@ import { createEpochSettlementTransaction } from "./settlement-transaction.js";
 // ─────────────────────────────────────────────────────────────────────────────
 
 export enum ValidationError {
+  INVALID_HEADER_ENCODING = "INVALID_HEADER_ENCODING",
   // Header errors
   INVALID_VERSION          = "INVALID_VERSION",
   TIMESTAMP_TOO_OLD        = "TIMESTAMP_TOO_OLD",
@@ -163,6 +165,9 @@ export function validateBlockHeader(
   nowUnix:          number,
   medianPastTime:   number,
 ): ValidationResult {
+  try { serializeBlockHeader(header); } catch (error) {
+    return fail(ValidationError.INVALID_HEADER_ENCODING, `Non-canonical header: ${String(error)}`);
+  }
   // Version check — v3 commits portable consensus encodings and signed audit evidence.
   // BITCOIN: nVersion must not be negative; BIP 34/65/66/CSV version bits enforced.
   if (header.version !== GENESIS_BLOCK_VERSION) {
@@ -214,7 +219,7 @@ export function validateBlockHeader(
     );
   }
   const target = Number(targetMicros) / Number(DIFFICULTY_SCALE);
-  if (targetMicros <= 0n || !Number.isFinite(target) || !isCanonicalDifficultyBits(header.difficultyBits)) {
+  if (targetMicros <= 0n || !isCanonicalDifficultyBits(header.difficultyBits)) {
     return fail(ValidationError.INVALID_DIFFICULTY_BITS,
       `difficultyBits 0x${header.difficultyBits.toString(16)} decodes to ${target} but is not a canonical positive target`
     );
@@ -268,12 +273,17 @@ export function validateBlockHeader(
  * @param epochBlockIndex  Block's position within its epoch [0..143].
  * @param currentHeight    Block height (for circuit activation checks).
  */
-export async function validateComputeProofs(
+/** Promise-compatible public API; the verification core is synchronous. */
+export async function validateComputeProofs(...args: Parameters<typeof validateComputeProofsSync>): Promise<ValidationResult> {
+  return validateComputeProofsSync(...args);
+}
+
+export function validateComputeProofsSync(
   contributions:  MinerComputeContribution[],
   header:         BlockHeader,
   epochBlockIndex: number,
   currentHeight:   BlockHeight,
-): Promise<ValidationResult> {
+): ValidationResult {
   const difficultyTargetMicros = decodeDifficultyBitsExact(header.difficultyBits);
   const difficultyTarget = Number(difficultyTargetMicros) / Number(DIFFICULTY_SCALE);
 
@@ -327,13 +337,12 @@ export async function validateComputeProofs(
 
   // Per-proof minimum: 10% of block target (prevents thousands of tiny proofs).
   const perProofMinMicros = (difficultyTargetMicros + 9n) / 10n;
-  const perProofMin = Number(perProofMinMicros) / Number(DIFFICULTY_SCALE);
 
   const verificationResults = contributions.map((contribution) =>
-    verifyPortableComputeProof(contribution.proof, {
+    verifyPortableComputeProofExact(contribution.proof, {
       blockHeight: currentHeight,
       epochBlockIndex,
-      minimumWork: perProofMin,
+      minimumWorkMicros: perProofMinMicros,
     })
   );
 
@@ -775,10 +784,15 @@ export function validateAuditVerdicts(
  * @param block    The full block to validate.
  * @param context  Chain state context.
  */
-export async function validateBlock(
+/** Keep existing async callers compatible while node transitions remain atomic. */
+export async function validateBlock(...args: Parameters<typeof validateBlockSync>): Promise<ValidationResult> {
+  return validateBlockSync(...args);
+}
+
+export function validateBlockSync(
   block:   Block,
   context: BlockValidationContext,
-): Promise<ValidationResult> {
+): ValidationResult {
   const { header } = block;
   const warnings:  string[] = [];
 
@@ -872,7 +886,7 @@ export async function validateBlock(
   if (!epochRootResult.valid) return epochRootResult;
 
   // ── Step 6: ZK Proof verification (core PoUC check) ──────────────────────
-  const pouCResult = await validateComputeProofs(
+  const pouCResult = validateComputeProofsSync(
     block.computeProofs,
     header,
     context.epochBlockIndex,

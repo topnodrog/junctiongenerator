@@ -10,6 +10,10 @@ import { MAINNET_NETWORK } from "./networks.js";
  */
 export const MAINNET_GATE_KEYS = [
   "proofSystem",
+  "postQuantumSecurity",
+  "paymentPrivacy",
+  "usefulServices",
+  "governance",
   "deterministicConsensus",
   "permissionlessProduction",
   "peerAuthentication",
@@ -23,6 +27,10 @@ export type MainnetGateKey = typeof MAINNET_GATE_KEYS[number];
 
 export interface MainnetGateRecord {
   readonly proofSystem: boolean;
+  readonly postQuantumSecurity: boolean;
+  readonly paymentPrivacy: boolean;
+  readonly usefulServices: boolean;
+  readonly governance: boolean;
   readonly deterministicConsensus: boolean;
   readonly permissionlessProduction: boolean;
   readonly peerAuthentication: boolean;
@@ -57,9 +65,15 @@ export const MAINNET_READINESS: MainnetReadinessRecord = Object.freeze({
   },
   gates: {
     proofSystem: false,
-    deterministicConsensus: false,
+    postQuantumSecurity: false,
+    paymentPrivacy: false,
+    usefulServices: false,
+    governance: false,
+    // Acceptance evidence: docs/mainnet/DETERMINISTIC_CONSENSUS.md.
+    deterministicConsensus: true,
     permissionlessProduction: false,
-    peerAuthentication: false,
+    // Connection/session acceptance evidence: docs/mainnet/PEER_AUTHENTICATION.md.
+    peerAuthentication: true,
     validatorEconomics: false,
     reproducibleArtifacts: false,
     soloSoak: false,

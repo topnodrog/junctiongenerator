@@ -44,7 +44,7 @@ import {
   computeEpochRoot,
   initEpochState,
 } from "./epoch.js";
-import { compareCanonicalBytes } from "../protocol/canonical.js";
+import { compareCanonicalBytes, consensusUInt } from "../protocol/canonical.js";
 import {
   auditVerdictCommitment,
   type AuditVerdictRecord,
@@ -75,6 +75,16 @@ export const BLOCK_HEADER_SIZE = 192;
  * @returns 192-byte Buffer in canonical serialization order.
  */
 export function serializeBlockHeader(header: BlockHeader): Buffer {
+  for (const field of ["version", "difficultyBits", "nonce"] as const) {
+    if (!Number.isSafeInteger(header[field]) || header[field] < 0 || header[field] > 0xffff_ffff) {
+      throw new RangeError(`${field} must fit uint32`);
+    }
+  }
+  consensusUInt(header.timestamp, "timestamp");
+  consensusUInt(header.height, "height");
+  for (const field of ["prevHash", "merkleRoot", "computeRoot", "epochRoot", "auditRoot"] as const) {
+    if (typeof header[field] !== "string" || !/^[0-9a-f]{64}$/.test(header[field])) throw new RangeError(`${field} must be a canonical hash`);
+  }
   const buf = Buffer.alloc(BLOCK_HEADER_SIZE);
   let offset = 0;
 
@@ -124,9 +134,9 @@ export function serializeBlockHeader(header: BlockHeader): Buffer {
  * BITCOIN ANALOG: CBlockHeader::Unserialize()
  */
 export function deserializeBlockHeader(buf: Buffer): BlockHeader {
-  if (buf.length < BLOCK_HEADER_SIZE) {
+  if (buf.length !== BLOCK_HEADER_SIZE) {
     throw new RangeError(
-      `Buffer too short: ${buf.length} bytes, expected ${BLOCK_HEADER_SIZE}`
+      `Invalid header length: ${buf.length} bytes, expected ${BLOCK_HEADER_SIZE}`
     );
   }
 
@@ -142,7 +152,9 @@ export function deserializeBlockHeader(buf: Buffer): BlockHeader {
   const difficultyBits = buf.readUInt32LE(offset);              offset += 4;
   const nonce          = buf.readUInt32LE(offset);              offset += 4;
   const height         = Number(buf.readBigUInt64LE(offset));   offset += 8;
-  // reserved (4 bytes) — skip                                  offset += 4;
+  if (buf.readUInt32LE(offset) !== 0) throw new RangeError("Header reserved bytes must be zero");
+  consensusUInt(timestamp, "timestamp");
+  consensusUInt(height, "height");
 
   return { version, prevHash, merkleRoot, computeRoot, epochRoot, auditRoot, timestamp, difficultyBits, nonce, height };
 }

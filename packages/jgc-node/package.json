@@ -39,6 +39,8 @@
     "discovery-demo": "node dist/scripts/discovery-demo.js",
     "wallet-demo": "node dist/scripts/wallet-demo.js",
     "wallet": "node dist/scripts/wallet-cli.js",
+    "test:bitcoin-regtest": "npm run build && node scripts/bitcoin-regtest-smoke.mjs",
+    "test:ethereum-local": "npm run build && node scripts/ethereum-local-smoke.mjs",
     "emission-table": "node dist/scripts/print-emission.js",
     "junctioning-smoke": "node dist/scripts/junctioning-smoke.js",
     "junctioning-verify-smoke": "node dist/scripts/junctioning-verify-smoke.js",
@@ -60,6 +62,10 @@
   "dependencies": {
     "@noble/post-quantum": "^0.6.1",
     "@noble/secp256k1": "^3.1.0",
+    "@scure/bip32": "2.4.0",
+    "@scure/bip39": "2.4.0",
+    "@scure/btc-signer": "2.4.1",
+    "ethers": "6.17.0",
     "ws": "^8.17.0"
   },
   "devDependencies": {
@@ -73,7 +79,7 @@
   },
   "overrides": {
     "brace-expansion": "1.1.18",
-    "js-yaml": "3.15.1"
+    "js-yaml": "3.15.2"
   },
   "jest": {
     "preset": "ts-jest/presets/default-esm",

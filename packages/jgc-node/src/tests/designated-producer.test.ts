@@ -51,6 +51,20 @@ describe("designated block producer", () => {
     }));
   });
 
+  test("does not let a second valid task from one participant poison a block template", async () => {
+    const node = new JGCNode(config(), createGenesisBlock());
+    const peer = makePeer("miner", "127.0.0.1:21001");
+    node.connectPeer(peer.conn);
+    const height = node.getChainInfo().tipHeight + 1;
+    const duplicateMiner = DEFAULT_MINERS[0]!;
+    await node.processMessage("miner", makeMessage(MT.COMPUTE_PROOF, makeContribution(duplicateMiner, height, "first")));
+    await node.processMessage("miner", makeMessage(MT.COMPUTE_PROOF, makeContribution(duplicateMiner, height, "reconnect")));
+    await node.processMessage("miner", makeMessage(MT.COMPUTE_PROOF, makeContribution(DEFAULT_MINERS[1]!, height)));
+
+    expect(node.getPendingProofs()).toHaveLength(2);
+    await expect(new DesignatedBlockProducer(node).tickNow()).resolves.toMatchObject({ header: { height } });
+  });
+
   test("continues from replayed chainstate without a separate producer database", async () => {
     const dataDir = join(tmpdir(), `jgc-producer-${process.pid}-${Date.now()}`);
     try {

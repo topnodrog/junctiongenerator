@@ -36,6 +36,8 @@ import { encodePeerMessage, decodePeerMessage } from "./wire.js";
  * kill the connection (1009: message too big), which is the desired posture.
  */
 const MAX_FRAME_BYTES = 8 * 1024 * 1024;
+export const MAX_QUEUED_PEER_BYTES = 16 * 1024 * 1024;
+export const MAX_QUEUED_PEER_MESSAGES = 128;
 
 /**
  * Bind an open WebSocket to a node as a peer.
@@ -83,6 +85,10 @@ function attachSocket(
         finish(new Error(`socket is not open (readyState ${ws.readyState})`));
         return;
       }
+      if (ws.bufferedAmount + data.length > MAX_QUEUED_PEER_BYTES) {
+        finish(new Error("outbound peer queue exceeded"));
+        return;
+      }
 
       try {
         ws.send(data, error => finish(error ?? undefined));
@@ -90,20 +96,33 @@ function attachSocket(
         finish(error instanceof Error ? error : new Error(String(error)));
       }
     }),
-    disconnect: () => ws.close(),
+    disconnect: () => { closed = true; ws.terminate(); },
   };
 
   // Per-peer serialized processing pipeline (see file header).
   let pipeline: Promise<void> = Promise.resolve();
+  let queuedBytes = 0;
+  let queuedMessages = 0;
+  let closed = false;
   ws.on("message", (data) => {
+    if (closed) return;
     const frame = Buffer.isBuffer(data)
       ? data
       : Array.isArray(data)
         ? Buffer.concat(data)
         : Buffer.from(data);
     conn.info.bytesReceived += frame.length;
+    if (queuedBytes + frame.length > MAX_QUEUED_PEER_BYTES || queuedMessages >= MAX_QUEUED_PEER_MESSAGES) {
+      closed = true;
+      node.disconnectPeer(peerId);
+      ws.terminate();
+      return;
+    }
+    queuedBytes += frame.length;
+    queuedMessages++;
     pipeline = pipeline
       .then(async () => {
+        if (closed) return;
         const msg = decodePeerMessage(frame, node.config.networkMagic);
         if (msg === null) {
           console.warn(`[Transport] ${peerId}: dropping malformed message`);
@@ -112,10 +131,16 @@ function attachSocket(
         }
         await node.processMessage(peerId, msg);
       })
-      .catch(err => console.error(`[Transport] ${peerId}: ${String(err)}`));
+      .catch(err => {
+        closed = true;
+        node.disconnectPeer(peerId);
+        ws.terminate();
+        console.error(`[Transport] ${peerId}: ${String(err)}`);
+      })
+      .finally(() => { queuedBytes -= frame.length; queuedMessages--; });
   });
 
-  ws.on("close", () => node.disconnectPeer(peerId));
+  ws.on("close", () => { closed = true; node.disconnectPeer(peerId); });
   ws.on("error", (err) => console.error(`[Transport] ${peerId}: socket error: ${String(err)}`));
 
   node.connectPeer(conn);

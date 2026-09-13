@@ -10,16 +10,17 @@ const project = process.env.GOOGLE_CLOUD_PROJECT;
 const bucketName = process.env.MONITOR_BUCKET;
 const windowId = process.env.MONITOR_WINDOW_ID;
 const deadline = Date.parse(process.env.MONITOR_DEADLINE_UTC ?? '');
-const participants = (process.env.MONITOR_PARTICIPANTS ?? '').split(',');
+const participants = (process.env.MONITOR_PARTICIPANTS ?? '').split(',').map(address => address.trim()).filter(Boolean);
 const model = process.env.GEMINI_MODEL ?? 'gemini-2.5-flash-lite';
 const schedulerJob = process.env.MONITOR_SCHEDULER_JOB;
 const armed = process.env.MONITOR_ARMED === 'true';
-if (!project || !bucketName || !windowId || !Number.isFinite(deadline) || !schedulerJob || !/^[a-z0-9-]+$/.test(windowId)) throw new Error('Incomplete monitor configuration');
+if (!project || !bucketName || !windowId || !Number.isFinite(deadline) || !schedulerJob || !/^[a-z0-9-]+$/.test(windowId) ||
+  participants.length !== 2 || new Set(participants).size !== 2 || participants.some(address => !/^1QGC[a-f0-9]{40}$/.test(address))) throw new Error('Incomplete monitor configuration');
 const storage = new Storage({ projectId: project, timeout: 15000, retryOptions: { autoRetry: true, maxRetries: 2, totalTimeout: 20, maxRetryDelay: 3 } });
 const bucket = storage.bucket(bucketName);
 const control = `control/${windowId}`;
 const stateName = `${control}/state.json`;
-const runnerName = `incoming/${windowId}/back-checker.json`;
+const recorderName = address => `incoming/${windowId}/participants/${address}.json`;
 const endpoints = [
   { seed: 'seed-a', url: 'wss://seed-a.junctiongenerator.net' },
   { seed: 'seed-b', url: 'wss://jgc-testnet-seed-b.fly.dev' },
@@ -95,13 +96,18 @@ async function collect() {
       return snapshot;
     })(),
     Promise.all(endpoints.map(probe)),
-    (async () => { const row = await readJson(runnerName); return row ? validateRunner(row.value, windowId) : null; })(),
+    (async () => Object.fromEntries(await Promise.all(participants.map(async address => {
+      try {
+        const row = await readJson(recorderName(address));
+        return [address, row ? validateRunner(row.value, windowId) : null];
+      } catch { return [address, null]; }
+    }))))(),
   ]);
   return { capturedAt: new Date().toISOString(),
     explorer: results[0].status === 'fulfilled' ? results[0].value : null,
     ...(results[0].status === 'rejected' ? { explorerError: 'Explorer evidence unavailable or invalid' } : {}),
     transport: results[1].status === 'fulfilled' ? results[1].value : endpoints.map(e => ({ seed: e.seed, reachable: false, latencyMs: 0 })),
-    runner: results[2].status === 'fulfilled' ? results[2].value : null,
+    recorders: results[2].status === 'fulfilled' ? results[2].value : Object.fromEntries(participants.map(address => [address, null])),
   };
 }
 
@@ -145,12 +151,12 @@ async function tick() {
   let state;
   let findings;
   if (!saved) {
-    findings = observationFindings(observation, windowId);
+    findings = observationFindings(observation, windowId, participants);
     const visible = new Set(observation.explorer?.epoch.participants.map(p => p.address) ?? []);
     if (participants.some(address => !visible.has(address))) findings.push({ id: 'participant.baseline', severity: 'fail', message: 'Both owner participants must be visible before starting' });
     const modelCheck = await readJson(`${control}/model-preflight.json`);
     if (modelCheck?.value.status !== 'reviewed') findings.push({ id: 'gemini.preflight', severity: 'fail', message: 'Gemini must complete its connection check before starting' });
-    if (!armed || findings.length) {
+    if (!armed || findings.some(finding => finding.severity === 'fail')) {
       await updateJson(`${control}/preflight.json`, { capturedAt: observation.capturedAt, armed, findings, evidenceName });
       return { phase: 'preflight', armed, findings };
     }
@@ -181,10 +187,12 @@ createServer(async (req, res) => {
       const summary = state ? { ...state.value, blocks: undefined } : null;
       res.end(JSON.stringify({ windowId, state: summary, review: review?.value ?? null, preflight: state ? undefined : (await readJson(`${control}/preflight.json`))?.value })); return;
     }
-    if (req.method === 'POST' && path === '/enroll-back-checker') {
+    if (req.method === 'POST' && path === '/enroll-participant-recorder') {
       if (Date.now() >= deadline) throw new Error('Window enrollment has expired');
-      const [uploadUrl] = await bucket.file(runnerName).getSignedUrl({ version: 'v4', action: 'write', expires: deadline, contentType: 'application/json' });
-      res.end(JSON.stringify({ windowId, expiresAt: new Date(deadline).toISOString(), uploadUrl })); return;
+      const participantAddress = url.searchParams.get('participant') ?? '';
+      if (!participants.includes(participantAddress)) throw new Error('Participant is not enrolled for this window');
+      const [uploadUrl] = await bucket.file(recorderName(participantAddress)).getSignedUrl({ version: 'v4', action: 'write', expires: deadline, contentType: 'application/json' });
+      res.end(JSON.stringify({ windowId, participantAddress, expiresAt: new Date(deadline).toISOString(), uploadUrl })); return;
     }
     if (req.method === 'POST' && path === '/test-gemini') {
       if (Date.now() >= deadline) throw new Error('Window has expired');

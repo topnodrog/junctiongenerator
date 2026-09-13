@@ -18,6 +18,42 @@ permissions:
   contents: read
 
 jobs:
+  native-wallets:
+    name: Native Bitcoin and Ethereum wallet round trips
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: packages/jgc-node
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: packages/jgc-node/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - name: Fetch pinned, checksum-verified local test nodes
+        shell: bash
+        run: |
+          mkdir -p .tmp/native-binaries
+          cd .tmp/native-binaries
+          curl --fail --location --retry 2 -o bitcoin.tar.gz https://bitcoincore.org/bin/bitcoin-core-31.1/bitcoin-31.1-x86_64-linux-gnu.tar.gz
+          printf '%s\n' 'b80d9c3e04da78fb6f0569685673418cf686fadba9042d926d13fb87ff503f9e  bitcoin.tar.gz' | sha256sum --check
+          tar -xzf bitcoin.tar.gz
+          curl --fail --location --retry 2 -o foundry.tar.gz https://github.com/foundry-rs/foundry/releases/download/v1.8.1/foundry_v1.8.1_linux_amd64.tar.gz
+          printf '%s\n' '37b45855232e57624d90113b049ca54f0c92055bb5c1997fcbdc3076c7b89c10  foundry.tar.gz' | sha256sum --check
+          tar -xzf foundry.tar.gz anvil
+      - name: Receive, restore and send native Bitcoin test coins
+        env:
+          BITCOIND_BIN: ${{ github.workspace }}/packages/jgc-node/.tmp/native-binaries/bitcoin-31.1/bin/bitcoind
+        run: node scripts/bitcoin-regtest-smoke.mjs
+      - name: Receive, restore and send native ETH on a local chain
+        env:
+          ANVIL_BIN: ${{ github.workspace }}/packages/jgc-node/.tmp/native-binaries/anvil
+        run: node scripts/ethereum-local-smoke.mjs
+
   hosted-monitor:
     name: Hosted monitor container
     runs-on: ubuntu-latest
@@ -36,7 +72,7 @@ jobs:
       - name: Build and start the isolated monitor image
         run: |
           docker build -f .tmp/monitor-ci/deploy/monitor/Dockerfile -t jgc-monitor-ci .tmp/monitor-ci
-          docker run -d --name jgc-monitor-ci -p 18080:8080 -e GOOGLE_CLOUD_PROJECT=ci-project -e MONITOR_BUCKET=ci-bucket -e MONITOR_WINDOW_ID=ci-window -e MONITOR_DEADLINE_UTC=2030-01-01T00:00:00Z -e MONITOR_SCHEDULER_JOB=projects/ci-project/locations/us-central1/jobs/ci-window jgc-monitor-ci
+          docker run -d --name jgc-monitor-ci -p 18080:8080 -e GOOGLE_CLOUD_PROJECT=ci-project -e MONITOR_BUCKET=ci-bucket -e MONITOR_WINDOW_ID=ci-window -e MONITOR_DEADLINE_UTC=2030-01-01T00:00:00Z -e MONITOR_PARTICIPANTS=1QGC1111111111111111111111111111111111111111,1QGC2222222222222222222222222222222222222222 -e MONITOR_SCHEDULER_JOB=projects/ci-project/locations/us-central1/jobs/ci-window jgc-monitor-ci
           for attempt in $(seq 1 20); do
             if curl --fail --silent http://localhost:18080/health; then exit 0; fi
             sleep 1
@@ -122,7 +158,7 @@ jobs:
             echo "Mainnet preflight unexpectedly reported ready" >&2
             exit 1
           fi
-          node -e 'const fs=require("fs"); const result=JSON.parse(fs.readFileSync("mainnet-preflight.json", "utf8")); const required=["proofSystem","deterministicConsensus","permissionlessProduction","peerAuthentication","validatorEconomics","reproducibleArtifacts","soloSoak","independentSecurityReview"]; if (result.ready || result.status !== "blocked" || JSON.stringify(result.missingGates) !== JSON.stringify(required)) process.exit(1);'
+          node -e 'const fs=require("fs"); const result=JSON.parse(fs.readFileSync("mainnet-preflight.json", "utf8")); const required=["proofSystem","postQuantumSecurity","paymentPrivacy","usefulServices","governance","permissionlessProduction","validatorEconomics","reproducibleArtifacts","soloSoak","independentSecurityReview"]; if (result.ready || result.status !== "blocked" || JSON.stringify(result.missingGates) !== JSON.stringify(required)) process.exit(1);'
       - name: Stage the allowlisted release contents
         env:
           JGC_RELEASE_COMMIT: ${{ github.sha }}
@@ -165,6 +201,15 @@ jobs:
       - name: Install pinned wasm-pack
         run: cargo install wasm-pack --version 0.15.0 --locked
       - run: wasm-pack build rust --target nodejs --out-dir pkg --release
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: packages/jgc-node/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - name: Strict proof admission and complete block validation
+        run: npm run strict-mine-demo
 
   docker-compose-smoke:
     name: Docker Compose testnet smoke

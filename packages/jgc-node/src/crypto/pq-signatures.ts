@@ -37,7 +37,7 @@
  *   160-bit address binding from a single modern primitive.
  */
 
-import { createHash } from "crypto";
+import { createHash, randomBytes } from "crypto";
 import { ml_dsa65 } from "@noble/post-quantum/ml-dsa.js";
 import type { MinerComputeContribution } from "../types/index.js";
 
@@ -75,22 +75,34 @@ export function pqAddressFromPublicKey(publicKeyHex: string): string {
 /**
  * Generate a fresh ML-DSA-65 keypair from a 32-byte seed.
  * Returns hex-encoded { privateKey (4032 B), publicKey (1952 B) }.
- * If no seed is given, a random one is used (CSPRNG via noble).
+ * If no seed is given, Node's OS-backed CSPRNG supplies 32 bytes. Failure throws.
  */
 export function pqGenerateKeyPair(seedHex?: string): { privateKey: string; publicKey: string } {
-  const seed = seedHex ? toBytes(seedHex) : undefined;
-  const kp = ml_dsa65.keygen(seed as any);
-  return { privateKey: toHex(kp.secretKey), publicKey: toHex(kp.publicKey) };
+  if (seedHex !== undefined && !/^[0-9a-fA-F]{64}$/.test(seedHex)) throw new Error("ML-DSA seed must be exactly 32 bytes of hex");
+  const seed = seedHex === undefined ? randomBytes(32) : toBytes(seedHex);
+  try {
+    const kp = ml_dsa65.keygen(seed);
+    return { privateKey: toHex(kp.secretKey), publicKey: toHex(kp.publicKey) };
+  } finally { seed.fill(0); }
+}
+
+/** Check both encoded lengths and that the secret actually controls the public key. */
+export function pqIsMatchingKeyPair(privateKey: string, publicKey: string): boolean {
+  if (!pqIsValidPrivateKey(privateKey) || !pqIsValidPublicKey(publicKey)) return false;
+  try {
+    const message = sha3_256("JGC wallet keypair validation v1");
+    return ml_dsa65.verify(ml_dsa65.sign(message, toBytes(privateKey)), message, toBytes(publicKey));
+  } catch { return false; }
 }
 
 /** Validate that a hex string is a well-formed ML-DSA-65 public key. */
 export function pqIsValidPublicKey(publicKeyHex: string): boolean {
-  return /^[0-9a-fA-F]+$/.test(publicKeyHex) && toBytes(publicKeyHex).length === PQ_SIZES.publicKey;
+  return typeof publicKeyHex === "string" && new RegExp(`^[0-9a-fA-F]{${PQ_SIZES.publicKey * 2}}$`).test(publicKeyHex);
 }
 
 /** Validate that a hex string is a well-formed ML-DSA-65 private key. */
 export function pqIsValidPrivateKey(privateKeyHex: string): boolean {
-  return /^[0-9a-fA-F]+$/.test(privateKeyHex) && toBytes(privateKeyHex).length === PQ_SIZES.secretKey;
+  return typeof privateKeyHex === "string" && new RegExp(`^[0-9a-fA-F]{${PQ_SIZES.secretKey * 2}}$`).test(privateKeyHex);
 }
 
 /** Validate that a hex string is a well-formed ML-DSA-65 signature. */
