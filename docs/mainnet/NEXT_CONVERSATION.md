@@ -18,10 +18,21 @@ Two engineering gates are satisfied: `peerAuthentication` and
 `validatorEconomics`, `reproducibleArtifacts`, `soloSoak`,
 `independentSecurityReview`. Implementation is not external security acceptance.
 
-## Highest-priority next work
+## Design continuation update (2026-09-13)
 
-Start with a bounded privacy/quantum gap audit and versioned shielded-payment
-design. Read `src/crypto/pq-stealth.ts`, `pq-signatures.ts`, `pq-zkp.ts` and
+Read [SHIELDED_PAYMENTS_V3_DESIGN.md](SHIELDED_PAYMENTS_V3_DESIGN.md) first.
+Revision 0 now records the bounded gap audit and versioned design requirements.
+Crypto facade/signature/receipt/Groth16 claims were corrected without runtime
+changes. Next: evaluate a candidate explicitly zero-knowledge PQ proof backend
+in an isolated harness, with exact parameters, resource measurements and review
+gaps. Resolve descriptor/nullifier binding and recipient-private encryption
+before implementing a payment protocol. No construction is approved; all ten
+remaining gates stay blocked. Preserve the published pilot.
+
+## Continuing design requirements
+
+Extend the bounded audit and revision 0 design as construction evidence becomes
+available. Recheck `src/crypto/pq-stealth.ts`, `pq-signatures.ts`, `pq-zkp.ts` and
 `compute-proof.ts` under `packages/jgc-node`. Audit stale claims in comments and
 public material; correct claims without pretending that documentation closes
 the privacy or quantum gates. Consult current primary cryptographic sources

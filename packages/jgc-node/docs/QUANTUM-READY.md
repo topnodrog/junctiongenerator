@@ -100,3 +100,10 @@ See `BACK-CHECKER-ARCHITECTURE.md` and `CONSENSUS-V3.md`.
 | `src/crypto/pq-zkp.ts` | simulation-only hash/Merkle receipt |
 | `src/broker/backcheck.ts` | proof, replay, and quality back-checker roles |
 | `src/crypto/pq-signatures.ts` | ML-DSA-65 contribution and spend signatures |
+
+## Privacy and quantum design continuation
+
+See the [V3 shielded-payment requirements draft](../../../docs/mainnet/SHIELDED_PAYMENTS_V3_DESIGN.md)
+for the bounded gap audit, authority separation, transaction relation,
+parameter/review blockers and versioned migration requirements. No backend is
+selected and no privacy or quantum gate is completed by this draft.

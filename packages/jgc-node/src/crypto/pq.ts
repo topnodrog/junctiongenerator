@@ -1,21 +1,10 @@
 /**
- * @file src/crypto/pq.ts
- * @description Quantum-ready facade for JGC consensus, wallet, and miner code.
- *
- * This is the single integration point that lets the rest of the node switch
- * from the legacy ECDSA/Groth16 crypto to the post-quantum stack WITHOUT each
- * call site importing three different modules. When the chain runs in quantum
- * mode (the default going forward), validation and the wallet call THESE
- * functions instead of signatures.ts / zkp.ts.
- *
- * WHAT'S QUANTUM-SAFE HERE
- * ────────────────────────
- *   signatures   → ML-DSA-65 (FIPS 204)        via pq-signatures.ts
- *   compute receipts → simulation-only hash/Merkle transport via pq-zkp.ts
- *   privacy      → one-time stealth addresses   via pq-stealth.ts
- *   hashing      → SHA3-256 everywhere          (Grover-resistant)
- *
- * Nothing in this file uses secp256k1, BN254, or any pairing/ECC primitive.
+ * Compatibility facade for ML-DSA signatures and simulation receipts.
+ * Historical quantum* names and QUANTUM_MODE select APIs, not readiness.
+ * 1QGC addresses retain a 160-bit key hash. Experimental V2 destinations
+ * permit sender spending and hide neither values nor spends. Hash/Merkle
+ * receipts cannot prove computation. Mainnet still declares Groth16.
+ * See docs/mainnet/SHIELDED_PAYMENTS_V3_DESIGN.md at the repository root.
  */
 
 import type { ComputeProof, MinerComputeContribution } from "../types/index.js";
@@ -54,7 +43,7 @@ export const quantumGenerateKeyPair = pqGenerateKeyPair;
 export const quantumAddressFromPublicKey = pqAddressFromPublicKey;
 export const quantumScriptPubKey = pqScriptPubKey;
 
-/** True iff an address belongs to the quantum-ready (1QGC) family. */
+/** True iff an address belongs to the legacy ML-DSA (1QGC) family. */
 export function isQuantumAddress(addr: string): boolean {
   return /^1QGC[0-9a-f]{40}$/.test(addr);
 }
@@ -72,7 +61,7 @@ export function quantumVerifyComputeProof(cp: ComputeProof, blockHeight: number)
   return pqVerifyComputeProofFromConsensus(cp, blockHeight);
 }
 
-/** PQ replacement for batchVerifyComputeProofs. */
+/** Batch simulation adapter; strict mode rejects nonempty receipts. */
 export function quantumBatchVerifyComputeProofs(proofs: ComputeProof[], blockHeight: number): boolean {
   return proofs.every((p) => quantumVerifyComputeProof(p, blockHeight));
 }

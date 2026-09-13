@@ -1,40 +1,11 @@
 /**
- * @file src/crypto/pq-signatures.ts
- * @description Post-quantum signatures for JGC — ML-DSA-65 (Dilithium3, NIST
- * FIPS 204) for miner compute contributions and transaction spends.
- *
- * WHY THIS REPLACES secp256k1/ECDSA (src/crypto/signatures.ts):
- *   ECDSA's security rests on the elliptic-curve discrete-logarithm problem,
- *   which Shor's algorithm solves in polynomial time on a cryptographically
- *   relevant quantum computer (CRQC). Any JGC address whose public key has
- *   been revealed (i.e. any spent UTXO or any announced miner key) would be
- *   forgeable. ML-DSA is a lattice-based scheme whose security rests on the
- *   Module-LWE / Module-SIS problems, for which no efficient quantum (or
- *   classical) attack is known. It is the NIST-standardized successor to
- *   Dilithium and the industry default for post-quantum signatures.
- *
- * PARAMETER CHOICE — ML-DSA-65 ("Dilithium3", NIST security category 3):
- *   Category 3 ≈ AES-192 classical strength, giving comfortable margin above
- *   the 128-bit floor. Key/signature sizes are the cost of lattice crypto:
- *     publicKey 1,952 B · secretKey 4,032 B · signature 3,309 B
- *   Verification is extremely fast (a few µs), which preserves the chain's
- *   throughput goals — the signature check is never the bottleneck next to
- *   proof verification.
- *
- * SECURITY MODEL (compute contributions) — mirrors signatures.ts:
- *   A contribution is authentic iff
- *     (1) minerAddress == pqAddressFromPublicKey(publicKey)  — payee is
- *         controlled by the signing key, AND
- *     (2) signature is a valid ML-DSA sig over contributionSigHash by publicKey.
- *   The sighash binds minerAddress, the proven work (taskCommitment, circuitId,
- *   tflopsWeight) and the block height — no replay across payee/claim/height.
- *
- * ADDRESSES: "1QGC" + hex(SHA3-256(compressed pubkey)[:20]).
- *   SHA3-256 is quantum-safe (Grover's only halves preimage security, so a
- *   256-bit digest retains ~128-bit post-quantum security). We drop the
- *   RIPEMD160 leg of Bitcoin's hash160 because 160-bit preimage resistance is
- *   the weaker link and SHA3-256 truncated to 20 bytes gives an equivalent
- *   160-bit address binding from a single modern primitive.
+ * ML-DSA-65 (FIPS 204) contribution and transaction signatures.
+ * Primitive security is not end-to-end quantum readiness. Public keys are
+ * 1,952 bytes, secret keys 4,032 bytes, and signatures 3,309 bytes.
+ * Legacy 1QGC addresses and 5114 scripts truncate SHA3-256 to 160 bits:
+ * roughly 80-bit generic quantum preimage work, not a 128-bit PQ floor.
+ * Preserve pilot encodings; full-length commitments need versioned migration.
+ * Independent review of the complete protocol remains required.
  */
 
 import { createHash, randomBytes } from "crypto";
@@ -49,12 +20,7 @@ export const PQ_SIZES = ml_dsa65.lengths as {
   secretKey: number; publicKey: number; seed: number; signature: number; signRand: number;
 };
 
-/**
- * Network/chain identifier mixed into every sighash so a signature is bound to
- * this chain — a signed contribution or spend cannot be replayed on a fork or
- * testnet. Bumped to v2 for the quantum-ready chain (PQ signatures are not
- * valid on the legacy ECDSA chain and vice versa).
- */
+/** Historical signature domain; does not isolate forks sharing this domain. */
 export const JGC_PQ_NETWORK_ID = "JGC-quantum-v1";
 
 /** SHA3-256 digest (quantum-safe hash). */
@@ -63,9 +29,9 @@ function sha3_256(data: Uint8Array | string): Buffer {
 }
 
 /**
- * Quantum-ready JGC address from an ML-DSA public key:
+ * Legacy ML-DSA JGC address from an ML-DSA public key:
  *   "1QGC" + hex( SHA3-256(pk)[0:20] ).
- * Binds an address to exactly one lattice key. 20-byte payload keeps addresses
+ * Commits to a truncated hash of a lattice key. 20-byte payload keeps addresses
  * the same length as the legacy "1JGC" hash160 form.
  */
 export function pqAddressFromPublicKey(publicKeyHex: string): string {
@@ -114,8 +80,7 @@ export function pqIsValidSignature(sigHex: string): boolean {
  * Canonical 32-byte digest a contribution signature commits to:
  *   SHA3-256( networkId | minerAddress | taskCommitment | circuitId |
  *             tflopsWeight | height ).
- * SHA3-256 (not SHA256d) since we are designing the quantum-ready chain clean;
- * the domain separator + single strong hash is sufficient and simpler.
+ * The fixed historical domain does not isolate forks sharing that domain.
  */
 export function pqContributionSigHash(c: MinerComputeContribution, height: number): Uint8Array {
   const preimage = [
@@ -211,7 +176,7 @@ export function pqScriptSig(signatureHex: string, publicKeyHex: string): string 
 }
 
 /**
- * Quantum-ready counterpart of scriptPubKeyFromAddress: build the PQ
+ * Legacy ML-DSA counterpart of scriptPubKeyFromAddress: build the PQ
  * scriptPubKey that pays to a "1QGC" address. Throws on a malformed address.
  * (PQ addresses commit to a 20-byte key hash, so the script can be rebuilt
  *  from the address alone — same ergonomics as legacy P2PKH.)
@@ -230,7 +195,7 @@ export interface PQSpendVerification {
 /**
  * Verify a PQ spend: the scriptSig must contain a valid ML-DSA signature over
  * the sighash by a public key whose hash matches the PQ scriptPubKey's key hash.
- * This is the quantum-safe replacement for verifyP2PKHSpend.
+ * Address binding retains the legacy 160-bit hash limitation.
  */
 export function pqVerifySpend(scriptSig: string, scriptPubKey: string, sighash: Uint8Array): PQSpendVerification {
   const keyHash = pqHashFromScriptPubKey(scriptPubKey);

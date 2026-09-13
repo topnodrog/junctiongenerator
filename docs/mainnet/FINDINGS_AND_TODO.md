@@ -18,9 +18,11 @@ cryptographic construction. No mainnet gate may be waived to accelerate launch.
   receipts as simulation-only and unable to prove computation. Wallet address
   commitments in `pq-signatures.ts` are truncated to 20 bytes. These boundaries
   must be resolved together, not hidden behind a quantum-ready label.
-- **Some crypto comments overstate capability.** Later sections of `pq-zkp.ts`
-  still describe privacy and FRI-style proving despite its opening security
-  boundary. The facade and legacy proof descriptions also need a claim audit.
+- **Bounded crypto claim audit completed.** Facade, signature, receipt and
+  Groth16 headers now distinguish primitive behavior from system security.
+  [Shielded payments V3 draft](SHIELDED_PAYMENTS_V3_DESIGN.md) records the
+  authority model, transaction relation, migration and unresolved review choices.
+  This is a design draft, not an accepted construction or completed gate.
 - **Useful-work correctness now has worker authentication.** Key-assigned
   bounded vector jobs require persisted ML-DSA signatures. This is neither
   a funded service nor a proof of general inference correctness.
@@ -48,6 +50,9 @@ Paths above are relative to `packages/jgc-node`. Gate status is authoritative in
 ## Prioritized todo and acceptance criteria
 
 ### 1. Privacy and quantum design blockers
+
+Revision 0 requirements are recorded in [the V3 design](SHIELDED_PAYMENTS_V3_DESIGN.md).
+The items below remain open until construction choices and review are complete.
 
 - [ ] Specify shielded payments: hidden sender/recipient linkage and values,
   recipient-exclusive spending, separate incoming/full viewing authority,
