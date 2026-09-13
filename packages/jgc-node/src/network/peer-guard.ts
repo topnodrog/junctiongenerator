@@ -22,9 +22,12 @@ export const DEFAULT_PEER_GUARD_POLICY: Readonly<PeerGuardPolicy> = {
 
 interface HostState {
   inbound: number;
+  connections: number;
+  lastSeen: number;
   score: number;
   bannedUntil: number;
 }
+export const MAX_PEER_GUARD_HOSTS = 4096;
 
 interface MessageBucket {
   startedAt: number;
@@ -68,13 +71,14 @@ export class PeerGuard {
     if (state.bannedUntil > this.now()) return false;
     if (inbound && state.inbound >= this.policy.maxInboundPerHost) return false;
     if (inbound) state.inbound++;
+    state.connections++;
     return true;
   }
 
   release(address: string, inbound: boolean): void {
-    if (!inbound) return;
     const state = this.state(peerHost(address));
-    state.inbound = Math.max(0, state.inbound - 1);
+    if (inbound) state.inbound = Math.max(0, state.inbound - 1);
+    state.connections = Math.max(0, state.connections - 1);
   }
 
   allowMessage(peerId: string, address: string): boolean {
@@ -116,9 +120,18 @@ export class PeerGuard {
   private state(host: string): HostState {
     let state = this.hosts.get(host);
     if (!state) {
-      state = { inbound: 0, score: 0, bannedUntil: 0 };
+      if (this.hosts.size >= MAX_PEER_GUARD_HOSTS) {
+        for (const [key, old] of this.hosts) {
+          if (old.connections === 0 && old.bannedUntil <= this.now()
+              && this.now() - old.lastSeen >= this.policy.banDurationMs) this.hosts.delete(key);
+        }
+        // Never evict an active ban or connection to admit a fresh identity.
+        if (this.hosts.size >= MAX_PEER_GUARD_HOSTS) return { inbound: 0, connections: 0, lastSeen: this.now(), score: 0, bannedUntil: Infinity };
+      }
+      state = { inbound: 0, connections: 0, lastSeen: this.now(), score: 0, bannedUntil: 0 };
       this.hosts.set(host, state);
     }
+    state.lastSeen = this.now();
     return state;
   }
 

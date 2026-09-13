@@ -26,11 +26,9 @@
  */
 
 import { EventEmitter } from "events";
+import { AuthSession } from "./auth-session.js";
 import {
   peerMessageSignatureHash,
-  isPeerMessageTimestampFresh,
-  MAX_AUTH_MESSAGE_AGE_SECONDS,
-  MAX_AUTHENTICATED_MESSAGE_CACHE,
 } from "./wire.js";
 import type {
   Block, BlockHeader, PeerMessage, Transaction,
@@ -84,7 +82,6 @@ import {
 import {
   pqIsValidPrivateKey,
   pqIsValidPublicKey,
-  pqIsValidSignature,
   pqSignHash,
   pqVerifyHashSignature,
 } from "../crypto/pq-signatures.js";
@@ -237,8 +234,7 @@ export class JGCNode extends EventEmitter {
   private auditStore?: AuditStore;
   private readonly peerGuard: PeerGuard;
   private readonly peerAuthenticationRequired: boolean;
-  /** Digest -> expiry for accepted authenticated messages (replay defense). */
-  private readonly authenticatedMessageCache = new Map<string, number>();
+  private readonly authSessions = new Map<string, { session: AuthSession; timer: ReturnType<typeof setTimeout> }>();
 
   constructor(config: NodeConfig, genesisBlock: Block) {
     super();
@@ -494,6 +490,7 @@ export class JGCNode extends EventEmitter {
   // ─────────────────────────────────────────────────────────────────────────
 
   connectPeer(peer: PeerConnection): boolean {
+    if (this.peers.has(peer.info.peerId)) { peer.disconnect(); return false; }
     if (this.peers.size >= this.config.maxPeers) {
       console.warn(`[Node] Max peers (${this.config.maxPeers}) reached — rejecting ${peer.info.address}`);
       peer.disconnect();
@@ -505,6 +502,18 @@ export class JGCNode extends EventEmitter {
       return false;
     }
 
+    if (this.peerAuthenticationRequired) {
+      const session = new AuthSession(this.config.p2pPublicKey!, this.config.p2pPrivateKey!, this.config.networkMagic);
+      const transportSend = peer.send.bind(peer);
+      peer = { ...peer, send: async message => {
+        const sealed = session.seal(message);
+        if (sealed) await transportSend(sealed);
+      } };
+      peer.info.authenticatedPublicKey = undefined;
+      const timer = setTimeout(() => this.disconnectPeer(peer.info.peerId), 10_000);
+      timer.unref();
+      this.authSessions.set(peer.info.peerId, { session, timer });
+    }
     this.peers.set(peer.info.peerId, peer);
     peer.info.networkIdentityVerified = !this.config.requireNetworkIdentity;
     this.emit("peer:connect", peer.info);
@@ -518,6 +527,9 @@ export class JGCNode extends EventEmitter {
     const peer = this.peers.get(peerId);
     if (!peer) return;
     this.peers.delete(peerId);
+    const auth = this.authSessions.get(peerId);
+    if (auth) clearTimeout(auth.timer);
+    this.authSessions.delete(peerId);
     this.peerGuard.release(peer.info.address, peer.info.inbound);
     this.peerGuard.forgetPeer(peerId);
     peer.disconnect();
@@ -561,32 +573,18 @@ export class JGCNode extends EventEmitter {
     peer.info.lastSeen   = Math.floor(Date.now() / 1000);
 
     if (this.peerAuthenticationRequired) {
-      const now = Math.floor(Date.now() / 1000);
-      const unsigned = {
-        type: msg.type,
-        payload: msg.payload,
-        timestamp: msg.timestamp,
-        senderPublicKey: msg.senderPublicKey,
-      };
-      const messageHash = peerMessageSignatureHash(unsigned, this.config.networkMagic);
-      const messageId = Buffer.from(messageHash).toString("hex");
-      const valid = pqIsValidPublicKey(msg.senderPublicKey) &&
-        pqIsValidSignature(msg.signature) &&
-        pqVerifyHashSignature(
-          msg.signature,
-          messageHash,
-          msg.senderPublicKey,
-        ) &&
-        (peer.info.authenticatedPublicKey === undefined ||
-          peer.info.authenticatedPublicKey === msg.senderPublicKey) &&
-        isPeerMessageTimestampFresh(msg.timestamp, now) &&
-        !this.isAuthenticatedMessageReplay(messageId, now);
-      if (!valid) {
+      try {
+        const auth = this.authSessions.get(peerId)!;
+        msg = auth.session.open(msg);
+        if (auth.session.ready) {
+          peer.info.authenticatedPublicKey = auth.session.authenticatedPublicKey;
+          clearTimeout(auth.timer);
+        }
+      } catch {
         console.warn(`[Node] Disconnecting ${peerId}: invalid or replayed P2P message authentication`);
         this.disconnectPeer(peerId);
         return;
       }
-      peer.info.authenticatedPublicKey ??= msg.senderPublicKey;
     }
 
     if (this.config.requireNetworkIdentity &&
@@ -662,6 +660,8 @@ export class JGCNode extends EventEmitter {
         break;
 
       case MT.VERACK:
+        if (this.peerAuthenticationRequired) await this.beginPeerSync(peer);
+        break;
       case MT.PONG:
         // Handshake ack / ping reply — lastSeen was already refreshed above.
         break;
@@ -669,19 +669,6 @@ export class JGCNode extends EventEmitter {
       default:
         console.debug(`[Node] Unknown message type ${msg.type} from peer ${peerId}`);
     }
-  }
-
-  private isAuthenticatedMessageReplay(messageId: string, now: number): boolean {
-    for (const [id, expiry] of this.authenticatedMessageCache) {
-      if (expiry < now) this.authenticatedMessageCache.delete(id);
-    }
-    if (this.authenticatedMessageCache.has(messageId)) return true;
-    if (this.authenticatedMessageCache.size >= MAX_AUTHENTICATED_MESSAGE_CACHE) {
-      const oldest = this.authenticatedMessageCache.keys().next().value as string | undefined;
-      if (oldest !== undefined) this.authenticatedMessageCache.delete(oldest);
-    }
-    this.authenticatedMessageCache.set(messageId, now + MAX_AUTH_MESSAGE_AGE_SECONDS);
-    return false;
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -724,10 +711,14 @@ export class JGCNode extends EventEmitter {
     // addresses it knows, so the network can form without a central seed.
     if (payload.listenUrl) {
       peer.info.advertisedUrl = payload.listenUrl;
-      this.addAddr(payload.listenUrl);
     }
 
     await peer.send(this.buildMessage(MT.VERACK, {}));
+    if (!this.peerAuthenticationRequired) await this.beginPeerSync(peer);
+  }
+
+  private async beginPeerSync(peer: PeerConnection): Promise<void> {
+    if (peer.info.advertisedUrl) this.addAddr(peer.info.advertisedUrl);
     await peer.send(this.buildMessage(MT.GETADDR, {}));
 
     // If peer is ahead of us, request headers (headers-first sync).

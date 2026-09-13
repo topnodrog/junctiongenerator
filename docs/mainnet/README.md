@@ -3,6 +3,11 @@
 Status: **blocked**. `jgc-node` contains a declared mainnet identity, but it
 does not yet contain a launchable value-bearing mainnet.
 
+See [findings and prioritized todo](FINDINGS_AND_TODO.md) for the current audit,
+including the owner's mandatory Zcash-like privacy and quantum requirements,
+and [peer authentication evidence](PEER_AUTHENTICATION.md) for the candidate
+connection protocol and its acceptance checks.
+
 The release guard is intentionally fail-closed. Run this from
 `packages/jgc-node`:
 

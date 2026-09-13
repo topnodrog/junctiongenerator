@@ -1,0 +1,94 @@
+# Mainnet findings and todo
+
+Updated 2026-09-13. Owner priorities: **Zcash-like payment privacy and
+end-to-end quantum readiness are mandatory**, alongside verifiable useful work.
+Treat Zcash-like as a privacy requirement, not a decision to copy a particular
+cryptographic construction. No mainnet gate may be waived to accelerate launch.
+
+## Findings from the current code
+
+- **Payment privacy is incomplete.** `src/crypto/pq-stealth.ts` explicitly says
+  amounts and spends remain public, the sender knows the spending seed, and
+  the historically named viewing secret grants spending authority. This is not
+  a shielded payment system. V2 repairs the prior public-key recovery defect
+  but cannot satisfy `paymentPrivacy`.
+- **Quantum readiness is incomplete.** ML-DSA signatures and experimental
+  ML-KEM destinations exist, but the declared mainnet proof mode is still
+  `strict-groth16-v1`. `src/crypto/pq-zkp.ts` explicitly identifies its hash/Merkle
+  receipts as simulation-only and unable to prove computation. Wallet address
+  commitments in `pq-signatures.ts` are truncated to 20 bytes. These boundaries
+  must be resolved together, not hidden behind a quantum-ready label.
+- **Some crypto comments overstate capability.** Later sections of `pq-zkp.ts`
+  still describe privacy and FRI-style proving despite its opening security
+  boundary. The facade and legacy proof descriptions also need a claim audit.
+- **Useful-work correctness now has worker authentication.** Key-assigned
+  bounded vector jobs require persisted ML-DSA signatures. This is neither
+  a funded service nor a proof of general inference correctness.
+- **Peer authentication had connection replay gaps.** The prior node accepted
+  the first signed message without challenge-response, and evicted replay-cache
+  entries while their timestamps could remain acceptable. Connection challenges,
+  sequence checks, handshake expiry and deferred discovery are being verified.
+- **Transport queues needed bounds.** Frame-size checks alone did not bound the
+  serialized incoming backlog or outbound buffered bytes. Explicit queue limits
+  are being tested with the session changes.
+- **Deterministic consensus is not yet signed off.** Exact candidate retarget
+  arithmetic, canonical encoding and cross-platform tests exist. Evidence still
+  needs to cover the complete active validation/replay/fork-choice path. Preserve
+  the published pilot's separate difficulty policy.
+
+Paths above are relative to `packages/jgc-node`. Gate status is authoritative in
+`src/config/mainnet-readiness.ts`; in-progress work is not completed evidence.
+
+## Prioritized todo and acceptance criteria
+
+### 1. Privacy and quantum design blockers
+
+- [ ] Specify shielded payments: hidden sender/recipient linkage and values,
+  recipient-exclusive spending, separate incoming/full viewing authority,
+  encrypted notes, commitments, nullifiers and confidential value conservation.
+- [ ] Define wallet scanning, recovery, change, selective disclosure and reorg
+  behavior; state which network metadata remains observable.
+- [ ] Select a reviewed proof approach compatible with the quantum requirement;
+  document assumptions, concrete parameters, soundness and zero-knowledge
+  arguments, implementation maturity, proof sizes and verifier resource limits.
+  Do not substitute unconstrained hash receipts for a proof system.
+- [ ] Specify full-length address/key commitments and versioned migration, plus
+  the security of transport confidentiality, backup encryption and upgrade keys.
+- [ ] Implement the reviewed design behind a new protocol version; test sender
+  theft, viewing-key theft, forged/inflationary spends, duplicate nullifiers,
+  note tampering, malformed proofs, wallet recovery and adversarial reorgs.
+- [ ] Remove stale privacy/proof/security claims from crypto comments and public
+  material; distinguish implemented primitives from reviewed system security.
+- [ ] Obtain external cryptographic review and resolve high/critical findings
+  before marking either privacy or quantum readiness complete.
+
+### 2. Finish a tractable engineering gate
+
+- [ ] Complete peer session tests: mutual handshake, unsigned/early messages,
+  tampering, wrong key/network, reflection, reconnect/restart replay, sequence
+  gaps/duplicates, timeout cleanup and actual WebSocket exchange.
+- [ ] Verify incoming/outgoing queue bounds and retained defensive state.
+- [ ] Run release checks and the supported-platform CI matrix; record immutable
+  commit/run evidence and only then update `peerAuthentication` if satisfied.
+- [ ] Audit deterministic validation, encoding, arithmetic, fork choice and
+  replay; extend pinned vectors to any uncovered consensus paths before
+  considering `deterministicConsensus` complete.
+
+### 3. Remaining launch work
+
+- [ ] Authorized worker enrollment and remote dispatch; confidential transport
+  and per-user admission/rate limits.
+- [ ] Buyer funding/reservation, exactly-once ledger settlement, cancellation,
+  crash recovery and reward/reorg accounting.
+- [ ] Encrypted storage contracts with unpredictable continuing-availability
+  challenges, replication, repair and funded settlement.
+- [ ] Permissionless proposer enforcement and consensus-owned validator
+  economics, with adversarial bond/reward/slash tests.
+- [ ] Governance authority limits, approved budgets, versioned upgrades and
+  tested emergency recovery; model output cannot directly authorize consensus.
+- [ ] Reproducible signed release artifacts, SBOM and pinned genesis manifests.
+- [ ] Measured multi-host soak with restart/seed-loss/reorg evidence; distinguish
+  owner-controlled rehearsal from independent operation.
+- [ ] External consensus, network and economics reviews, then repeat the full
+  release-specific launch preflight. Keep valuable mainnet disabled until all
+  gates are satisfied.
