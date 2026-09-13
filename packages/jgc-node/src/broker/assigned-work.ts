@@ -7,6 +7,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { closeSync, fsyncSync, mkdirSync, openSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { pqIsValidPublicKey, pqVerifyHashSignature, PQ_SIZES } from "../crypto/pq-signatures.js";
 
 const hash = (value: unknown): string => createHash("sha256").update(JSON.stringify(value)).digest("hex");
 export const VECTOR_PROGRAM = hash("jgc/vector-dot/v1: signed int32 vectors; exact bigint sum; decimal output");
@@ -28,7 +29,20 @@ export interface WorkJob {
 type Event =
   | { kind: "create"; jobId: string; network: string; epoch: number; left: number[]; right: number[] }
   | { kind: "lease"; jobId: string; leaseId: string; miner: string; deadline: number; now: number }
-  | { kind: "complete"; jobId: string; leaseId: string; miner: string; output: string; commitment: string; now: number };
+  | { kind: "complete"; jobId: string; leaseId: string; miner: string; output: string; commitment: string; now: number; publicKey?: string; signature?: string };
+
+/** Full key commitment for work identities; not a payment address. */
+export function workMinerIdentity(publicKey: string): string {
+  if (!pqIsValidPublicKey(publicKey)) throw new Error("Invalid worker public key");
+  return "workkey:" + createHash("sha3-256").update(Buffer.from(publicKey, "hex")).digest("hex");
+}
+
+/** Domain-separated signature digest binds the complete assigned context. */
+export function workResultSignatureHash(job: WorkJob, output: string): Uint8Array {
+  return createHash("sha3-256").update(JSON.stringify([
+    "jgc/assigned-result-signature/v1", workResultCommitment(job, output),
+  ])).digest();
+}
 
 function identifier(value: string): void {
   if (typeof value !== "string" || !/^[a-zA-Z0-9_.:-]{1,128}$/.test(value)) throw new Error("Invalid identifier");
@@ -91,6 +105,15 @@ function transition(jobs: Map<string, WorkJob>, event: Event, network: string): 
     throw new Error("Incorrect computation");
   }
   if (event.commitment !== workResultCommitment(job, event.output)) throw new Error("Result context mismatch");
+  if (event.miner.startsWith("workkey:") || event.publicKey !== undefined || event.signature !== undefined) {
+    if (typeof event.publicKey !== "string" || typeof event.signature !== "string"
+        || event.signature.length !== PQ_SIZES.signature * 2
+        || !/^[0-9a-fA-F]+$/.test(event.signature)
+        || workMinerIdentity(event.publicKey) !== event.miner
+        || !pqVerifyHashSignature(event.signature, workResultSignatureHash(job, event.output), event.publicKey)) {
+      throw new Error("Invalid worker signature");
+    }
+  }
   job.result = { output: event.output, commitment: event.commitment };
 }
 
@@ -147,6 +170,17 @@ export class AssignedWorkJournal {
    * This local API is not yet exposed over RPC or connected to a payout adapter. */
   complete(jobId: string, miner: string, leaseId: string, output: string, commitment: string): WorkJob {
     return this.append({ kind: "complete", jobId, miner, leaseId, output, commitment, now: this.clock() });
+  }
+
+  /** Operator-authorized dispatch to a pinned worker key. Not a public lease API. */
+  leaseToKey(jobId: string, publicKey: string, durationSeconds: number): WorkJob {
+    return this.lease(jobId, workMinerIdentity(publicKey), durationSeconds);
+  }
+
+  /** Signature evidence is persisted and checked again on every journal replay. */
+  completeSigned(jobId: string, publicKey: string, leaseId: string, output: string, commitment: string, signature: string): WorkJob {
+    return this.append({ kind: "complete", jobId, miner: workMinerIdentity(publicKey), publicKey,
+      leaseId, output, commitment, signature, now: this.clock() });
   }
 
   get(jobId: string): WorkJob | undefined {

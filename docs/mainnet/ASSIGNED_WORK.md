@@ -37,7 +37,24 @@ Its `miner` argument must be supplied by an authenticated caller when a remote
 transport is built; accepting a miner name from a request body is insufficient.
 Inputs are stored in plaintext, so use synthetic or public vectors only.
 
-Next steps are authenticated dispatch, production persistence and recovery,
+## Signed worker results
+
+Operator-authorized dispatch can now use `leaseToKey` with a pinned ML-DSA-65
+public key. Its `workkey:` identity uses the full SHA3-256 key digest and is
+not a wallet payment address. The worker signs `workResultSignatureHash(job,
+output)` and submits through `completeSigned`. The domain-separated digest
+binds the entire result context, including the network and fresh lease ID.
+Key-assigned jobs reject the unsigned completion API. Signature evidence is
+stored in the journal and reverified during replay, as well as the computation.
+
+Legacy name-assigned jobs remain a trusted local rehearsal API. Do not expose
+`lease`, `leaseToKey`, or unsigned `complete` directly to untrusted clients.
+This increment authenticates results; it does not authenticate the dispatcher,
+authorize worker enrollment, provide transport confidentiality or prevent a
+malicious storage operator from replacing history. Remote APIs still need
+authorization, request-size limits, rate limits and secure transport.
+
+Next steps are authenticated remote dispatch, production persistence and recovery,
 buyer funding and reservation, idempotent settlement tied to a ledger transaction,
 and reward/reorg accounting. Verifying the output proves correctness of this
 small calculation, not that a particular machine spent time or energy doing it.

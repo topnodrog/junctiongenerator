@@ -78,6 +78,21 @@ and post-quantum security must be independently reviewed before activation.
 
 ## Current implementation increment
 
+### Signed useful-work results (2026-09-13)
+
+Key-assigned vector jobs now require ML-DSA-65 result signatures. Worker
+identities use full SHA3-256 public-key commitments, separate from wallet
+addresses. Signature evidence binds the assignment context and is persisted
+and reverified on journal replay. Unsigned bypass, impersonation, changed
+context, stale leases and duplicate completion are rejected. Name-assigned
+jobs remain trusted local rehearsal operations; remote dispatch authorization,
+production storage and funded settlement remain outstanding.
+
+Validation: release rehearsal passed 49 node suites / 413 tests, four release
+manifest tests, typecheck, build and staged bundle verification. All 12 mainnet
+gates remain incomplete. This adds result authentication without activating
+payments or changing pilot consensus.
+
 ### Wallet recovery and participation direction (2026-09-12)
 
 Keep every mainnet gate mandatory. Build a native multi-network wallet, with

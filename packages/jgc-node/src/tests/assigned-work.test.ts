@@ -1,7 +1,9 @@
 import { mkdtempSync, readFileSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { AssignedWorkJournal, executeVectorDot, workResultCommitment } from "../broker/assigned-work.js";
+import { AssignedWorkJournal, executeVectorDot, workResultCommitment, workResultSignatureHash, workMinerIdentity } from "../broker/assigned-work.js";
+import { pqGenerateKeyPair, pqSignHash } from "../crypto/pq-signatures.js";
+import { createHash } from "node:crypto";
 import { ComputeBroker } from "../broker/compute-broker.js";
 import { ComputeTaskType, type ComputeAssignment, type ComputeProof } from "../types/index.js";
 
@@ -79,6 +81,55 @@ describe("assigned useful work", () => {
     const job = journal.get("job-a")!;
     job.left[0] = 99;
     expect(journal.get("job-a")!.left[0]).toBe(2);
+  });
+
+  it("persists signed completion and rejects unsigned bypass and duplicate replay", () => {
+    const key = pqGenerateKeyPair();
+    const job = journal.leaseToKey("job-a", key.publicKey, 60);
+    expect(job.lease!.miner).toMatch(/^workkey:[0-9a-f]{64}$/);
+    expect(workMinerIdentity(key.publicKey.toUpperCase())).toBe(job.lease!.miner);
+    const commitment = workResultCommitment(job, "-7");
+    const signature = pqSignHash(key.privateKey, workResultSignatureHash(job, "-7"));
+    expect(() => journal.complete(job.jobId, job.lease!.miner, job.lease!.leaseId, "-7", commitment)).toThrow("signature");
+    journal.completeSigned(job.jobId, key.publicKey, job.lease!.leaseId, "-7", commitment, signature);
+    const restarted = new AssignedWorkJournal(directory, "test-a", () => now);
+    expect(restarted.get(job.jobId)!.result!.output).toBe("-7");
+    expect(() => restarted.completeSigned(job.jobId, key.publicKey, job.lease!.leaseId, "-7", commitment, signature)).toThrow("completed");
+  });
+
+  it("rejects impersonation, malformed signatures and signatures for changed context", () => {
+    const key = pqGenerateKeyPair();
+    const other = pqGenerateKeyPair();
+    const job = journal.leaseToKey("job-a", key.publicKey, 60);
+    const submit = (signature: string) => journal.completeSigned(job.jobId, key.publicKey, job.lease!.leaseId, "-7", workResultCommitment(job, "-7"), signature);
+    expect(() => submit(pqSignHash(other.privateKey, workResultSignatureHash(job, "-7")))).toThrow("signature");
+    for (const signature of ["", "zz".repeat(3309), "ab".repeat(10000)]) expect(() => submit(signature)).toThrow("signature");
+    for (const field of ["network", "epoch", "jobId", "programDigest", "inputCommitment", "resourceUnits"] as const) {
+      const altered = { ...job, [field]: typeof job[field] === "number" ? 999 : "other" };
+      expect(() => submit(pqSignHash(key.privateKey, workResultSignatureHash(altered, "-7")))).toThrow("signature");
+    }
+    expect(journal.get(job.jobId)!.result).toBeUndefined();
+  });
+
+  it("rejects stale signed work after reassignment even to the same key", () => {
+    const key = pqGenerateKeyPair();
+    const old = journal.leaseToKey("job-a", key.publicKey, 60);
+    const signature = pqSignHash(key.privateKey, workResultSignatureHash(old, "-7"));
+    now = 160;
+    const current = journal.leaseToKey("job-a", key.publicKey, 60);
+    expect(() => journal.completeSigned(current.jobId, key.publicKey, current.lease!.leaseId, "-7", workResultCommitment(current, "-7"), signature)).toThrow("signature");
+  });
+
+  it("revalidates signature evidence on restart even if the journal checksum is recomputed", () => {
+    const key = pqGenerateKeyPair();
+    const job = journal.leaseToKey("job-a", key.publicKey, 60);
+    journal.completeSigned(job.jobId, key.publicKey, job.lease!.leaseId, "-7", workResultCommitment(job, "-7"), pqSignHash(key.privateKey, workResultSignatureHash(job, "-7")));
+    const path = join(directory, "00000002.json");
+    const record = JSON.parse(readFileSync(path, "utf8"));
+    record.event.signature = "00".repeat(3309);
+    record.checksum = createHash("sha256").update(JSON.stringify([record.previous, record.event])).digest("hex");
+    writeFileSync(path, JSON.stringify(record));
+    expect(() => new AssignedWorkJournal(directory, "test-a")).toThrow("signature");
   });
 
   it("keeps the legacy broker payment path closed for arbitrary submitted proofs", () => {
