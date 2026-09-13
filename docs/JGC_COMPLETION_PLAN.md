@@ -91,7 +91,9 @@ pilot retargeting and first-seen ties remain unchanged.
 The local release rehearsal passed 53 suites / 451 tests plus four manifest
 tests. The real Conv1D mining demonstration now passes six proofs in three
 blocks after repairing its admission path; that demonstration is also in CI.
-The gate is awaiting supported-platform evidence. See
+Every implementation CI job passed, including supported Node/OS combinations
+and the real-proof Rust/WASM path. The deterministic-consensus engineering
+gate is complete; ten launch gates remain incomplete. See
 [deterministic-consensus acceptance](mainnet/DETERMINISTIC_CONSENSUS.md).
 
 ### Peer-authentication gate and privacy priorities (2026-09-13)

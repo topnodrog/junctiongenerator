@@ -69,7 +69,8 @@ export const MAINNET_READINESS: MainnetReadinessRecord = Object.freeze({
     paymentPrivacy: false,
     usefulServices: false,
     governance: false,
-    deterministicConsensus: false,
+    // Acceptance evidence: docs/mainnet/DETERMINISTIC_CONSENSUS.md.
+    deterministicConsensus: true,
     permissionlessProduction: false,
     // Connection/session acceptance evidence: docs/mainnet/PEER_AUTHENTICATION.md.
     peerAuthentication: true,

@@ -3,6 +3,10 @@
 Status: **blocked**. `jgc-node` contains a declared mainnet identity, but it
 does not yet contain a launchable value-bearing mainnet.
 
+Two engineering gates are satisfied: peer authentication and deterministic
+consensus. The other ten, including payment privacy and end-to-end quantum
+security, remain incomplete and block launch.
+
 See [findings and prioritized todo](FINDINGS_AND_TODO.md) for the current audit,
 including the owner's mandatory Zcash-like privacy and quantum requirements,
 and [peer authentication evidence](PEER_AUTHENTICATION.md) for the candidate

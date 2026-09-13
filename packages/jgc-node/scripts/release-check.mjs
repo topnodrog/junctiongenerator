@@ -15,7 +15,6 @@ const requiredMissingGates = [
   "paymentPrivacy",
   "usefulServices",
   "governance",
-  "deterministicConsensus",
   "permissionlessProduction",
   "validatorEconomics",
   "reproducibleArtifacts",

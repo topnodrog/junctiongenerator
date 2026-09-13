@@ -32,12 +32,13 @@ cryptographic construction. No mainnet gate may be waived to accelerate launch.
 - **Transport queues needed bounds.** Frame-size checks alone did not bound the
   serialized incoming backlog or outbound buffered bytes. Explicit queue limits
   pass adversarial tests with the session changes.
-- **Deterministic consensus repairs pass locally; CI acceptance is pending.**
+- **Deterministic consensus passes its engineering gate.**
   The candidate now uses exact proof thresholds, canonical equal-work fork
   ordering and complete restart validation. The audit also found and repaired
   snapshot trust, asynchronous state-application, inactive-parent orphan,
   compact-encoding and inner/outer receipt-accounting defects. Tests pin the
-  settlement state across live execution and restart. The published pilot's
+  settlement state across live execution and restart on the supported CI
+  platforms. The published pilot's
   first-seen tie and retarget policy remains separate. See
   [the acceptance record](DETERMINISTIC_CONSENSUS.md) for evidence and limits.
 
@@ -74,11 +75,12 @@ Paths above are relative to `packages/jgc-node`. Gate status is authoritative in
   gaps/duplicates, timeout cleanup and actual WebSocket exchange.
 - [x] Verify incoming/outgoing queue bounds and retained defensive state.
 - [x] Run release checks and the supported-platform CI matrix; record immutable
-  commit/run evidence and update `peerAuthentication`: complete, with eleven
-  other gates still blocking launch. See the linked acceptance record.
-- [ ] Audit deterministic validation, encoding, arithmetic, fork choice and
-  replay; extend pinned vectors to any uncovered consensus paths before
-  considering `deterministicConsensus` complete.
+  commit/run evidence and update `peerAuthentication`: complete. See the linked
+  acceptance record.
+- [x] Audit deterministic validation, encoding, arithmetic, fork choice and
+  replay; extend pinned vectors to uncovered consensus paths and
+  mark `deterministicConsensus` complete after supported-platform and real-proof
+  CI acceptance. Ten remaining gates still block mainnet launch.
 
 ### 3. Remaining launch work
 

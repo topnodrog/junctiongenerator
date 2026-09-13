@@ -158,7 +158,7 @@ jobs:
             echo "Mainnet preflight unexpectedly reported ready" >&2
             exit 1
           fi
-          node -e 'const fs=require("fs"); const result=JSON.parse(fs.readFileSync("mainnet-preflight.json", "utf8")); const required=["proofSystem","postQuantumSecurity","paymentPrivacy","usefulServices","governance","deterministicConsensus","permissionlessProduction","validatorEconomics","reproducibleArtifacts","soloSoak","independentSecurityReview"]; if (result.ready || result.status !== "blocked" || JSON.stringify(result.missingGates) !== JSON.stringify(required)) process.exit(1);'
+          node -e 'const fs=require("fs"); const result=JSON.parse(fs.readFileSync("mainnet-preflight.json", "utf8")); const required=["proofSystem","postQuantumSecurity","paymentPrivacy","usefulServices","governance","permissionlessProduction","validatorEconomics","reproducibleArtifacts","soloSoak","independentSecurityReview"]; if (result.ready || result.status !== "blocked" || JSON.stringify(result.missingGates) !== JSON.stringify(required)) process.exit(1);'
       - name: Stage the allowlisted release contents
         env:
           JGC_RELEASE_COMMIT: ${{ github.sha }}

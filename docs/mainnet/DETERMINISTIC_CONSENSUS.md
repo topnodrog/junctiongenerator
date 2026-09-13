@@ -1,6 +1,6 @@
 # Deterministic consensus acceptance record
 
-Status: implementation tested locally; supported-platform acceptance pending.
+Status: **complete** for the candidate's `deterministicConsensus` engineering gate.
 This record covers the unpublished `jgc-mainnet-v3` candidate's arithmetic,
 encoding, state transitions, fork ordering and replay. Proof soundness, privacy,
 quantum security, permissionless production and independent review remain
@@ -57,7 +57,15 @@ acceptance; this record is not authorization to activate a valuable network.
 Local release rehearsal passed 53 suites / 451 tests, four manifest tests,
 typecheck, build and staged-bundle verification. The real Rust/WASM demonstration
 passed three blocks with six Conv1D proofs after the admission repair; CI now
-also runs that demonstration. Cross-platform acceptance remains pending.
+also runs that demonstration.
+
+Implementation commit: `b66f3ac0409cd884ad7ef3d6657e9caec8272c37`.
+[Acceptance CI run](https://github.com/topnodrog/junctiongenerator/actions/runs/34747110938)
+passed every job: Node 20 on Windows/macOS/Linux, Node 22/24 on Linux, release
+bundle, containers, native-wallet rehearsals, Rust/WASM and strict proof/block
+admission. The full suite on each supported platform checks the same pinned
+settlement-state digest. The readiness baseline now satisfies deterministic
+consensus and peer authentication; ten other gates still block launch.
 
 ## Operating boundaries
 
