@@ -1,6 +1,6 @@
 # PQ proof backend evaluation: Triton VM
 
-2026-09-13. **Initial engineering experiment complete; no mainnet gate acceptance.**
+2026-09-13. **Offline verifier hardening complete locally; no mainnet gate acceptance.**
 This opens the backend-evaluation work item from the
 [V3 design](SHIELDED_PAYMENTS_V3_DESIGN.md). It does not select the production
 payment proof system. `proofSystem`, `postQuantumSecurity` and `paymentPrivacy`
@@ -25,7 +25,8 @@ The isolated [harness](../../tools/pq-proof-evaluation/README.md) depends on
 `triton-vm = 8.0.0`; its lockfile pins all transitive versions/checksums, including
 `twenty-first 1.1.0`. The downloaded crate's VCS metadata identifies upstream
 commit `66d701b0b1774527dc3a8a72d23b4d18a24c8d78`. Triton uses MIT OR Apache-2.0;
-transitive license/advisory review remains outstanding. Compiler: Rust 1.96.0.
+Compiler: Rust 1.96.0. The dependency inventory and advisory scan below narrow
+the dependency-review gap; cryptographic and distribution review remain open.
 
 The assembly checks four private u32 values and a public u32 fee:
 `a + b = c + d + fee`. Every value is range-checked inside the VM. Both sides
@@ -79,7 +80,9 @@ acceptance dependencies. No external review was commissioned by this work.
 Local results: two harness tests passed (integer constraints and real-proof
 claim/corruption rejection). Node `release:check` also passed: 53 suites / 451
 tests, typecheck, build, blocked mainnet preflight, bundle verification and four
-manifest tests. The new CI job has not yet supplied independent platform evidence.
+manifest tests. The initial Ubuntu CI passed for `784ea314ed10705656a3fd53279a3d24efc7ba6d`:
+[run 34789381377](https://github.com/topnodrog/junctiongenerator/actions/runs/34789381377).
+The expanded three-platform job must pass on the hardening commit separately.
 
 Three fresh processes on an Intel Core i5-1335U, x86_64 Linux under WSL2
 (`6.18.33.2-microsoft-standard-WSL2`), Rust 1.96.0 release profile,
@@ -106,15 +109,51 @@ Proof bytes
 mean eight bytes per encoded field element, excluding any future envelope,
 transaction, claim or ciphertext overhead. This is not a network wire format.
 Prover measurements include trace creation. In-process verifier timing excludes
-transport and deserialization. Whole-process maximum RSS combines prover and
-verifier; separate verifier peak memory remains unmeasured.
+transport and deserialization. The original whole-process maximum RSS combines
+prover and verifier; the new verifier-only measurements below separate that cost.
 
-The harness accepts no external proof files or witness input. It is not a safe
-public verification service. Before any adapter is exposed to peers, implement
-bounded decoding, maximum proof/claim lengths, checked height arithmetic,
-execution/queue budgets and malformed-proof fuzzing. Numeric consensus caps
-remain unresolved and must be based on the full relation and weakest supported
-hardware. Do not derive them from this small experiment.
+## Offline verifier hardening
+
+The new offline envelope pins the program, proof version, parameters and expected
+fee. It rejects trailing/truncated data, noncanonical field values and excessive
+counts before backend work; the decoded transcript is re-encoded canonically and
+its single initial height is bounded before shifting. It caps reads at 1,048,640
+bytes, proof elements at 131,072, decoded items at 128 and log2 height at 12.
+These limits are an experiment policy, not a proposed consensus budget.
+
+Six Rust tests and three separate-process tests passed locally. They include the
+saved proof, changed fee/program/version/output, extra transcript items, hostile
+height values, field wraparound, malformed length/discriminant corpus, file
+corruption, process failures and a live deadline/termination check. The saved
+fixture SHA-256 is
+`3ccac57aebe1965271d7b47cf2a5eafd335d3e5b41cc3952899ba928edebb011`.
+The five-second parent deadline rejects failure; Linux additionally bounds
+address space to 512 MiB and CPU time to three seconds. Other platforms still
+need memory/CPU isolation. This is offline tooling, not a public service.
+
+Three fresh verifier-only processes on the same WSL2 machine measured 88.139,
+67.840 and 61.326 ms, with maximum RSS 12,259,328, 12,312,576 and 12,214,272
+bytes. These include file reading, decoding, policy checks and verification,
+unlike the earlier in-process timings. See
+[raw verifier evidence](../../tools/pq-proof-evaluation/evidence/verifier-only-wsl2.json).
+No network latency, weakest-node limit or full-payment performance is claimed.
+
+## Dependency review evidence
+
+[Inventory](../../tools/pq-proof-evaluation/evidence/dependencies.json) records
+123 registry packages across all resolved targets, including build dependencies,
+with versions, declared licenses and checksums. `twenty-first 1.1.0` and
+`bfieldcodec_derive 0.7.1` declare GPL-2.0; `colored 3.1.1` declares MPL-2.0.
+The top-level Triton license alone does not settle distribution obligations.
+Resolve this before adopting or distributing a production backend. This is a
+metadata inventory, not a legal opinion or an audited release SBOM.
+
+[RustSec scan](../../tools/pq-proof-evaluation/evidence/rustsec-audit.json) using
+official cargo-audit 0.22.2 found zero known vulnerabilities and no informational
+warnings against database commit `455fd4bac659b5f1fca3810661c2d8b3c25dad05`.
+The scanner archive digest and lockfile digest are retained in the evidence.
+No ignore flags were used. Absence of a published advisory is not security
+acceptance; refresh the database on every release.
 
 ## Next acceptance work
 
@@ -130,5 +169,6 @@ hardware. Do not derive them from this small experiment.
 4. Only after acceptance, implement a versioned wallet/consensus migration with
    replay, crash, reorg, theft and inflation tests. Preserve the published pilot.
 
-The new CI job runs the isolated proof tests on Ubuntu. It is engineering
-regression coverage and cannot satisfy external review or production readiness.
+The expanded CI job runs the same fixture and rejection tests on Ubuntu,
+Windows and macOS. It is engineering regression coverage, not an independent
+implementation, external review or production readiness.

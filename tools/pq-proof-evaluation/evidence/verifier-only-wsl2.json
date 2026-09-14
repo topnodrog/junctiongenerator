@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "fixtureSha256": "3ccac57aebe1965271d7b47cf2a5eafd335d3e5b41cc3952899ba928edebb011",
+  "lockfileSha256": "4e1626759fc9e6bbe48b78daa2c32b71509592c5c793f2b4ac99467662a7e32a",
+  "compiler": "rustc 1.96.0",
+  "cpu": "Intel Core i5-1335U",
+  "kernel": "6.18.33.2-microsoft-standard-WSL2",
+  "rayonThreads": 2,
+  "measurement": "fresh-process verifier only, including file IO, decoding, policy checks and proof verification; maximum RSS excludes the Python parent",
+  "runs": [
+    {
+      "valid": true,
+      "verifyMs": 88.139466,
+      "peakMemoryBytes": 12259328
+    },
+    {
+      "valid": true,
+      "verifyMs": 67.839771,
+      "peakMemoryBytes": 12312576
+    },
+    {
+      "valid": true,
+      "verifyMs": 61.325682,
+      "peakMemoryBytes": 12214272
+    }
+  ]
+}

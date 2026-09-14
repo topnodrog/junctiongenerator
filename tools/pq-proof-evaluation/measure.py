@@ -7,11 +7,11 @@ import sys
 
 
 def main():
-    if len(sys.argv) != 2:
-        raise SystemExit("usage: python3 measure.py /path/to/jgc-pq-proof-evaluation")
+    if len(sys.argv) < 2:
+        raise SystemExit("usage: python3 measure.py BINARY [verify FILE EXPECTED_FEE]")
     # No shell; no user witness, network operation, or proof persistence.
     result = subprocess.run(
-        [sys.argv[1]], capture_output=True, text=True, check=True, timeout=180
+        sys.argv[1:], capture_output=True, text=True, check=True, timeout=180
     )
     measurement = json.loads(result.stdout)
     usage = resource.getrusage(resource.RUSAGE_CHILDREN)
@@ -23,7 +23,11 @@ def main():
     else:
         raise SystemExit("unsupported maximum-RSS units on this platform")
     measurement["peakMemoryBytes"] = peak_bytes
-    measurement["memoryMeasurement"] = "whole-process maximum RSS; prover and verifier combined"
+    measurement["memoryMeasurement"] = (
+        "whole-process maximum RSS; verifier only, including IO and decoding"
+        if measurement.get("mode") == "verify-only"
+        else "whole-process maximum RSS; prover and verifier combined"
+    )
     measurement["kernel"] = platform.release()
     print(json.dumps(measurement))
 
