@@ -23,14 +23,15 @@ die() {
 }
 
 status_is_ready() {
-  local payload
+  local payload peer_count
   payload="$(curl --fail --silent --connect-timeout 2 --max-time 3 http://127.0.0.1:7777/status)" || return 1
   [[ "$payload" == *'"running":true'* ]] || return 1
   [[ "$payload" == *'"network":"jgtc-testnet-v2"'* ]] || return 1
   [[ "$payload" == *'"role":"participant"'* ]] || return 1
   [[ "$payload" == *'"participating":true'* ]] || return 1
   [[ "$payload" == *'"address":"1QGC'* ]] || return 1
-  [[ "$payload" =~ "peerCount":[1-9][0-9]* ]] || return 1
+  peer_count="$(node -e 'const status = JSON.parse(process.argv[1]); process.stdout.write(String(status.peerCount ?? ""));' "$payload")" || return 1
+  [[ "$peer_count" =~ ^[1-9][0-9]*$ ]] || return 1
 }
 
 wait_for_ready() {
