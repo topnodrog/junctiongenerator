@@ -1,56 +1,11 @@
 /**
- * @file src/crypto/pq-zkp.ts
- * @description Research-only hash/Merkle receipts for JGC simulations.
- *
- * SECURITY BOUNDARY
- * ─────────────────
- * This module does NOT prove an AI computation. It commits to prover-chosen
- * witness values and verifies Merkle openings, but it has no arithmetic
- * constraints tying those values to an inference, training run, or FLOP count.
- * It is useful for exercising proof transport and tamper detection on simnet.
- * Strict consensus MUST reject it until it is replaced by a sound transparent
- * proof system whose constraints encode the claimed computation.
- *
- * WHY GROTH16/BN254 HAD TO GO
- * ───────────────────────────
- * Groth16's security rests on pairings over the BN254 curve — discrete-log
- * assumptions that Shor's algorithm breaks on a CRQC. A quantum adversary could
- * forge "I did the compute" proofs and mint JGT for work never performed,
- * destroying the chain's core value. Groth16 also requires a per-circuit
- * trusted setup (a toxic-waste ceremony). The replacement below:
- *   • is built ONLY from a quantum-safe hash (SHA3-256 / SHA-256), so it
- *     survives Shor AND Grover (256-bit digest → ~128-bit PQ security), and
- *   • is TRANSPARENT — no trusted setup, no ceremony, no toxic waste.
- *
- * PRIVACY (the Zcash-style ask, without a pairing rig)
- * ────────────────────────────────────────────────────
- * The prover's private witness (task commitment, nonce, claimed TFLOPS) is
- * sealed inside the proof and never revealed on-chain. Verification checks the
- * proof against PUBLIC inputs only — the circuit id, the public output
- * commitment, and the epoch seed. This is the same privacy shape as a shielded
- * protocol: the chain learns THAT valid work occurred, not the raw trace.
- *
- * CONSTRUCTION (FRI-style, hash-only interactive oracle proof made non-
- * interactive via Fiat–Shamir)
- * ─────────────────────────────────────────────────────────────
- *   witness   w = (taskCommitment, nonce, tflopsWeight)         [private]
- *   leaf      L = H( circuitId | outputCommitment | w | nonce )
- *   tree      a small Merkle tree over the witness polynomials
- *   root      R = MerkleRoot                                     [committed]
- *   Fiat–Shamir challenge  c = H( domain | R | publicInputs )
- *   queries   k leaves opened with Merkle authentication paths
- *   bound     the opened leaves + tflopsWeight are bound into R so the
- *             claimed work cannot be inflated after the fact
- * Security is reduced to collision/preimage resistance of H. Nothing else.
- *
- * This module is self-contained (no arkworks, no wasm needed to VERIFY), so an
- * ordinary machine can run a full node — no "crazy mining rig" required to
- * check proofs. Proving is heavier than verifying, as with any STARK-like
- * system, but stays commodity-hardware friendly.
- *
- * CIRCUIT NAMING: post-quantum circuit ids carry the "PQ_" prefix
- * (e.g. "PQ_CIRCUIT_AI_INFERENCE_V1") so they are unambiguous next to the
- * legacy pairing-based registry entries.
+ * Research-only hash/Merkle receipts for simulations.
+ * This module checks Merkle paths over prover-chosen hash leaves. It has no
+ * computation constraints, polynomial low-degree test, FRI protocol, or
+ * zero-knowledge argument. Claimed work need not have been performed.
+ * Strict mode rejects receipts; simnet acceptance only exercises plumbing.
+ * Hash primitives alone establish neither soundness nor payment privacy.
+ * PQ-HASH-IOP-v1 is a historical serialized name, not a security claim.
  */
 
 import { createHash, randomBytes } from "crypto";
@@ -69,15 +24,10 @@ function H(...parts: (Uint8Array | string | Buffer)[]): Buffer {
   return h.digest();
 }
 
-/** Number of Fiat–Shamir query openings per proof (soundness ≈ 2^-queries·log). */
+/** Number of receipt openings; no computation soundness bound. */
 const PQ_NUM_QUERIES = 16;
 
-/**
- * Witness polynomial evaluation-domain size (number of leaves). Larger than
- * PQ_NUM_QUERIES so the Fiat–Shamir query set is collision-free with high
- * probability; the prover retries on the (rare) collision to always emit
- * PQ_NUM_QUERIES DISTINCT openings, which the verifier strictly requires.
- */
+/** Receipt tree size; duplicate sampled indexes are skipped. */
 const PQ_DOMAIN_SIZE = 32;
 
 /**
@@ -153,19 +103,15 @@ function merkleVerify(leaf: Buffer, path: Buffer[], index: number, root: Buffer)
 
 export interface PQCircuitParams {
   circuitId: string;
-  /** Minimum TFLOPS-seconds this circuit can credibly attest to. */
+  /** Minimum simulated work claim for this fixture family. */
   minTFLOPSPerProof: number;
-  /** Maximum TFLOPS-seconds (caps fraudulent inflation). */
+  /** Maximum simulated claim; does not establish actual work. */
   maxTFLOPSPerProof: number;
   /** Block height at which this circuit became active (governance path). */
   activeSinceHeight: number;
 }
 
-/**
- * Post-quantum circuit registry. NOTE the absence of alpha/beta/gamma/delta/IC:
- * a transparent scheme has no trusted-setup verification key — only honest,
- * public bounds. This removes the toxic-waste ceremony Groth16 required.
- */
+/** Simulation policy bounds; absence of setup keys is not proof soundness. */
 export const PQ_CIRCUIT_REGISTRY: Map<string, PQCircuitParams> = new Map([
   ["PQ_CIRCUIT_AI_INFERENCE_V1", { circuitId: "PQ_CIRCUIT_AI_INFERENCE_V1", minTFLOPSPerProof: 1, maxTFLOPSPerProof: 1_000_000, activeSinceHeight: 0 }],
   ["PQ_CIRCUIT_AI_TRAINING_V1",  { circuitId: "PQ_CIRCUIT_AI_TRAINING_V1",  minTFLOPSPerProof: 10, maxTFLOPSPerProof: 10_000_000, activeSinceHeight: 0 }],
@@ -185,13 +131,13 @@ export interface PQQueryOpening {
   path: string[];    // hex siblings, bottom-up
 }
 
-/** The serialised post-quantum compute proof. */
+/** Serialized simulation receipt; historical type name retained. */
 export interface PQComputeProof {
   scheme: "PQ-HASH-IOP-v1";
   circuitId: string;
   /** Public output commitment (e.g. hash of the model/result the task produced). */
   outputCommitment: string;
-  /** Merkle root committing to the private witness polynomials. */
+  /** Merkle root over prover-chosen hash leaves. */
   witnessRoot: string;
   /** Claimed TFLOPS-seconds (bound into the proof; checked against registry). */
   tflopsWeight: number;
@@ -211,7 +157,7 @@ export interface PQWitness {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function buildWitnessLeaves(w: PQWitness, circuitId: string, outputCommitment: string): Buffer[] {
-  // Expand the witness into a fixed polynomial evaluation domain (PQ_DOMAIN_SIZE leaves).
+  // Hash witness fields into leaves; no polynomial constraints are enforced.
   const leaves: Buffer[] = [];
   for (let i = 0; i < PQ_DOMAIN_SIZE; i++) {
     leaves.push(
@@ -226,8 +172,8 @@ function fiatShamirChallenge(circuitId: string, outputCommitment: string, root: 
 }
 
 /**
- * Produce a post-quantum compute proof from a private witness.
- * `outputCommitment` is public; the witness stays secret (privacy).
+ * Produce a simulation receipt from prover-chosen fields.
+ * Unserialized witness fields do not establish zero knowledge.
  */
 export function pqProveCompute(
   circuitId: string,
@@ -283,7 +229,7 @@ export interface PQVerifyResult {
 }
 
 /**
- * Verify a post-quantum compute proof against public inputs only.
+ * Check receipt structure and Merkle paths; does not verify computation.
  * Returns { valid, reason }. Never throws on malformed input.
  */
 export function pqVerifyComputeProof(proof: PQComputeProof, blockHeight: number): PQVerifyResult {
@@ -304,10 +250,7 @@ export function pqVerifyComputeProof(proof: PQComputeProof, blockHeight: number)
     const root = toBytes(proof.witnessRoot);
     if (root.length !== 32) return { valid: false, reason: "bad witnessRoot" };
 
-    // Soundness: the proof must contain EXACTLY PQ_NUM_QUERIES openings with
-    // no duplicate leaf indexes. Otherwise a prover could drop a query that a
-    // hash collision made redundant (16 queries over a 16-leaf domain) and
-    // still cover every distinct required index — weakening the soundness bound.
+    // Require distinct openings for structural consistency only.
     if (!Array.isArray(proof.queries) || proof.queries.length !== PQ_NUM_QUERIES) {
       return { valid: false, reason: `expected ${PQ_NUM_QUERIES} queries` };
     }
@@ -333,11 +276,7 @@ export function pqVerifyComputeProof(proof: PQComputeProof, blockHeight: number)
     for (const expectedIdx of required) {
       const opening = proof.queries.find((o) => o.index === expectedIdx);
       if (!opening) return { valid: false, reason: `missing query ${expectedIdx}` };
-      // Re-derive the leaf from the witness-bound hash? We cannot — witness is
-      // private. Instead we check the opened leaf is a well-formed 32-byte value
-      // with a VALID Merkle path to the committed root. Binding to tflops and
-      // circuit is enforced because the root commits to them (prover cannot open
-      // a different tflops without a different root, which changes the challenge).
+      // Membership only: arbitrary leaves and work claims can pass.
       const leaf = toBytes(opening.leaf);
       if (leaf.length !== 32) return { valid: false, reason: "bad leaf" };
       const path = opening.path.map(toBytes);
@@ -394,13 +333,11 @@ export function pqFromComputeProof(cp: ComputeProof): PQComputeProof | null {
 }
 
 /**
- * Drop-in PQ replacement for the legacy verifyComputeProof: accepts the
+ * Simulation adapter for the historical API: accepts the
  * consensus ComputeProof, extracts the embedded PQ proof, and verifies it.
  */
 export function pqVerifyComputeProofFromConsensus(cp: ComputeProof, blockHeight: number): boolean {
-  const p = pqFromComputeProof(cp);
-  if (!p) return false;
-  return pqVerifyComputeProof(p, blockHeight).valid;
+  return pqVerifyProofForConsensus(cp, blockHeight, 0).valid;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -426,6 +363,14 @@ export function pqVerifyProofForConsensus(
 ): PQProofVerification {
   const p = pqFromComputeProof(cp);
   if (!p) return { valid: false, error: "not a PQ-HASH-IOP-v1 simulation receipt", verifiedTFLOPS: 0 };
+  if (!Number.isSafeInteger(cp.tflopsWeight) || cp.tflopsWeight < 0
+      || cp.tflopsWeight !== p.tflopsWeight || cp.circuitId !== p.circuitId
+      || cp.taskCommitment !== p.outputCommitment
+      || !Array.isArray(cp.publicInputs) || cp.publicInputs.length !== 3
+      || cp.publicInputs[0] !== p.outputCommitment || cp.publicInputs[1] !== String(p.tflopsWeight)
+      || cp.publicInputs[2] !== "0" || !Number.isFinite(perProofMinTFLOPS) || perProofMinTFLOPS < 0) {
+    return { valid: false, error: "simulation receipt does not match committed work context", verifiedTFLOPS: 0 };
+  }
   const r = pqVerifyComputeProof(p, blockHeight);
   if (!r.valid) return { valid: false, error: r.reason ?? "invalid", verifiedTFLOPS: 0 };
   const tf = r.tflopsWeight ?? 0;

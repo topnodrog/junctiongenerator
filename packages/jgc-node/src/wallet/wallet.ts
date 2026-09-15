@@ -7,7 +7,7 @@
  * its coins and emits a fully-signed Transaction that the node validates exactly
  * like any other (submitTransaction → validateSpend). Keys are persisted in an
  * AES-256-GCM keystore sealed with a scrypt-derived key, so a stolen keystore
- * file is useless without the passphrase.
+ * file resists disclosure according to the strength of its passphrase.
  *
  * BITCOIN ANALOG: the wallet half of Bitcoin Core — CWallet (keystore) + coin
  * selection (CreateTransaction) + signing (SignTransaction). Address/script
@@ -24,8 +24,11 @@ import { UTXOSet, txid, txSigHash, COINBASE_MATURITY } from "../consensus/utxo.j
 import { BASE_UNITS_PER_JGC, DECIMALS } from "../consensus/emission.js";
 import {
   pqGenerateKeyPair, pqAddressFromPublicKey, pqScriptPubKey, pqScriptSig,
-  pqSignHash, pqScriptPubKeyFromAddress, pqIsValidPublicKey,
+  pqSignHash, pqScriptPubKeyFromAddress, pqIsMatchingKeyPair,
 } from "../crypto/pq-signatures.js";
+import { MAX_RECOVERY_ACCOUNTS, normalizeRecoveryPhrase, recoveryKeyPair, RECOVERY_SCHEME } from "./recovery.js";
+import { BitcoinTestWallet, type BitcoinTestNetwork } from "./bitcoin.js";
+import { EthereumTestWallet, type EthereumTestNetwork } from "./ethereum.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Money formatting (16-decimal JGC ⇄ base units), string-exact (no float)
@@ -61,7 +64,7 @@ interface KeyRecord { privateKey: string; publicKey: string; }
 /** On-disk encrypted keystore envelope (JSON). The plaintext is the JSON map of
  *  label → {privateKey, publicKey}; only it is secret, the params are public. */
 export interface KeystoreFile {
-  version: 1;
+  version: 1 | 2;
   kdf: "scrypt";
   scrypt: { N: number; r: number; p: number; keyLen: number };
   salt: string;     // hex
@@ -80,19 +83,46 @@ function deriveKey(passphrase: string, salt: Buffer): Buffer {
 export interface SpendUTXO { txid: string; vout: number; value: JGCSatoshis; height: number; isCoinbase: boolean; }
 
 /**
- * A labelled set of secp256k1 keys plus the spend logic over them. Construct via
+ * A labelled set of ML-DSA-65 keys plus the spend logic over them. Construct via
  * {@link Wallet.create} (empty), {@link Wallet.fromKeystore} (decrypt), and
  * serialize with {@link Wallet.toKeystore} (encrypt).
  */
 export class Wallet {
   private readonly keys = new Map<string, KeyRecord>();
+  private recovery?: { scheme: typeof RECOVERY_SCHEME; phrase: string; chainId: string };
 
   static create(): Wallet { return new Wallet(); }
+
+  /** Recover sequential accounts. Labels are local aliases, not part of derivation. */
+  static fromRecoveryPhrase(phrase: string, chainId: string, accountCount = 1): Wallet {
+    if (!Number.isSafeInteger(accountCount) || accountCount < 1 || accountCount > MAX_RECOVERY_ACCOUNTS) throw new Error("Invalid account count");
+    const wallet = new Wallet();
+    wallet.recovery = { scheme: RECOVERY_SCHEME, phrase: normalizeRecoveryPhrase(phrase), chainId };
+    for (let i = 0; i < accountCount; i++) wallet.generate(`account-${i}`);
+    return wallet;
+  }
+
+  recoveryNetwork(): string | undefined { return this.recovery?.chainId; }
+
+  /** Native Bitcoin uses separate BIP84/secp256k1 accounts, never JGC keys. */
+  bitcoin(network: BitcoinTestNetwork, account = 0): BitcoinTestWallet {
+    if (!this.recovery) throw new Error("Bitcoin accounts require a recovery-phrase wallet");
+    return new BitcoinTestWallet(this.recovery.phrase, network, account);
+  }
+
+  ethereum(network: EthereumTestNetwork, account = 0): EthereumTestWallet {
+    if (!this.recovery) throw new Error("Ethereum accounts require a recovery-phrase wallet");
+    return new EthereumTestWallet(this.recovery.phrase, network, account);
+  }
 
   /** Decrypt a keystore envelope with the passphrase. Throws on a wrong
    *  passphrase (GCM auth failure) or a tampered file. */
   static fromKeystore(file: KeystoreFile, passphrase: string): Wallet {
-    if (file.version !== 1 || file.kdf !== "scrypt") throw new Error("unsupported keystore format");
+    if (!file || (file.version !== 1 && file.version !== 2) || file.kdf !== "scrypt") throw new Error("unsupported keystore format");
+    if (!file.scrypt || Object.entries(SCRYPT).some(([k, v]) => file.scrypt[k as keyof typeof SCRYPT] !== v)) throw new Error("unsupported keystore KDF parameters");
+    const validHex = (s: string, bytes: number): boolean => typeof s === "string" && new RegExp(`^[0-9a-fA-F]{${bytes * 2}}$`).test(s);
+    if (!validHex(file.salt, 16) || !validHex(file.iv, 12) || !validHex(file.authTag, 16) ||
+        typeof file.ciphertext !== "string" || file.ciphertext.length > 4 * 1024 * 1024 || !/^(?:[0-9a-fA-F]{2})+$/.test(file.ciphertext)) throw new Error("invalid keystore envelope");
     const key = deriveKey(passphrase, Buffer.from(file.salt, "hex"));
     const decipher = createDecipheriv("aes-256-gcm", key, Buffer.from(file.iv, "hex"));
     decipher.setAuthTag(Buffer.from(file.authTag, "hex"));
@@ -102,9 +132,26 @@ export class Wallet {
     } catch {
       throw new Error("keystore decryption failed (wrong passphrase or corrupt file)");
     }
-    const obj = JSON.parse(plain) as Record<string, KeyRecord>;
+    finally { key.fill(0); }
+    const decoded = JSON.parse(plain);
+    const obj = file.version === 2 ? decoded?.keys : decoded;
+    if (!obj || typeof obj !== "object" || Array.isArray(obj) || Object.keys(obj).length > MAX_RECOVERY_ACCOUNTS) throw new Error("invalid keystore keys");
     const w = new Wallet();
-    for (const [label, rec] of Object.entries(obj)) w.keys.set(label, rec);
+    for (const [label, rec] of Object.entries(obj)) {
+      const value = rec as KeyRecord;
+      if (!value || typeof value !== "object") throw new Error("invalid keystore key");
+      w.importKey(label, value.privateKey, value.publicKey);
+    }
+    if (file.version === 2) {
+      const recovery = decoded.recovery;
+      if (!recovery || recovery.scheme !== RECOVERY_SCHEME || w.keys.size === 0) throw new Error("invalid recovery metadata");
+      w.recovery = { scheme: RECOVERY_SCHEME, phrase: normalizeRecoveryPhrase(recovery.phrase), chainId: recovery.chainId };
+      let index = 0;
+      for (const rec of w.keys.values()) {
+        const expected = recoveryKeyPair(w.recovery.phrase, w.recovery.chainId, index++);
+        if (!safeEqual(rec.privateKey, expected.privateKey) || rec.publicKey !== expected.publicKey) throw new Error("recovery keys do not match");
+      }
+    }
     return w;
   }
 
@@ -114,10 +161,12 @@ export class Wallet {
     const iv = randomBytes(12);
     const key = deriveKey(passphrase, salt);
     const cipher = createCipheriv("aes-256-gcm", key, iv);
-    const plain = JSON.stringify(Object.fromEntries(this.keys));
+    const records = Object.fromEntries(this.keys);
+    const plain = JSON.stringify(this.recovery ? { keys: records, recovery: this.recovery } : records);
     const ct = Buffer.concat([cipher.update(plain, "utf8"), cipher.final()]);
+    key.fill(0);
     return {
-      version: 1, kdf: "scrypt", scrypt: { ...SCRYPT },
+      version: this.recovery ? 2 : 1, kdf: "scrypt", scrypt: { ...SCRYPT },
       salt: salt.toString("hex"), iv: iv.toString("hex"),
       authTag: cipher.getAuthTag().toString("hex"), ciphertext: ct.toString("hex"),
     };
@@ -128,8 +177,9 @@ export class Wallet {
   /** Create a fresh key under `label`. Throws if the label already exists (so a
    *  rerun can never silently overwrite — and orphan — funded keys). */
   generate(label: string): string {
+    this.validateLabel(label);
     if (this.keys.has(label)) throw new Error(`key "${label}" already exists`);
-    const kp = pqGenerateKeyPair();
+    const kp = this.recovery ? recoveryKeyPair(this.recovery.phrase, this.recovery.chainId, this.keys.size) : pqGenerateKeyPair();
     this.keys.set(label, kp);
     return pqAddressFromPublicKey(kp.publicKey);
   }
@@ -138,13 +188,22 @@ export class Wallet {
    *  ML-DSA secret key does NOT cheaply yield its public key, so both halves are
    *  required (as produced by generate()/pqGenerateKeyPair). */
   importKey(label: string, privateKeyHex: string, publicKeyHex: string): string {
+    this.validateLabel(label);
+    if (this.recovery) throw new Error("cannot mix imported keys into a recovery-phrase wallet");
     if (this.keys.has(label)) throw new Error(`key "${label}" already exists`);
-    if (!pqIsValidPublicKey(publicKeyHex)) throw new Error("public key must be a valid ML-DSA-65 public key (hex)");
+    if (!pqIsMatchingKeyPair(privateKeyHex, publicKeyHex)) throw new Error("keys must be a matching ML-DSA-65 pair");
     this.keys.set(label, { privateKey: privateKeyHex.toLowerCase(), publicKey: publicKeyHex.toLowerCase() });
     return pqAddressFromPublicKey(publicKeyHex);
   }
 
   has(label: string): boolean { return this.keys.has(label); }
+  private validateLabel(label: string): void {
+    if (typeof label !== "string" || label.length === 0 || label.length > 128) throw new Error("invalid wallet label");
+    // Numeric object keys reorder in JSON. Recovery accounts must retain their
+    // derivation order; legacy aliases never participated in derivation.
+    if (this.recovery && !/^[a-zA-Z][a-zA-Z0-9_-]{0,63}$/.test(label)) throw new Error("invalid recovery account label");
+    if (this.keys.size >= MAX_RECOVERY_ACCOUNTS) throw new Error("wallet account limit reached");
+  }
   labels(): string[] { return [...this.keys.keys()]; }
 
   private rec(label: string): KeyRecord {

@@ -1,5 +1,10 @@
 # Junction Generator — Completion Roadmap
 
+**Product reset, 2026-09-11:** Follow [JGC completion plan](JGC_COMPLETION_PLAN.md)
+for the owner's compute/inference/storage, privacy and central-intelligence
+requirements. The historical phases below remain useful implementation evidence;
+the new plan records the missing product layers and their acceptance criteria.
+
 **Updated:** 2026-09-05 UTC · **Owner:** James Gordon
 
 Three components, one repo. Keep them distinct:

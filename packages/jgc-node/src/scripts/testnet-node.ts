@@ -70,6 +70,7 @@ async function main(): Promise<void> {
       loadOrCreateTestnetParticipantIdentity(join(opts.dataDir, "participant-identity.json")),
     )
     : undefined;
+  const role = opts.produce ? "designated-producer" : participant ? "participant" : "back-checker";
   const startedAt = Date.now();
 
   let p2p: P2PServer | undefined;
@@ -91,11 +92,13 @@ async function main(): Promise<void> {
         height: chain.tipHeight,
         peerCount: chain.peerCount,
         chain: true,
-        address: null,
+        address: participant?.address ?? null,
         label: null,
         balanceJGC: "0",
         pendingJGC: "0",
         model: process.env.JUNCTIONING_MODEL ?? null,
+        role,
+        participating: Boolean(participant),
         producer: {
           enabled: opts.produce,
           producedBlocks: producerStatus.producedBlocks,
@@ -120,7 +123,7 @@ async function main(): Promise<void> {
     console.log(`[testnet] status:  http://${status.host}:${status.port}/status`);
     console.log(`[testnet] seeds:   ${opts.seeds.length ? opts.seeds.join(", ") : "(none; standalone node)"}`);
     console.log(`[testnet] explorer: http://${status.host}:${status.port}/explorer`);
-    console.log(`[testnet] role:    ${opts.produce ? `designated producer (${opts.blockIntervalSec}s interval)` : "validator/back-checker"}`);
+    console.log(`[testnet] role:    ${opts.produce ? `designated producer (${opts.blockIntervalSec}s interval)` : participant ? "participant" : "validator/back-checker"}`);
     if (participant) console.log(`[testnet] participant: ${participant.address} (equal-weight pilot receipts)`);
     if (opts.produce) producer.start();
     participant?.start();

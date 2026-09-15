@@ -11,9 +11,11 @@ const npmExecutable = npmCliPath ? process.execPath : process.platform === "win3
 const npmPrefixArgs = npmCliPath ? [npmCliPath] : [];
 const requiredMissingGates = [
   "proofSystem",
-  "deterministicConsensus",
+  "postQuantumSecurity",
+  "paymentPrivacy",
+  "usefulServices",
+  "governance",
   "permissionlessProduction",
-  "peerAuthentication",
   "validatorEconomics",
   "reproducibleArtifacts",
   "soloSoak",

@@ -315,9 +315,10 @@ export function encodeDifficultyBitsExact(targetMicros: bigint): number {
   }
   if (size > 0xff) throw new RangeError("difficulty target is too large for compact encoding");
 
-  const shift = size > 3 ? (size - 3) * 8 : 0;
-  const mantissa = Number(targetMicros >> BigInt(shift)) & 0x00ff_ffff;
-  return (size << 24) | mantissa;
+  const mantissa = Number(size > 3
+    ? targetMicros >> BigInt((size - 3) * 8)
+    : targetMicros << BigInt((3 - size) * 8)) & 0x00ff_ffff;
+  return ((size << 24) | mantissa) >>> 0;
 }
 
 /** Decode compact nBits into an exact micro-TFLOPS target. */

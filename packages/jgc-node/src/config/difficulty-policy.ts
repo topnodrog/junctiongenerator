@@ -1,8 +1,15 @@
-import { TESTNET_NETWORK } from "./networks.js";
+import { MAINNET_NETWORK, TESTNET_NETWORK } from "./networks.js";
 import {
   calculateNextDifficultyTargetExact, decodeDifficultyBits, decodeDifficultyBitsExact,
   encodeDifficultyBits, encodeDifficultyBitsExact, RETARGET_TARGET_SECONDS,
 } from "../consensus/emission.js";
+
+/** Unlaunched v3 candidate: greatest work, then lowest canonical header hash.
+ * Published pilot and legacy development networks retain first-seen ties.
+ */
+export function prefersChainTip(chainId: string | undefined, work: bigint, hash: string, tipWork: bigint, tipHash: string): boolean {
+  return work > tipWork || (chainId === MAINNET_NETWORK.chainId && work === tipWork && hash < tipHash);
+}
 
 /** The published v2 pilot must retain its original rounding and chainwork. */
 export function nextNetworkDifficultyBits(chainId: string | undefined, currentBits: number, actualTimespan: number): number {

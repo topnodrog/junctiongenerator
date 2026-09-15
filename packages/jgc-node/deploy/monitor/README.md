@@ -8,9 +8,11 @@ not modified. Historical incomplete windows remain incomplete.
 ## Runtime
 
 A private, IAM-authenticated Cloud Run service collects the public Google explorer,
-both public WebSocket upgrades, and a sanitized status uploaded by the Windows
-back-checker every five minutes. Cloud Storage saves each observation before any
-interpretation. Object generation preconditions protect concurrent state changes.
+both public WebSocket upgrades, and a sanitized status uploaded independently by
+each Windows participant every five minutes. Each upload is bound to that
+participant's public `1QGC...` address; there is no shared back-checker object.
+Cloud Storage saves each observation before any interpretation. Object generation
+preconditions protect concurrent state changes.
 The runtime can create evidence but cannot overwrite or delete evidence objects;
 only the window's control and incoming status prefixes are mutable.
 
@@ -20,20 +22,40 @@ Invalid or unavailable model output is recorded separately from node evidence.
 A successful live model connection check is required before the baseline starts.
 The model and collector run in Google Cloud even when Codex is closed.
 
-The Windows scheduled observer uses an expiring signed URL limited to one status
-object. Its private configuration must remain outside Git and logs. Windows must
-remain signed in and awake for the local node and observer to run. Neither the
-installer nor observer starts, stops, or modifies the node.
+Each Windows participant recorder uses an expiring signed URL limited to its own
+address-bound status object. Its private configuration must remain outside Git
+and logs. Windows must remain awake for the local node and recorder to run. Pass
+`-AtStartup` to both Windows installers to run under the current user's S4U
+principal without requiring an interactive sign-in. Installing an at-startup
+task requires an elevated PowerShell session. Neither the recorder installer nor
+recorder starts, stops, or modifies the node.
+Do not install a recorder configuration on a possibly compromised computer:
+rebuild and independently check the machine first. Recorder status is only
+availability evidence; canonical public blocks remain the source of truth for
+contribution.
 
 ## Window and limitations
 
-The baseline requires both owner participant addresses and a current, connected,
-nonproducing back-checker. Partial epochs are excluded. The window starts at the
-next full 144-block epoch and targets three consecutive epochs, with at least
-72 hours of observations and an absolute stop within five days. Missing evidence,
-restarts, changed blocks and gaps remain in the result even after recovery.
+The baseline requires both owner participant addresses, plus one current,
+connected, nonproducing participant-recorder status for each address. Partial
+epochs are excluded. The window starts at the next full 144-block epoch and
+targets three consecutive epochs, with at least 72 hours of observations and an
+absolute stop within five days. Missing evidence, restarts, changed blocks and
+gaps remain in the result even after recovery.
 Cloud Scheduler is paused when collection completes or reaches its deadline.
 Repeated requests after closure cannot extend the window.
+
+Every raw observation is saved. A chain identity, supply, canonical-history, or
+participant-coverage failure is immediately terminal. A public transport probe
+must fail for three consecutive five-minute samples before it becomes an
+acceptance failure; this avoids treating one client-side timeout as proof of a
+sustained outage. Participant-recorder upload delays, temporary disconnects,
+and catch-up height differences are retained as resilience evidence. When a
+machine reconnects, the monitor records the outage duration and recovery; these
+events do not make the window incomplete. The monitor records each missing
+participant once per canonical block, including the public address and height,
+rather than inflating one absence on every poll. Public block participation—not
+recorder connectivity—determines whether a contributor fulfilled the window.
 
 WebSocket upgrade success does not prove node admission or Fly chain agreement.
 Private seed logs, backup restoration, bans, independent operator provenance,
@@ -55,12 +77,16 @@ do not reset or waive these requirements.
    concurrency one, 512 MiB memory, one CPU, request-based billing and a 120-second
    timeout. Set `MONITOR_ARMED=false` initially.
 6. Configure `GOOGLE_CLOUD_PROJECT`, `MONITOR_BUCKET`, `MONITOR_WINDOW_ID`,
-   `MONITOR_DEADLINE_UTC`, the two comma-separated `MONITOR_PARTICIPANTS`, and the
+   `MONITOR_DEADLINE_UTC`, the two-to-eight comma-separated `MONITOR_PARTICIPANTS`, and the
    full `MONITOR_SCHEDULER_JOB` name. Create a five-minute OIDC scheduler job using
    the dedicated invoker account, then pause it during enrollment.
-7. Authenticated POST `/enroll-back-checker` returns sensitive upload configuration.
-   Save it privately with `historyPath`, install `Install-JgcSoakObserver.ps1`, and
-   verify the first upload. Do not paste the signed URL into a task or log.
+7. On each participant machine, first confirm its local `/status` reports the
+   expected public address, `"role": "participant"`, and `"participating": true`.
+   Then make an authenticated POST to
+   `/enroll-participant-recorder?participant=1QGC...` for that exact enrolled
+   address. Save the returned address-bound configuration privately with a
+   machine-local `historyPath`, install `Install-JgcSoakObserver.ps1 -AtStartup`, and verify
+   the first upload from each machine. Do not paste a signed URL into a task or log.
 8. POST `/test-gemini`, check the successful model response, and POST `/tick` to
    inspect preflight findings. Only then deploy with `MONITOR_ARMED=true` and
    resume the scheduler. Verify durable observations from scheduled invocations.

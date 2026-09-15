@@ -1,0 +1,3 @@
+# Keep the evidence's byte-level lockfile hash stable across checkouts.
+Cargo.lock text eol=lf
+*.pqe binary

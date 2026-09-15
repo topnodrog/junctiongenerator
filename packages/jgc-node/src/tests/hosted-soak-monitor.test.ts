@@ -32,13 +32,16 @@ function observation(height = START_HEIGHT, milliseconds = BASE + (height - STAR
       accountedSupplyJGTC: String(total), expectedSupplyJGTC: String(total), supplyConserved: true }, recentBlocks: blocks,
   };
   return { capturedAt, explorer, transport: [{ seed: "seed-a", reachable: true, latencyMs: 5 }, { seed: "seed-b", reachable: true, latencyMs: 10 }],
-    runner: { windowId: WINDOW, capturedAt, running: true, network: "jgtc-testnet-v2", height, peerCount: 2, producerEnabled: false,
-      uptimeSec: 1000 + (milliseconds - BASE) / 1000, nodeVersion: "0.1.0", platform: "win32", architecture: "x64", runtimeVersion: "v22.0.0" } };
+    recorders: Object.fromEntries(PARTICIPANTS.map((address) => [address, {
+      windowId: WINDOW, capturedAt, running: true, network: "jgtc-testnet-v2", address, height, peerCount: 2, producerEnabled: false,
+      role: "participant", participating: true,
+      uptimeSec: 1000 + (milliseconds - BASE) / 1000, nodeVersion: "0.1.0", platform: "win32", architecture: "x64", runtimeVersion: "v22.0.0",
+    }])) };
 }
 
 describe("hosted owner soak monitor", () => {
   test("refuses an unhealthy or incomplete baseline", () => {
-    const missing = observation(); missing.runner = null;
+    const missing = observation(); missing.recorders[PARTICIPANTS[0]!] = null;
     expect(() => startMonitor(WINDOW, PARTICIPANTS, missing)).toThrow(/baseline/);
     const absent = observation(); absent.explorer!.epoch.participants = []; absent.explorer!.epoch.totalParticipationWeight = 0;
     expect(() => startMonitor(WINDOW, PARTICIPANTS, absent)).toThrow(/participants/);
@@ -53,9 +56,32 @@ describe("hosted owner soak monitor", () => {
     expect(state.settlementPayoutBytesVerified).toBe(false);
   });
 
-  test("retains transport failures and stale runner evidence", () => {
-    const row = observation(); row.transport[1].reachable = false; row.runner!.capturedAt = new Date(BASE - 16 * 60_000).toISOString();
-    expect(observationFindings(row, WINDOW).map(f => f.id)).toEqual(expect.arrayContaining(["seed-b.transport", "runner.stale"]));
+  test("accepts a third independently recorded participant", () => {
+    const third = "1QGC" + "c".repeat(40);
+    const row = observation();
+    row.recorders[third] = { ...row.recorders[PARTICIPANTS[0]!]!, address: third };
+    const epochWeight = row.explorer!.epoch.blockIndex * 1000;
+    row.explorer!.pendingContributions = 3;
+    row.explorer!.epoch.totalParticipationWeight += epochWeight;
+    row.explorer!.epoch.participants.push({ address: third, participationWeight: epochWeight, sharePercent: 0, projectedJGTC: "0" });
+    for (const block of row.explorer!.recentBlocks) {
+      block.participants.push(third);
+      block.contributionCount = 3;
+      block.totalParticipationWeight = 3000;
+    }
+    expect(startMonitor(WINDOW, [...PARTICIPANTS, third], row).participants).toEqual([...PARTICIPANTS, third]);
+  });
+
+  test("retains transport failures and stale participant-recorder evidence", () => {
+    const row = observation(); row.transport[1].reachable = false; row.recorders[PARTICIPANTS[0]!]!.capturedAt = new Date(BASE - 16 * 60_000).toISOString();
+    expect(observationFindings(row, WINDOW, PARTICIPANTS).map(f => f.id)).toEqual(expect.arrayContaining(["seed-b.transport", `recorder.${PARTICIPANTS[0]}.stale`]));
+  });
+
+  test("requires every recorder to attest only to its own participant address", () => {
+    const row = observation();
+    row.recorders[PARTICIPANTS[1]!] = { ...row.recorders[PARTICIPANTS[1]!]!, address: PARTICIPANTS[0] };
+    expect(observationFindings(row, WINDOW, PARTICIPANTS).map(f => f.id)).toContain(`recorder.${PARTICIPANTS[1]}.identity`);
+    expect(() => startMonitor(WINDOW, PARTICIPANTS, row)).toThrow(/baseline/);
   });
 
   test("detects a missing hourly observation even when later chain data is valid", () => {
@@ -75,6 +101,56 @@ describe("hosted owner soak monitor", () => {
     const result = advanceMonitor(state, row);
     expect(result.findings.map(f => f.id)).toEqual(expect.arrayContaining(["chain.changed", "participant.missing"]));
     expect(state.blocks["1008"].hash).toBe(hash(1008));
+    expect(result.state.missingParticipantBlocks["1009"]?.missingAddresses).toEqual([PARTICIPANTS[1]]);
+  });
+
+  test("records each missing participant block once instead of once per later poll", () => {
+    let state = startMonitor(WINDOW, PARTICIPANTS, observation());
+    const first = observation(1008, BASE + 20 * 60_000);
+    first.explorer!.recentBlocks[0]!.participants = [PARTICIPANTS[0]];
+    state = advanceMonitor(state, first).state;
+    const repeat = observation(1008, BASE + 25 * 60_000);
+    repeat.explorer!.recentBlocks[0]!.participants = [PARTICIPANTS[0]];
+    const result = advanceMonitor(state, repeat);
+    expect(result.findings.map(f => f.id)).not.toContain("participant.missing");
+    expect(result.state.findingsById["participant.missing"]).toMatchObject({ count: 1, severity: "fail" });
+    expect(result.state.missingParticipantBlocks["1008"]?.lastObservedAt).toBe(repeat.capturedAt);
+  });
+
+  test("records a one-off availability fault without making a healthy completed window incomplete", () => {
+    let state: MonitorState = startMonitor(WINDOW, PARTICIPANTS, observation());
+    const blip = observation(1007);
+    blip.transport[1]!.reachable = false;
+    state = advanceMonitor(state, blip).state;
+    expect(state.findingsById["seed-b.transport"]).toMatchObject({ count: 1, severity: "warn" });
+    for (let height = 1008; height <= 1439; height++) state = advanceMonitor(state, observation(height)).state;
+    expect(state.phase).toBe("completed");
+    expect(state.findingsById["seed-b.transport"]?.severity).toBe("warn");
+  });
+
+  test("records sustained disconnects and reconnections as resilience evidence without making a healthy window incomplete", () => {
+    let state = startMonitor(WINDOW, PARTICIPANTS, observation());
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      const row = observation(1006 + attempt, BASE + attempt * 5 * 60_000);
+      row.recorders[PARTICIPANTS[0]!]!.peerCount = 0;
+      state = advanceMonitor(state, row).state;
+    }
+    expect(state.findingsById[`recorder.${PARTICIPANTS[0]}.disconnected`]).toMatchObject({ severity: "warn", count: 3 });
+    const recovered = advanceMonitor(state, observation(1010, BASE + 20 * 60_000));
+    expect(recovered.findings.map(f => f.id)).toContain(`recorder.${PARTICIPANTS[0]}.reconnected`);
+    expect(recovered.state.recorderContinuity[PARTICIPANTS[0]!]).toMatchObject({ disconnections: 1, reconnections: 1, currentDisconnectedAt: null });
+    state = recovered.state;
+    for (let height = 1011; height <= 1439; height++) state = advanceMonitor(state, observation(height)).state;
+    expect(state.phase).toBe("completed");
+  });
+
+  test("tolerates one delayed participant upload while the prior status is fresh", () => {
+    const fresh = startMonitor(WINDOW, PARTICIPANTS, observation());
+    const delayed = observation(1007, BASE + 5 * 60_000);
+    delayed.recorders[PARTICIPANTS[0]!] = null;
+    const result = advanceMonitor(fresh, delayed);
+    expect(result.findings.map(f => f.id)).toContain(`recorder.${PARTICIPANTS[0]}.upload-delayed`);
+    expect(result.findings.map(f => f.id)).not.toContain(`recorder.${PARTICIPANTS[0]}.missing`);
   });
 
   test("completes three fully observed contribution epochs but never certifies payout bytes or formal acceptance", () => {
@@ -96,13 +172,15 @@ describe("hosted owner soak monitor", () => {
 
   test("does not turn an observed restart into proof of an identity-preservation drill", () => {
     const state = startMonitor(WINDOW, PARTICIPANTS, observation());
-    const row = observation(1007); row.runner!.uptimeSec = 2;
-    expect(advanceMonitor(state, row).findings.map(f => f.id)).toContain("runner.restart");
+    const row = observation(1007); row.recorders[PARTICIPANTS[0]!]!.uptimeSec = 2;
+    expect(advanceMonitor(state, row).findings.map(f => f.id)).toContain(`recorder.${PARTICIPANTS[0]}.restart`);
   });
 
-  test("sanitizes runner data and rejects another window or malformed status", () => {
-    expect(validateRunner({ ...observation().runner, secret: "do-not-copy" }, WINDOW)).not.toHaveProperty("secret");
-    expect(() => validateRunner(observation().runner, "different-window")).toThrow();
-    expect(() => validateRunner({ ...observation().runner, height: "1006" }, WINDOW)).toThrow();
+  test("sanitizes participant-recorder data and rejects another window or malformed status", () => {
+    const recorder = observation().recorders[PARTICIPANTS[0]!]!;
+    expect(validateRunner({ ...recorder, secret: "do-not-copy" }, WINDOW)).not.toHaveProperty("secret");
+    expect(() => validateRunner(recorder, "different-window")).toThrow();
+    expect(() => validateRunner({ ...recorder, height: "1006" }, WINDOW)).toThrow();
+    expect(() => validateRunner({ ...recorder, role: "unknown" }, WINDOW)).toThrow();
   });
 });

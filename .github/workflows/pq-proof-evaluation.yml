@@ -1,0 +1,38 @@
+name: Isolated PQ proof evaluation
+
+on:
+  pull_request:
+    paths:
+      - "tools/pq-proof-evaluation/**"
+      - ".github/workflows/pq-proof-evaluation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  research-harness:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    env:
+      RAYON_NUM_THREADS: "2"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7; matches node CI
+      - name: Install pinned compiler
+        run: rustup toolchain install 1.96.0 --profile minimal
+      - name: Check isolated constraints and real proof rejection
+        working-directory: tools/pq-proof-evaluation
+        run: |
+          cargo +1.96.0 test --release --locked
+          cargo +1.96.0 build --release --locked
+      - name: Verify saved proof and hostile files in separate processes
+        working-directory: tools/pq-proof-evaluation
+        shell: bash
+        run: |
+          binary=target/release/jgc-pq-proof-evaluation
+          if [[ "$RUNNER_OS" == "Windows" ]]; then binary="$binary.exe"; fi
+          python process_tests.py "$binary"

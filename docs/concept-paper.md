@@ -2,10 +2,10 @@
 
 **A Protocol for Redirecting Mining Compute to Real AI Workloads**
 
-*Version 0.6 — Implementation-aligned draft, 2026-09-01*
+*Version 0.7 — Implementation-aligned draft, 2026-09-11*
 
 > **Implementation status:** JGC currently runs as early, valueless testnet
-> software. Independent Google Cloud and Fly.io public pilot seeds on the
+> software. Owner-operated Google Cloud and Fly.io public pilot seeds on the
 > repaired `jgtc-testnet-v2` network have completed six zero-premine
 > settlements with exact supply conservation; the independent multi-machine
 > soak remains incomplete. Consensus V3
@@ -186,10 +186,37 @@ The following supply mechanics are design candidates, not active policy:
 
 - **Mining Rewards**: Emitted per block, proportional to useful compute completed
 - **Halving Schedule**: Block rewards decrease over time, similar to Bitcoin, but triggered by total useful compute milestones rather than block count
-- **Burn Mechanism**: A percentage of compute marketplace fees is burned, creating deflationary pressure as network usage grows
+- **Service Surplus**: After infrastructure and all other bills are paid, remaining realized service surplus is intended to fund purchases of JGC. This supersedes the earlier fee-burning proposal; token disposition requires a separate policy.
 
 Detailed tokenomics require a separate specification, simulations, security
 review, and community review before activation.
+
+### 4.3 Paid Services and Surplus Purchases
+
+Junction Generator intends to charge for compute and inference. Electricity,
+hardware, hosting, bandwidth, worker compensation and other operating bills
+must be paid. Any money left over after those obligations is to be used to
+purchase JGC, with the aim of supporting a fair market value and a market for
+participants wishing to sell their earned JGC. This is the project's intended
+use of realized surplus, not a guaranteed price floor, redemption right or
+promise that a buyer will always be available. The purchase policy is not yet
+implemented, and valueless JGTC testnet receipts are not purchase targets.
+
+Before activation, specify auditable revenue and expense accounting, purchase
+cadence, execution limits, treasury custody, reporting and treatment of purchased
+coins. Spending must never exceed actual surplus after bills; forecasts and
+unrealized token gains do not fund purchases. Subsidized access, if offered,
+requires a bounded budget. Purchases must not consume funds owed to workers or
+other creditors.
+
+### 4.4 Founder's Prediction: “Intelligence Must Be Free”
+
+James Gordon predicts that intelligence is a force that will resist containment,
+and that attempts to capture and sell intelligence itself will go badly for
+those who attempt it. This is his philosophical prediction and motivation for
+contributing toward a world of abundance. It is not an established scientific
+finding or a claim that the physical resources needed to run intelligence cost
+nothing. Charging for compute and inference is consistent with this vision.
 
 ---
 

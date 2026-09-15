@@ -3,6 +3,17 @@
 Status: **blocked**. `jgc-node` contains a declared mainnet identity, but it
 does not yet contain a launchable value-bearing mainnet.
 
+Two engineering gates are satisfied: peer authentication and deterministic
+consensus. The other ten, including payment privacy and end-to-end quantum
+security, remain incomplete and block launch.
+
+See [findings and prioritized todo](FINDINGS_AND_TODO.md) for the current audit,
+including the owner's mandatory Zcash-like privacy and quantum requirements,
+and [peer authentication evidence](PEER_AUTHENTICATION.md) for the candidate
+connection protocol and its acceptance checks.
+Candidate arithmetic, fork ordering and replay are tracked in the
+[deterministic-consensus acceptance record](DETERMINISTIC_CONSENSUS.md).
+
 The release guard is intentionally fail-closed. Run this from
 `packages/jgc-node`:
 
@@ -23,6 +34,10 @@ chain identity exactly.
 | Gate | Meaning |
 | --- | --- |
 | `proofSystem` | Mainnet accepts only sound, registered proofs; simulation receipts and placeholder keys are impossible. |
+| `postQuantumSecurity` | Reviewed end-to-end post-quantum security, including proofs, address commitments, transport, and upgrade keys. ML-DSA alone is insufficient. |
+| `paymentPrivacy` | Reviewed recipient-exclusive spending, viewing-key separation, encrypted notes and shielded value conservation; wallet and consensus integration pass adversarial tests. |
+| `usefulServices` | Compute, inference and storage have assigned work, verifiable completion/availability, replay prevention and funded, exactly-once settlement. |
+| `governance` | The central intelligence has explicit authority limits, accountable proposals, versioned upgrades, budget controls and tested recovery. |
 | `deterministicConsensus` | Consensus arithmetic, encoding, replay, and fork choice are deterministic across supported builds. |
 | `permissionlessProduction` | Block production does not depend on one designated operator. |
 | `peerAuthentication` | P2P identities, sessions, messages, and replay protection are authenticated and bounded. |
@@ -37,9 +52,10 @@ chain identity exactly.
 - The testnet proof path uses simulation receipts that are not proofs of useful
   computation.
 - The production loop is a testnet-only designated producer.
-- ML-DSA message authentication is implemented, but proposer identity is not
-  yet bound into the block header and the authenticated mode is not the default
-  testnet mode.
+- Peer authentication passes its engineering gate: candidate authenticated mode
+  requires a fresh challenge handshake and connection-bound signed sequences.
+  Proposer identity is still not bound into the block header; that remains a
+  permissionless-production blocker. The unsigned pilot keeps its existing mode.
 - There is no mainnet node launcher or mainnet release bundle.
 - The isolated `@jg/codegen` package now emits deterministic bounded artifacts,
   but it intentionally does not run a pinned Solidity compiler or deployer.
@@ -47,6 +63,11 @@ chain identity exactly.
   not yet enforced by block validation or fork choice.
 
 These are release blockers, not documentation-only tasks.
+
+The 2026-09-11 product requirements are tracked in
+[the completion plan](../JGC_COMPLETION_PLAN.md). The four added product gates
+are mandatory; old readiness records omitting them are rejected. None is
+satisfied by the repaired experimental stealth primitive or the testnet soak.
 
 ## Solo preparation policy
 
@@ -78,3 +99,10 @@ chain identity, missing gates, simulation proof modes, or non-`ready` status.
 If a consensus defect is found before economic activation, abandon the chain ID
 and create a new genesis. After activation, fixes must use an explicit,
 versioned consensus upgrade; never rewrite history or silently replace genesis.
+
+## Privacy and quantum design continuation
+
+See the [V3 shielded-payment requirements draft](SHIELDED_PAYMENTS_V3_DESIGN.md)
+for the bounded gap audit, authority separation, transaction relation,
+parameter/review blockers and versioned migration requirements. No backend is
+selected and no privacy or quantum gate is completed by this draft.
