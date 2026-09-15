@@ -99,3 +99,10 @@ chain identity, missing gates, simulation proof modes, or non-`ready` status.
 If a consensus defect is found before economic activation, abandon the chain ID
 and create a new genesis. After activation, fixes must use an explicit,
 versioned consensus upgrade; never rewrite history or silently replace genesis.
+
+## Privacy and quantum design continuation
+
+See the [V3 shielded-payment requirements draft](SHIELDED_PAYMENTS_V3_DESIGN.md)
+for the bounded gap audit, authority separation, transaction relation,
+parameter/review blockers and versioned migration requirements. No backend is
+selected and no privacy or quantum gate is completed by this draft.

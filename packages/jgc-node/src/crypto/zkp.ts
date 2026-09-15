@@ -1,48 +1,10 @@
 /**
- * @file src/crypto/zkp.ts
- * @description ZK-SNARK proof verification layer for Proof-of-Useful-Compute.
- *
- * SYSTEM OVERVIEW
- * ───────────────
- * JGC miners generate Groth16 ZK-SNARK proofs that attest to having performed
- * a specific AI/scientific computation.  This file provides:
- *   1. A TypeScript interface to the Rust/WASM groth16 verifier.
- *   2. Circuit registry — mapping circuitId → verification key.
- *   3. Public input construction for each supported task type.
- *   4. Batch verification for block-level proof validation.
- *
- * CRYPTOGRAPHIC BACKGROUND
- * ────────────────────────
- * Groth16 (Groth, 2016) is a succinct non-interactive argument of knowledge
- * (zk-SNARK) over the BN254 elliptic curve pairing.
- *
- * Proof π = (A: G1, B: G2, C: G1) — three curve points, 256 bytes uncompressed
- * (A: 64 ‖ B: 128 ‖ C: 64).
- * Verification is a constant-time pairing check:
- *   e(A, B) = e(α, β) · ∏ e(γ·xi, δ) · e(C, δ)
- *
- * The "circuit" encodes the AI computation constraints (e.g., "prove that
- * you computed one forward pass of GPT-2 on this batch with these weights").
- * The witness is the actual computation trace; the proof leaks nothing about
- * the trace while proving its correctness.
- *
- * COMPARISON TO BITCOIN'S HASH-BASED PROOF:
- *   Bitcoin: SHA256d(header) < target    — brute-force search, O(1) verify
- *   JGC:     groth16_verify(π, inputs)   — algebraic proof,   O(1) verify
- *
- * Both achieve O(1) verification.  JGC's proof generation is ~1000× slower
- * than a single hash but proves 10^12+ floating-point ops occurred — useful
- * work vs. purposeless entropy.
- *
- * CIRCUIT FAMILIES SUPPORTED
- * ──────────────────────────
- *   CIRCUIT_AI_INFERENCE_V1:  Forward pass of a transformer model
- *   CIRCUIT_AI_TRAINING_V1:   SGD/Adam gradient step + weight update
- *   CIRCUIT_FOLD_SIM_V1:      Protein folding energy minimization step
- *   CIRCUIT_SCI_COMPUTE_V1:   Generic scientific computation (FFT, MD sim)
- *   CIRCUIT_COMMERCIAL_V1:    Verified third-party task (hash of task spec)
- *
- * Each circuit has a published Groth16 trusted setup (CRS) stored on-chain.
+ * Groth16 verification adapter and circuit registry for useful-compute work.
+ * Only implemented and registered circuit constraints establish a statement.
+ * The bounded Conv1D/MatVec paths do not prove general AI training or arbitrary
+ * FLOP counts. Family names are not evidence of implemented constraints.
+ * BN254 pairings are not post-quantum; production setup and independent review
+ * remain required. No constant-time or throughput claim is made here.
  */
 
 import type { ComputeProof } from "../types/index.js";

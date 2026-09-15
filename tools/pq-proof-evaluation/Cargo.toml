@@ -1,0 +1,12 @@
+[package]
+name = "jgc-pq-proof-evaluation"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+triton-vm = "=8.0.0"
+serde_json = "=1.0.149"
+
+[profile.release]
+opt-level = 3
