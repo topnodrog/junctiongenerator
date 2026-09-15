@@ -1,3 +1,4 @@
+import { jest } from "@jest/globals";
 import { AuthSession } from "../network/auth-session.js";
 import { MessageType as MT, type PeerMessage } from "../types/index.js";
 import { pqGenerateKeyPair, pqSignHash } from "../crypto/pq-signatures.js";
@@ -51,13 +52,19 @@ describe("connection-bound peer authentication", () => {
   });
 
   test("rejects cross-connection messages, reflection and signed stale timestamps", () => {
-    const { left, right } = pair();
-    const first = left.seal(message(MT.PING))!;
-    expect(() => pair().right.open(first)).toThrow("session");
-    expect(() => left.open(first)).toThrow("session");
-    expect(() => right.open(resign({ ...first, timestamp: Math.floor(Date.now() / 1000) - 901 }))).toThrow("signature");
-    expect(() => right.open(resign({ ...first, timestamp: Math.floor(Date.now() / 1000) + 121 }))).toThrow("signature");
-    right.open(first);
+    const now = Date.now();
+    const clock = jest.spyOn(Date, "now").mockReturnValue(now);
+    try {
+      const { left, right } = pair();
+      const first = left.seal(message(MT.PING))!;
+      expect(() => pair().right.open(first)).toThrow("session");
+      expect(() => left.open(first)).toThrow("session");
+      expect(() => right.open(resign({ ...first, timestamp: Math.floor(now / 1000) - 901 }))).toThrow("signature");
+      expect(() => right.open(resign({ ...first, timestamp: Math.floor(now / 1000) + 121 }))).toThrow("signature");
+      right.open(first);
+    } finally {
+      clock.mockRestore();
+    }
   });
 
   test("rejects altered envelopes, malformed signatures and cross-network signatures", () => {
