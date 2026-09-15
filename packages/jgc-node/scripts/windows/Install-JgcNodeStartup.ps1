@@ -1,7 +1,8 @@
 [CmdletBinding()]
 param(
   [string]$NodePath,
-  [switch]$NoStart
+  [switch]$NoStart,
+  [switch]$AtStartup
 )
 
 $ErrorActionPreference = "Stop"
@@ -48,8 +49,8 @@ $arguments = @(
 ) -join " "
 
 $action = New-ScheduledTaskAction -Execute $node.Path -Argument $arguments -WorkingDirectory $packageRoot
-$trigger = New-ScheduledTaskTrigger -AtLogOn -User $account
-$principal = New-ScheduledTaskPrincipal -UserId $account -LogonType Interactive -RunLevel Limited
+$trigger = if ($AtStartup) { New-ScheduledTaskTrigger -AtStartup } else { New-ScheduledTaskTrigger -AtLogOn -User $account }
+$principal = New-ScheduledTaskPrincipal -UserId $account -LogonType $(if ($AtStartup) { 'S4U' } else { 'Interactive' }) -RunLevel Limited
 $settings = New-ScheduledTaskSettingsSet `
   -AllowStartIfOnBatteries `
   -DontStopIfGoingOnBatteries `
@@ -60,7 +61,7 @@ $settings = New-ScheduledTaskSettingsSet `
   -MultipleInstances IgnoreNew
 
 $task = New-ScheduledTask -Action $action -Trigger $trigger -Principal $principal -Settings $settings `
-  -Description "Runs the outbound-only JGTC participant node after Windows sign-in."
+  -Description $(if ($AtStartup) { "Runs the outbound-only JGTC participant node when Windows starts." } else { "Runs the outbound-only JGTC participant node after Windows sign-in." })
 
 if ($existingTask) {
   Unregister-ScheduledTask -TaskName $script:JgcNodeTaskName -Confirm:$false

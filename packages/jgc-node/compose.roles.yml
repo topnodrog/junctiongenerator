@@ -1,0 +1,54 @@
+services:
+  requester:
+    build:
+      context: .
+      dockerfile: Dockerfile.roles
+    image: jgc-challenge-role:testnet-v1
+    command: ["requester"]
+    environment:
+      JGC_PROMPT: ${JGC_PROMPT:?set JGC_PROMPT}
+      JGC_TASK_ID: ${JGC_TASK_ID:-}
+    volumes:
+      - challenge-exchange:/exchange
+    restart: "no"
+
+  miner:
+    image: jgc-challenge-role:testnet-v1
+    command: ["miner"]
+    environment:
+      JGC_ROLE_TIMEOUT_MS: ${JGC_ROLE_TIMEOUT_MS:-900000}
+      JGC_OLLAMA_PULL: ${JGC_OLLAMA_PULL:-1}
+    depends_on:
+      requester:
+        condition: service_completed_successfully
+    volumes:
+      - challenge-exchange:/exchange
+      - miner-models:/models
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+    restart: "no"
+
+  verifier:
+    image: jgc-challenge-role:testnet-v1
+    command: ["verifier"]
+    environment:
+      JGC_ROLE_TIMEOUT_MS: ${JGC_ROLE_TIMEOUT_MS:-900000}
+      JGC_OLLAMA_PULL: ${JGC_OLLAMA_PULL:-1}
+    depends_on:
+      miner:
+        condition: service_completed_successfully
+    volumes:
+      - challenge-exchange:/exchange
+      - verifier-models:/models
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+    restart: "no"
+
+volumes:
+  challenge-exchange:
+  miner-models:
+  verifier-models:
