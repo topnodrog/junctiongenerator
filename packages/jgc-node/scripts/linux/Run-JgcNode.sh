@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Runs a participating JGC testnet node in a visible terminal launched by the
-# Linux desktop switch. The PID file belongs to this wrapper, so the switch can
-# stop the node cleanly without matching or killing unrelated Node processes.
+# Runs a participating JGC testnet node from the Linux desktop switch or its
+# per-user service. The PID file belongs to this wrapper, so the switch can stop
+# the node cleanly without matching or killing unrelated Node processes.
 set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
@@ -20,6 +20,30 @@ fi
 die() {
   printf 'JGC Node: %s\n' "$*" >&2
   exit 1
+}
+
+status_is_ready() {
+  local payload
+  payload="$(curl --fail --silent --connect-timeout 2 --max-time 3 http://127.0.0.1:7777/status)" || return 1
+  [[ "$payload" == *'"running":true'* ]] || return 1
+  [[ "$payload" == *'"network":"jgtc-testnet-v2"'* ]] || return 1
+  [[ "$payload" == *'"role":"participant"'* ]] || return 1
+  [[ "$payload" == *'"participating":true'* ]] || return 1
+  [[ "$payload" == *'"address":"1QGC'* ]] || return 1
+  [[ "$payload" =~ "peerCount":[1-9][0-9]* ]] || return 1
+}
+
+wait_for_ready() {
+  for _ in $(seq 1 45); do
+    if status_is_ready; then
+      return 0
+    fi
+    if [[ -n "${node_pid:-}" ]] && ! kill -0 "$node_pid" 2>/dev/null; then
+      return 1
+    fi
+    sleep 1
+  done
+  return 1
 }
 
 prepare_node() {
@@ -79,11 +103,16 @@ if [[ "$CHECK_ONLY" == true ]]; then
 fi
 
 printf '%s\n' "$$" > "$PID_FILE"
-printf '\nStarting JGC participant / validator / back-checker...\n'
+printf '\nStarting PR55 participant / validator / back-checker...\n'
 node dist/scripts/testnet-node.js --participate \
   --seed wss://seed-a.junctiongenerator.net \
   --seed wss://jgc-testnet-seed-b.fly.dev &
 node_pid=$!
+
+if ! wait_for_ready; then
+  die "the participant did not become monitor-ready (expected jgtc-testnet-v2, participant role, signed participation, an address, and at least one peer)."
+fi
+printf 'JGC participant is monitor-ready on both public seeds.\n'
 
 set +e
 wait "$node_pid"

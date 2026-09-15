@@ -1,0 +1,17 @@
+[Unit]
+Description=Junction Generator PR55 participant node
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=@PACKAGE_ROOT@
+ExecStart=/bin/bash @JGC_NODE_RUNNER@
+Restart=on-failure
+RestartSec=15
+KillSignal=SIGTERM
+KillMode=control-group
+TimeoutStopSec=30
+
+[Install]
+WantedBy=default.target

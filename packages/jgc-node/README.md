@@ -120,11 +120,16 @@ automatic sign-in launcher with:
 npm run linux:install
 ```
 
-It creates `JGC Node On-Off.desktop` on the desktop. Turning it on opens a
-visible GNOME Terminal running the participant, validator, and back-checker;
-turning it off shuts down that managed runner and disables automatic startup.
-The launcher preserves `data/testnet`, including the participant identity. It
-uses the active supported Node.js runtime (including an NVM Node 24 install).
+It creates `JGC Node On-Off.desktop` on the desktop and a per-user
+`jgc-node.service`. When a user systemd session is available, the service keeps
+the participant, validator, and back-checker running and restarts it after an
+unexpected exit; desktops without a user systemd session use a visible GNOME
+Terminal fallback. Turning it off stops supervision and disables automatic
+startup. Before reporting success, the launcher requires PR55 participant status
+(`jgtc-testnet-v2`, participant role, signed participation, an address, and at
+least one peer). The launcher preserves `data/testnet`, including the
+participant identity, and uses the active supported Node.js runtime (including
+an NVM Node 24 install).
 
 To install the switch without starting the node immediately, run:
 

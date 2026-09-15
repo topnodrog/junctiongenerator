@@ -2,9 +2,12 @@
 Version=1.0
 Type=Application
 Name=JGC Node
-Comment=Start the JGC participant, validator, and back-checker in a visible terminal
+Comment=Start the PR55 JGC participant, validator, and back-checker under supervision
 Exec=@JGC_NODE_TOGGLE@ --on
+TryExec=@JGC_NODE_TOGGLE@
 Icon=utilities-terminal
 Terminal=false
 Categories=Network;Utility;
 StartupNotify=false
+X-GNOME-Autostart-enabled=true
+X-GNOME-Autostart-Delay=10

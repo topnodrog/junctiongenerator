@@ -149,11 +149,14 @@ On Cinnamon or GNOME, run this from `packages/jgc-node`:
 npm run linux:install
 ```
 
-This creates a `JGC Node On-Off.desktop` launcher on the desktop and enables a
-per-user graphical-session autostart entry. Turning the launcher on opens a
-GNOME Terminal showing the participating node's live output. Turning it off
-cleanly stops the managed node and disables automatic startup. It preserves
-`data/testnet` and its participant identity.
+This creates a `JGC Node On-Off.desktop` launcher, a per-user
+`jgc-node.service`, and a graphical-session autostart entry. When user systemd
+is available, the service keeps the participating node alive and restarts it
+after an unexpected exit; otherwise the launcher opens a GNOME Terminal showing
+the node's live output. Turning it off cleanly stops supervision and disables
+automatic startup. The launcher waits for PR55 participant status—network,
+role, participation, address, and at least one peer—before reporting success.
+It preserves `data/testnet` and its participant identity.
 
 Use `bash scripts/linux/Install-JgcNodeDesktop.sh --no-start` to install the
 launcher without starting it, or `npm run linux:uninstall` to remove the
