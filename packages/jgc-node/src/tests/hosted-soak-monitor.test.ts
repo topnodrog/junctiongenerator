@@ -56,6 +56,22 @@ describe("hosted owner soak monitor", () => {
     expect(state.settlementPayoutBytesVerified).toBe(false);
   });
 
+  test("accepts a third independently recorded participant", () => {
+    const third = "1QGC" + "c".repeat(40);
+    const row = observation();
+    row.recorders[third] = { ...row.recorders[PARTICIPANTS[0]!]!, address: third };
+    const epochWeight = row.explorer!.epoch.blockIndex * 1000;
+    row.explorer!.pendingContributions = 3;
+    row.explorer!.epoch.totalParticipationWeight += epochWeight;
+    row.explorer!.epoch.participants.push({ address: third, participationWeight: epochWeight, sharePercent: 0, projectedJGTC: "0" });
+    for (const block of row.explorer!.recentBlocks) {
+      block.participants.push(third);
+      block.contributionCount = 3;
+      block.totalParticipationWeight = 3000;
+    }
+    expect(startMonitor(WINDOW, [...PARTICIPANTS, third], row).participants).toEqual([...PARTICIPANTS, third]);
+  });
+
   test("retains transport failures and stale participant-recorder evidence", () => {
     const row = observation(); row.transport[1].reachable = false; row.recorders[PARTICIPANTS[0]!]!.capturedAt = new Date(BASE - 16 * 60_000).toISOString();
     expect(observationFindings(row, WINDOW, PARTICIPANTS).map(f => f.id)).toEqual(expect.arrayContaining(["seed-b.transport", `recorder.${PARTICIPANTS[0]}.stale`]));

@@ -1,7 +1,8 @@
 [CmdletBinding()]
 param(
   [Parameter(Mandatory = $true)][string]$ConfigPath,
-  [Parameter(Mandatory = $true)][string]$NodePath
+  [Parameter(Mandatory = $true)][string]$NodePath,
+  [switch]$AtStartup
 )
 
 $ErrorActionPreference = 'Stop'
@@ -25,9 +26,15 @@ $observerArguments = "-NoProfile -NonInteractive -WindowStyle Hidden -File `"$ob
 $observerAction = New-ScheduledTaskAction -Execute $observerPowerShell -Argument $observerArguments -WorkingDirectory $observerPackageRoot
 $observerTrigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) -RepetitionInterval (New-TimeSpan -Minutes 5) -RepetitionDuration $observerRemaining
 $observerTrigger.EndBoundary = $observerEnd.LocalDateTime.ToString('s')
-$observerPrincipal = New-ScheduledTaskPrincipal -UserId $observerAccount -LogonType Interactive -RunLevel Limited
+$observerTriggers = @($observerTrigger)
+if ($AtStartup) {
+  $startupTrigger = New-ScheduledTaskTrigger -AtStartup
+  $startupTrigger.EndBoundary = $observerEnd.LocalDateTime.ToString('s')
+  $observerTriggers += $startupTrigger
+}
+$observerPrincipal = New-ScheduledTaskPrincipal -UserId $observerAccount -LogonType $(if ($AtStartup) { 'S4U' } else { 'Interactive' }) -RunLevel Limited
 $observerSettings = New-ScheduledTaskSettingsSet -Hidden -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Minutes 2) -RestartCount 2 -RestartInterval (New-TimeSpan -Minutes 1)
-$observerTask = New-ScheduledTask -Action $observerAction -Trigger $observerTrigger -Principal $observerPrincipal -Settings $observerSettings -Description 'Saves this JGC participant status every five minutes; does not start, stop, or modify the node.'
+$observerTask = New-ScheduledTask -Action $observerAction -Trigger $observerTriggers -Principal $observerPrincipal -Settings $observerSettings -Description 'Saves this JGC participant status every five minutes; does not start, stop, or modify the node.'
 Register-ScheduledTask -TaskName $observerTaskName -InputObject $observerTask | Out-Null
 Start-ScheduledTask -TaskName $observerTaskName
-Write-Output "Installed $observerTaskName until $($observerEnd.ToString('o')). Windows must remain signed in and awake."
+Write-Output "Installed $observerTaskName until $($observerEnd.ToString('o')). Windows must remain awake."
