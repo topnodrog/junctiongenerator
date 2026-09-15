@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "scanner": "cargo-audit 0.22.2",
+  "scannerArchiveSha256": "ab28a1bdb54db4d5d8ad5981cf1f959410370b3d28250dbd35f6a44248620e39",
+  "lockfileSha256": "4e1626759fc9e6bbe48b78daa2c32b71509592c5c793f2b4ac99467662a7e32a",
+  "report": {
+    "database": {
+      "advisory-count": 1244,
+      "last-commit": "455fd4bac659b5f1fca3810661c2d8b3c25dad05",
+      "last-updated": "2026-09-13T22:05:24+02:00"
+    },
+    "lockfile": {
+      "dependency-count": 124
+    },
+    "settings": {
+      "target_arch": [],
+      "target_os": [],
+      "severity": null,
+      "ignore": [],
+      "informational_warnings": [
+        "unmaintained",
+        "unsound",
+        "notice"
+      ]
+    },
+    "vulnerabilities": {
+      "found": false,
+      "count": 0,
+      "list": []
+    },
+    "warnings": {}
+  }
+}
