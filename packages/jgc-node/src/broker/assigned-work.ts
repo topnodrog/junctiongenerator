@@ -25,9 +25,13 @@ export interface WorkJob {
   right: number[];
   lease?: { leaseId: string; miner: string; startedAt: number; deadline: number };
   result?: { output: string; commitment: string };
+  /** Valueless rehearsal credits, never JGC or an external payment. */
+  reservation?: { buyer: string; amount: string; expiresAt: number; status: "reserved" | "paid" | "refunded" };
 }
 type Event =
-  | { kind: "create"; jobId: string; network: string; epoch: number; left: number[]; right: number[] }
+  | { kind: "credit"; jobId: string; buyer: string; amount: string }
+  | { kind: "create"; jobId: string; network: string; epoch: number; left: number[]; right: number[]; funding?: { buyer: string; amount: string; expiresAt: number }; now?: number }
+  | { kind: "refund"; jobId: string; buyer: string; now: number }
   | { kind: "lease"; jobId: string; leaseId: string; miner: string; deadline: number; now: number }
   | { kind: "complete"; jobId: string; leaseId: string; miner: string; output: string; commitment: string; now: number; publicKey?: string; signature?: string };
 
@@ -66,32 +70,72 @@ export function executeVectorDot(left: number[], right: number[]): string {
 /** Bind the result to every part of the assigned execution context. */
 export function workResultCommitment(job: WorkJob, output: string): string {
   if (!job.lease) throw new Error("No lease");
-  return hash(["jgc/assigned-result/v1", job.network, job.epoch, job.jobId,
+  const context = ["jgc/assigned-result/v1", job.network, job.epoch, job.jobId,
     job.programDigest, job.inputCommitment, job.resourceUnits, job.lease.leaseId,
-    job.lease.miner, job.lease.startedAt, job.lease.deadline, output]);
+    job.lease.miner, job.lease.startedAt, job.lease.deadline, output];
+  if (job.reservation) context.push("jgc/assigned-funding/v1", job.reservation.buyer,
+    job.reservation.amount, job.reservation.expiresAt);
+  return hash(context);
 }
 
-function transition(jobs: Map<string, WorkJob>, event: Event, network: string): void {
+function amount(value: string): bigint {
+  if (typeof value !== "string" || !/^[1-9][0-9]{0,29}$/.test(value)) throw new Error("Invalid credit amount");
+  return BigInt(value);
+}
+
+function transition(jobs: Map<string, WorkJob>, balances: Map<string, bigint>, credits: Set<string>, event: Event, network: string): void {
   identifier(event.jobId);
+  if (event.kind === "credit") {
+    identifier(event.buyer);
+    const units = amount(event.amount);
+    if (credits.has(event.jobId)) throw new Error("Duplicate credit");
+    credits.add(event.jobId);
+    balances.set(event.buyer, (balances.get(event.buyer) ?? 0n) + units);
+    return;
+  }
   if (event.kind === "create") {
     if (event.network !== network || jobs.has(event.jobId)) throw new Error("Wrong network or duplicate job");
     integer(event.epoch);
     vectors(event.left, event.right);
+    if (event.funding) {
+      identifier(event.funding.buyer);
+      const units = amount(event.funding.amount);
+      integer(event.now!);
+      integer(event.funding.expiresAt);
+      if (event.funding.expiresAt <= event.now!) throw new Error("Expired reservation");
+      const available = balances.get(event.funding.buyer) ?? 0n;
+      if (available < units) throw new Error("Insufficient buyer credits");
+      balances.set(event.funding.buyer, available - units);
+    }
     jobs.set(event.jobId, {
       jobId: event.jobId, network, epoch: event.epoch, programDigest: VECTOR_PROGRAM,
       inputCommitment: hash(["jgc/vector-input/v1", event.left, event.right]),
       resourceUnits: event.left.length, left: event.left, right: event.right,
+      ...(event.funding ? { reservation: { ...event.funding, status: "reserved" as const } } : {}),
     });
     return;
   }
   const job = jobs.get(event.jobId);
   if (!job || job.result) throw new Error("Unknown or completed job");
   integer(event.now);
+  if (job.reservation?.status === "refunded") throw new Error("Reservation refunded");
+  if (event.kind === "refund") {
+    const reservation = job.reservation;
+    if (!reservation || event.buyer !== reservation.buyer) throw new Error("Unauthorized refund");
+    if (job.lease && event.now < job.lease.deadline) throw new Error("Lease still active");
+    balances.set(reservation.buyer, (balances.get(reservation.buyer) ?? 0n) + amount(reservation.amount));
+    reservation.status = "refunded";
+    return;
+  }
+  if (job.reservation && event.now >= job.reservation.expiresAt) throw new Error("Expired reservation");
   identifier(event.miner);
   identifier(event.leaseId);
   if (event.kind === "lease") {
     integer(event.deadline);
     if (event.deadline <= event.now || event.deadline - event.now > 3600) throw new Error("Invalid lease deadline");
+    if (job.reservation && (event.deadline > job.reservation.expiresAt || !/^workkey:[0-9a-f]{64}$/.test(event.miner))) {
+      throw new Error("Funded lease requires worker key and reservation deadline");
+    }
     if (job.lease && event.now < job.lease.deadline) throw new Error("Lease still active");
     if (job.lease?.leaseId === event.leaseId) throw new Error("Reused lease");
     job.lease = { leaseId: event.leaseId, miner: event.miner, startedAt: event.now, deadline: event.deadline };
@@ -115,6 +159,10 @@ function transition(jobs: Map<string, WorkJob>, event: Event, network: string): 
     }
   }
   job.result = { output: event.output, commitment: event.commitment };
+  if (job.reservation) {
+    balances.set(event.miner, (balances.get(event.miner) ?? 0n) + amount(job.reservation.amount));
+    job.reservation.status = "paid";
+  }
 }
 
 export class AssignedWorkJournal {
@@ -125,10 +173,12 @@ export class AssignedWorkJournal {
     this.read();
   }
 
-  private read(): { jobs: Map<string, WorkJob>; count: number; previous: string } {
+  private read(): { jobs: Map<string, WorkJob>; balances: Map<string, bigint>; credits: Set<string>; count: number; previous: string } {
     const files = readdirSync(this.directory).sort();
     if (files.length > MAX_EVENTS) throw new Error("Journal capacity exceeded");
     const jobs = new Map<string, WorkJob>();
+    const balances = new Map<string, bigint>();
+    const credits = new Set<string>();
     let previous = hash(["jgc/assigned-journal/v1", this.network]);
     for (let i = 0; i < files.length; i++) {
       if (files[i] !== `${String(i).padStart(8, "0")}.json`) throw new Error("Unexpected or missing journal entry");
@@ -137,23 +187,46 @@ export class AssignedWorkJournal {
       const text = readFileSync(path, "utf8");
       const record = JSON.parse(text) as { previous: string; event: Event; checksum: string };
       if (record.previous !== previous || record.checksum !== hash([previous, record.event])) throw new Error("Corrupt journal");
-      transition(jobs, record.event, this.network);
+      transition(jobs, balances, credits, record.event, this.network);
       previous = record.checksum;
     }
-    return { jobs, count: files.length, previous };
+    return { jobs, balances, credits, count: files.length, previous };
   }
 
-  private append(event: Event): WorkJob {
+  private append(event: Extract<Event, { kind: "credit" }>): void;
+  private append(event: Exclude<Event, { kind: "credit" }>): WorkJob;
+  private append(event: Event): WorkJob | void {
     const state = this.read();
     if (state.count >= MAX_EVENTS) throw new Error("Journal full");
-    transition(state.jobs, event, this.network);
+    transition(state.jobs, state.balances, state.credits, event, this.network);
     const record = { previous: state.previous, event, checksum: hash([state.previous, event]) };
     const fd = openSync(join(this.directory, `${String(state.count).padStart(8, "0")}.json`), "wx", 0o600);
     try {
       writeFileSync(fd, JSON.stringify(record));
       fsyncSync(fd);
     } finally { closeSync(fd); }
-    return structuredClone(state.jobs.get(event.jobId)!);
+    if (event.kind !== "credit") return structuredClone(state.jobs.get(event.jobId)!);
+  }
+
+  /** Trusted operator-only synthetic funding. Never expose this as a deposit API. */
+  credit(creditId: string, buyer: string, units: string): void {
+    this.append({ kind: "credit", jobId: creditId, buyer, amount: units });
+  }
+
+  balance(account: string): bigint {
+    identifier(account);
+    return this.read().balances.get(account) ?? 0n;
+  }
+
+  /** Buyer must be obtained from an authorized local caller, not request JSON. */
+  createFunded(jobId: string, epoch: number, left: number[], right: number[], buyer: string, units: string, expiresAt: number): WorkJob {
+    return this.append({ kind: "create", jobId, network: this.network, epoch, left, right,
+      funding: { buyer, amount: units, expiresAt }, now: this.clock() });
+  }
+
+  /** Refund before dispatch or after lease timeout. No cancellation of active work. */
+  refund(jobId: string, buyer: string): WorkJob {
+    return this.append({ kind: "refund", jobId, buyer, now: this.clock() });
   }
 
   create(jobId: string, epoch: number, left: number[], right: number[]): WorkJob {
