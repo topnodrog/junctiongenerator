@@ -44,6 +44,7 @@
     "emission-table": "node dist/scripts/print-emission.js",
     "junctioning-smoke": "node dist/scripts/junctioning-smoke.js",
     "junctioning-verify-smoke": "node dist/scripts/junctioning-verify-smoke.js",
+    "challenge-role": "node dist/scripts/challenge-role.js",
     "node-status": "node dist/scripts/node-status-server.js",
     "windows:install": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/windows/Install-JgcNodeStartup.ps1",
     "windows:uninstall": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/windows/Uninstall-JgcNodeStartup.ps1",
