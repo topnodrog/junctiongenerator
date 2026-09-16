@@ -9,6 +9,14 @@ if ($task) {
   Unregister-ScheduledTask -TaskName $script:JgcNodeTaskName -Confirm:$false
 }
 
+$activityTask = Get-ScheduledTask -TaskName $script:JgcNodeActivityTaskName -ErrorAction SilentlyContinue
+if ($activityTask) {
+  if ($activityTask.State -eq "Running") {
+    Stop-ScheduledTask -TaskName $script:JgcNodeActivityTaskName
+  }
+  Unregister-ScheduledTask -TaskName $script:JgcNodeActivityTaskName -Confirm:$false
+}
+
 $desktop = [Environment]::GetFolderPath("Desktop")
 $shortcutPath = Join-Path $desktop $script:JgcNodeShortcutName
 if (Test-Path -LiteralPath $shortcutPath) {
@@ -21,5 +29,5 @@ if (Test-Path -LiteralPath $iconPath) {
   Remove-Item -LiteralPath $iconPath
 }
 
-Write-Output "JGC Node automatic startup and desktop switch were removed."
+Write-Output "JGC Node automatic startup, activity window, and desktop switch were removed."
 Write-Output "Chain data and participant identity files were preserved in $(Join-Path (Get-JgcNodePackageRoot) 'data')."
