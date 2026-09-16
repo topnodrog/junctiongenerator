@@ -120,8 +120,12 @@ npm run windows:install
 This builds the node with the active supported Node.js executable, registers a
 per-user Windows scheduled task that starts the participant node after sign-in,
 starts the node now, and creates a branded `JGC Node On-Off` shortcut on the
-desktop. The task runs with normal user permissions and keeps the status and
-peer ports bound to loopback unless you explicitly change the node configuration.
+desktop. A companion interactive task opens a `JGC Node Activity` window with
+live network, height, peer, role, uptime, and producer information. The node
+task runs with normal user permissions and keeps the status and peer ports bound
+to loopback unless you explicitly change the node configuration. If you use
+`-AtStartup`, the node starts at boot and the visible activity window starts at
+sign-in.
 
 For an owner rehearsal, install the address-bound participant-recorder
 configuration provided by the monitor on every participating computer. Confirm
@@ -130,9 +134,12 @@ machine's intended `1QGC...` address. A recorder uploads only sanitized status;
 it does not start, stop, or modify the node. Never enroll a machine you suspect
 is compromised—rebuild and independently check it first.
 
-Use the desktop shortcut to switch the node off or on. Off disables the task so
-it remains off after a restart; on re-enables automatic startup and launches the
-node immediately. Windows displays a short confirmation for each action.
+Use the desktop shortcut to switch the node off or on. Off closes the activity
+window and disables both tasks so the node remains off after a restart; on
+re-enables automatic startup and launches the node and activity window
+immediately. Windows displays a short confirmation for each action. Older
+installations without the activity task still switch the node and can be
+upgraded by running `npm run windows:install` again.
 
 To remove the scheduled task and shortcut without deleting chain data or a
 participant identity, run:
@@ -140,6 +147,27 @@ participant identity, run:
 ```text
 npm run windows:uninstall
 ```
+
+### Linux desktop switch and visible terminal
+
+On Cinnamon or GNOME, run this from `packages/jgc-node`:
+
+```text
+npm run linux:install
+```
+
+This creates a `JGC Node On-Off.desktop` launcher, a per-user
+`jgc-node.service`, and a graphical-session autostart entry. When user systemd
+is available, the service keeps the participating node alive and restarts it
+after an unexpected exit; otherwise the launcher opens a GNOME Terminal showing
+the node's live output. Turning it off cleanly stops supervision and disables
+automatic startup. The launcher waits for PR55 participant status—network,
+role, participation, address, and at least one peer—before reporting success.
+It preserves `data/testnet` and its participant identity.
+
+Use `bash scripts/linux/Install-JgcNodeDesktop.sh --no-start` to install the
+launcher without starting it, or `npm run linux:uninstall` to remove the
+launchers and autostart while keeping local node data.
 
 ## Check that it is working
 

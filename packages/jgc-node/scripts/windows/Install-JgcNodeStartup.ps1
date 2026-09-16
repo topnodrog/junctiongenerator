@@ -1,7 +1,8 @@
 [CmdletBinding()]
 param(
   [string]$NodePath,
-  [switch]$NoStart
+  [switch]$NoStart,
+  [switch]$AtStartup
 )
 
 $ErrorActionPreference = "Stop"
@@ -9,6 +10,7 @@ $ErrorActionPreference = "Stop"
 
 $packageRoot = Get-JgcNodePackageRoot
 $node = Get-JgcNodeExecutable -NodePath $NodePath
+$powershellPath = Get-JgcNodePowerShell
 $npmPath = Join-Path (Split-Path -Parent $node.Path) "npm.cmd"
 if (-not (Test-Path -LiteralPath $npmPath)) {
   throw "npm.cmd was not found next to $($node.Path)"
@@ -26,12 +28,17 @@ try {
 }
 
 $existingTask = Get-ScheduledTask -TaskName $script:JgcNodeTaskName -ErrorAction SilentlyContinue
+$existingActivityTask = Get-ScheduledTask -TaskName $script:JgcNodeActivityTaskName -ErrorAction SilentlyContinue
 if ($existingTask -and $existingTask.State -eq "Running") {
   Stop-ScheduledTask -TaskName $script:JgcNodeTaskName
   foreach ($attempt in 1..20) {
     Start-Sleep -Milliseconds 500
     if (-not (Get-JgcNodeStatus)) { break }
   }
+}
+if ($existingActivityTask -and $existingActivityTask.State -eq "Running") {
+  Stop-ScheduledTask -TaskName $script:JgcNodeActivityTaskName
+  Start-Sleep -Milliseconds 500
 }
 
 $existingStatus = Get-JgcNodeStatus
@@ -48,8 +55,18 @@ $arguments = @(
 ) -join " "
 
 $action = New-ScheduledTaskAction -Execute $node.Path -Argument $arguments -WorkingDirectory $packageRoot
-$trigger = New-ScheduledTaskTrigger -AtLogOn -User $account
-$principal = New-ScheduledTaskPrincipal -UserId $account -LogonType Interactive -RunLevel Limited
+$activityScript = Join-Path $PSScriptRoot "Show-JgcNodeActivity.ps1"
+if (-not (Test-Path -LiteralPath $activityScript)) {
+  throw "The JGC Node activity script was not found at $activityScript"
+}
+$activityArguments = "-NoProfile -ExecutionPolicy Bypass -File `"$activityScript`""
+$activityAction = New-ScheduledTaskAction -Execute $powershellPath -Argument $activityArguments -WorkingDirectory $packageRoot
+$trigger = if ($AtStartup) { New-ScheduledTaskTrigger -AtStartup } else { New-ScheduledTaskTrigger -AtLogOn -User $account }
+$principal = New-ScheduledTaskPrincipal -UserId $account -LogonType $(if ($AtStartup) { 'S4U' } else { 'Interactive' }) -RunLevel Limited
+# Activity is intentionally interactive: an AtStartup task can run before a
+# desktop session exists, so the visible activity window starts at sign-in.
+$activityTrigger = New-ScheduledTaskTrigger -AtLogOn -User $account
+$activityPrincipal = New-ScheduledTaskPrincipal -UserId $account -LogonType Interactive -RunLevel Limited
 $settings = New-ScheduledTaskSettingsSet `
   -AllowStartIfOnBatteries `
   -DontStopIfGoingOnBatteries `
@@ -60,12 +77,20 @@ $settings = New-ScheduledTaskSettingsSet `
   -MultipleInstances IgnoreNew
 
 $task = New-ScheduledTask -Action $action -Trigger $trigger -Principal $principal -Settings $settings `
-  -Description "Runs the outbound-only JGTC participant node after Windows sign-in."
+  -Description $(if ($AtStartup) { "Runs the outbound-only JGTC participant node when Windows starts." } else { "Runs the outbound-only JGTC participant node after Windows sign-in." })
+$activityTask = New-ScheduledTask -Action $activityAction -Trigger $activityTrigger -Principal $activityPrincipal -Settings $settings `
+  -Description "Shows live local JGTC participant activity after Windows sign-in."
 
 if ($existingTask) {
   Unregister-ScheduledTask -TaskName $script:JgcNodeTaskName -Confirm:$false
 }
+if ($existingActivityTask) {
+  Unregister-ScheduledTask -TaskName $script:JgcNodeActivityTaskName -Confirm:$false
+}
 Register-ScheduledTask -TaskName $script:JgcNodeTaskName -InputObject $task | Out-Null
+Grant-JgcNodeTaskControl -TaskName $script:JgcNodeTaskName -Account $account
+Register-ScheduledTask -TaskName $script:JgcNodeActivityTaskName -InputObject $activityTask | Out-Null
+Grant-JgcNodeTaskControl -TaskName $script:JgcNodeActivityTaskName -Account $account
 
 $localAppData = [Environment]::GetFolderPath("LocalApplicationData")
 $controlDirectory = Join-Path $localAppData "JunctionGenerator"
@@ -74,7 +99,7 @@ New-JgcNodeIcon -Path $iconPath
 
 $desktop = [Environment]::GetFolderPath("Desktop")
 $shortcutPath = Join-Path $desktop $script:JgcNodeShortcutName
-$shortcutTarget = Join-Path $env:SystemRoot "System32\WindowsPowerShell\v1.0\powershell.exe"
+$shortcutTarget = $powershellPath
 $toggleScript = Join-Path $PSScriptRoot "Toggle-JgcNode.ps1"
 $shell = New-Object -ComObject WScript.Shell
 $shortcut = $shell.CreateShortcut($shortcutPath)
@@ -96,9 +121,11 @@ if (-not $NoStart) {
   if (-not $status -or -not $status.running) {
     throw "The scheduled task was installed, but the JGC Node status endpoint did not become ready."
   }
+  Start-ScheduledTask -TaskName $script:JgcNodeActivityTaskName
   Write-Output "JGC Node is running on $($status.network) at height $($status.height)."
 }
 
 Write-Output "Automatic startup task installed: $($script:JgcNodeTaskName)"
+Write-Output "Activity window task installed: $($script:JgcNodeActivityTaskName)"
 Write-Output "Desktop switch installed: $shortcutPath"
 Write-Output "Runtime: $($node.Path) ($($node.Version))"

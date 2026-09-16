@@ -100,8 +100,12 @@ npm run windows:install
 
 The installer uses the active supported Node.js executable, builds the node,
 registers `JunctionGenerator JGTC Node` in Task Scheduler, starts it, and creates
-`JGC Node On-Off` on the desktop. Turning the node off with the shortcut also
-disables automatic startup; turning it on re-enables startup and launches it.
+`JGC Node On-Off` on the desktop. It also registers a companion activity task
+that opens a live `JGC Node Activity` window showing network, height, peers, role,
+uptime, and producer activity. Turning the node off with the shortcut closes the
+activity window and disables both tasks; turning it on re-enables both and
+launches the node and activity window. Existing installations without the
+activity task continue to work until `npm run windows:install` is run again.
 Local chain and participant identity data are never removed by the switch or
 the uninstaller.
 
@@ -109,6 +113,38 @@ Remove the task and shortcut without deleting chain data with:
 
 ```text
 npm run windows:uninstall
+```
+
+### Linux desktop switch and visible terminal
+
+On Cinnamon or GNOME Linux desktops, install a per-user desktop switch and
+automatic sign-in launcher with:
+
+```text
+npm run linux:install
+```
+
+It creates `JGC Node On-Off.desktop` on the desktop and a per-user
+`jgc-node.service`. When a user systemd session is available, the service keeps
+the participant, validator, and back-checker running and restarts it after an
+unexpected exit; desktops without a user systemd session use a visible GNOME
+Terminal fallback. Turning it off stops supervision and disables automatic
+startup. Before reporting success, the launcher requires PR55 participant status
+(`jgtc-testnet-v2`, participant role, signed participation, an address, and at
+least one peer). The launcher preserves `data/testnet`, including the
+participant identity, and uses the active supported Node.js runtime (including
+an NVM Node 24 install).
+
+To install the switch without starting the node immediately, run:
+
+```text
+bash scripts/linux/Install-JgcNodeDesktop.sh --no-start
+```
+
+Remove the launchers and automatic startup without deleting local chain data:
+
+```text
+npm run linux:uninstall
 ```
 
 Simulation receipts exercise networking and consensus plumbing but do not prove
