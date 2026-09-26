@@ -12,7 +12,7 @@ Three components, one repo. Keep them distinct:
 | Component | What it is | Status |
 |---|---|---|
 | **JGC coin** (`packages/jgc-node`) | Sovereign PoUC Layer-1 — the actual product | Repaired zero-premine `jgtc-testnet-v2` pilot live; runner prerelease published; 351 node tests pass; measured soak pending |
-| **JGT token** (`contracts/`) | ERC-20 on Base (legacy) | Deployed; held, not promoted (no-sale stance) |
+| **JGT token** (`contracts/`) | ERC-20 on Base (legacy) | Deployed; no-sale stance retained; optional 2-JGT/24h minting faucet draft is not yet reviewed, deployed, or authorized |
 | **junctiongenerator.net** (`src/` + `api/`) | Public site + Cloudflare Worker backend | Worker live and verified; community-first site merged to `main` |
 
 The strategy on record: fund via grants/donations, never JGT sales. JGC is
@@ -47,12 +47,15 @@ Security/quality debt that should land before recruiting outside node runners.
   GitHub still reports secret validity checks as disabled: a 2026-09-05
   enable request was accepted but read-back remained disabled. This platform
   limitation is recorded rather than claimed complete.
-- [x] **Publish reviewed facts and separate private drafts.** Canonical public
+- [x] **Publish reviewed facts and preserve private drafts.** Canonical public
   sources are in `docs/public/`. All 25 original fundraising/operations
   revisions were preserved with verified hashes in the explicitly approved
-  private operations repository. Original root drafts remain ignored locally;
-  private vault copies are removed from the current public tree. Earlier Git
-  history remains public; no history rewrite was performed.
+  private operations repository. Original root drafts remain ignored locally.
+- [ ] **Remove owner-local vault files from future public snapshots.** The
+  2026-09-26 review found 46 `vault/` files still tracked. This branch ignores
+  `/vault/` and stages those paths for removal without deleting local files; the
+  change is not committed or merged. Earlier Git history remains public; no
+  history rewrite has been performed.
 - [x] **CI**: website lint/build, Worker syntax, jgc-node tests/build,
   Rust/WASM verification, cross-platform jobs, and the Docker smoke topology
   run through GitHub Actions on relevant changes.

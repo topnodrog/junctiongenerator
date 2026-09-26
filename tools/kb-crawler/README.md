@@ -44,4 +44,5 @@ overwrites notes with the same title slug, so it's safe to run repeatedly.
   OCR models and would run CPU-only on this machine's integrated GPU. Revisit it
   when there's a real PDF-ingestion need or better hardware. The fork is at
   `C:\dev\marker`.
-- The `.venv/` is gitignored. The generated vault notes are committed.
+- The `.venv/` and owner-local `vault/` are gitignored. Generated notes stay
+  on the operator's machine; public, reviewed material belongs under `docs/`.

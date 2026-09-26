@@ -2,16 +2,14 @@
 // Uses Turso HTTP API for database operations
 // Deploy to: workers.cloudflare.com
 // Required env vars: TURSO_URL, TURSO_AUTH_TOKEN, API_SECRET, CRON_SECRET
-// Required bindings: EMAIL_SENDER (send_email binding, see wrangler.toml)
-// Optional bindings: RATE_LIMITER (ratelimit binding, see wrangler.toml)
+// Required production bindings: EMAIL_SENDER and RATE_LIMITER (see wrangler.toml)
 //
 // Auth model:
 //   - Public writes (rate-limited and Turnstile-verified): POST /api/subscribe, POST /api/hire-lead,
 //     POST /api/community/join, POST /api/community/activate,
 //   - Public reads: GET /api/user, GET /api/referral,
-//     GET /api/community/scoreboard, GET /api/airdrop/status,
-//     GET /api/ads/campaigns, GET /api/health
-//   - Retired: POST /api/airdrop/register returns 410; no new reward enrollments.
+//     GET /api/community/scoreboard, GET /api/ads/campaigns, GET /api/health
+//   - Retired: POST /api/airdrop/register and GET /api/airdrop/status return 410.
 //   - Bearer API_SECRET (owner): POST /api/ad-view, POST /api/referral/claim,
 //     POST /api/ads/campaigns, POST /api/community/funding,
 //     POST /api/community/weekly-metrics, GET /api/pending-rewards
@@ -20,6 +18,8 @@
 import { EmailMessage } from "cloudflare:email";
 import { createMimeMessage } from "mimetext";
 import { PUBLIC_ACTIONS, readPublicJson, validateTurnstile } from "./public-write.mjs";
+import { legacyDispensePreview } from "./legacy-rewards.mjs";
+import { rateLimitOk } from "./rate-limit.mjs";
 
 // ── Security helpers ─────────────────────────────────────────
 
@@ -66,26 +66,6 @@ async function requireBearer(request, secret) {
   const header = request.headers.get("Authorization") || "";
   if (!secret || !header.startsWith("Bearer ")) return false;
   return safeEqual(header.slice(7), secret);
-}
-
-// Per-IP rate limit via the ratelimit binding. Allows the request when the
-// binding is not configured so local dev keeps working without it.
-async function rateLimitOk(env, request, bucket) {
-  if (!env.RATE_LIMITER) return true;
-  const ip = request.headers.get("CF-Connecting-IP") || "unknown";
-  try {
-    const { success } = await env.RATE_LIMITER.limit({ key: bucket + ":" + ip });
-    return success;
-  } catch (err) {
-    console.error("rate limiter error:", err);
-    return true;
-  }
-}
-
-function maskEmail(email) {
-  if (!email || !email.includes("@")) return null;
-  const [user, domain] = email.split("@");
-  return user.slice(0, 2) + "***@" + domain;
 }
 
 function isHttpUrl(value) {
@@ -146,8 +126,8 @@ export default {
         if (verified.status !== 200) return jsonResponse({ error: verified.error }, corsHeaders, verified.status);
         publicBody = parsed.body;
       }
-      // Legacy mining endpoint — owner-only. Rewards must never be creditable
-      // by anonymous callers (pending_claims feeds the on-chain dispenser).
+      // Legacy record-preparation endpoint — owner-only. These database rows do
+      // not trigger an on-chain transaction or a live public reward program.
       if (path === "/api/ad-view" && request.method === "POST") {
         if (!(await requireBearer(request, env.API_SECRET))) {
           return jsonResponse({ error: "Unauthorized" }, corsHeaders, 401);
@@ -237,10 +217,10 @@ export default {
         }, corsHeaders);
       }
       return jsonResponse({ error: "Not found" }, corsHeaders, 404);
-    } catch (err) {
-      // Log full detail server-side; never echo err.message to clients
-      // (Turso errors embed SQL and internal hostnames).
-      console.error("API Error:", err);
+    } catch {
+      // Upstream errors can include SQL, internal hosts, or submitted data.
+      // Keep production logs generic; the client also gets only a generic error.
+      console.error("API request failed");
       return jsonResponse({ error: "Internal server error" }, corsHeaders, 500);
     }
   },
@@ -275,9 +255,10 @@ async function tursoQuery(env, sql, params = []) {
     }),
   });
   if (!res.ok) {
-    const errText = await res.text();
-    console.error("Turso HTTP error:", res.status, errText);
-    throw new Error("Turso error " + res.status + ": " + errText);
+    // Upstream error bodies can contain SQL, host details, or sensitive values.
+    // Log only the status and never copy the body into Worker logs or clients.
+    console.error("Turso HTTP error status:", res.status);
+    throw new Error("Turso request failed with status " + res.status);
   }
   const data = await res.json();
   if (data.results && data.results[0] && data.results[0].response) {
@@ -292,9 +273,9 @@ function getRows(result) {
   return result.rows.map(row => row.map(cell => cell.value));
 }
 
-// Handle ad view registration. The reward value is server-authoritative
-// (AD_REWARD_JGT var, default 1 JGT) — a client-supplied rewardAmount is
-// ignored, since pending_claims feeds the on-chain dispenser.
+// Legacy ad-view record. The reward value is server-authoritative
+// (AD_REWARD_JGT var, default 1 JGT); this owner-only endpoint creates database
+// records and does not submit an on-chain payout.
 async function handleAdView(request, env, corsHeaders) {
   const body = await request.json();
   const { walletAddress, adIndex, campaignId } = body;
@@ -426,14 +407,14 @@ async function handleSubscribe(body, env, corsHeaders) {
           `Received: ${new Date().toISOString()}`,
         ].filter(Boolean).join("\n"),
       );
-    } catch (notifyError) {
+    } catch {
       // The database remains the source of truth. The midnight digest retries
       // visibility of this signup even if immediate email delivery fails.
-      console.error("immediate newsletter notification failed:", notifyError.message);
+      console.error("immediate newsletter notification failed");
     }
     return jsonResponse({ success: true, message: "Subscribed to JGT newsletter!" }, corsHeaders);
-  } catch (err) {
-    console.error("subscribe insert failed:", err.message);
+  } catch {
+    console.error("newsletter storage failed");
     return jsonResponse({ error: "Subscription failed" }, corsHeaders, 500);
   }
 }
@@ -500,8 +481,8 @@ async function handleCommunityJoin(body, env, corsHeaders) {
       `Campaign: ${campaign}`,
       referralCode ? `Referral: ${referralCode}` : null,
     ].filter(Boolean).join("\n"));
-  } catch (error) {
-    console.error("community join notification failed:", error.message);
+  } catch {
+    console.error("community join notification failed");
   }
 
   return jsonResponse({
@@ -659,14 +640,14 @@ async function handleHireLead(body, env, corsHeaders) {
           `Received: ${new Date().toISOString()}`,
         ].filter(Boolean).join("\n"),
       );
-    } catch (notifyError) {
+    } catch {
       // Never discard a client lead because mail delivery is temporarily down.
       // The stored lead remains eligible for the midnight digest.
-      console.error("immediate hire notification failed:", notifyError.message);
+      console.error("immediate hire notification failed");
     }
     return jsonResponse({ success: true, message: "Thanks — I'll be in touch soon!" }, corsHeaders);
-  } catch (err) {
-    console.error("hire-lead insert failed:", err.message);
+  } catch {
+    console.error("hire-lead storage failed");
     return jsonResponse({ error: "Submission failed" }, corsHeaders, 500);
   }
 }
@@ -682,7 +663,10 @@ async function handlePendingRewards(request, env, corsHeaders) {
   }, corsHeaders);
 }
 
-// Daily dispense handler (called by cron)
+// Legacy batch preview (CRON_SECRET-protected). The scheduled Worker handler
+// currently runs the owner digest, not this function. This route is read-only:
+// it must never strand pending rows in a fake "processing" state or imply that
+// any blockchain transaction was submitted.
 async function handleDispense(request, env, corsHeaders) {
   if (!(await requireBearer(request, env.CRON_SECRET))) {
     return jsonResponse({ error: "Unauthorized" }, corsHeaders, 401);
@@ -690,25 +674,7 @@ async function handleDispense(request, env, corsHeaders) {
 
   const pending = await tursoQuery(env, "SELECT wallet_address, SUM(amount) as total_amount, COUNT(*) as claim_count FROM pending_claims WHERE status = 'pending' GROUP BY wallet_address HAVING total_amount > 0");
   const recipients = getRows(pending);
-
-  if (!recipients || recipients.length === 0) {
-    return jsonResponse({ message: "No pending claims to process" }, corsHeaders);
-  }
-
-  const batchId = "batch-" + Date.now();
-  const totalAmount = recipients.reduce((sum, r) => sum + parseFloat(r[1]), 0);
-
-  await tursoQuery(env, "INSERT INTO dispense_batches (batch_id, total_amount, recipient_count, status) VALUES (?, ?, ?, 'processing')", [batchId, totalAmount, recipients.length]);
-  await tursoQuery(env, "UPDATE pending_claims SET status = 'processing', batch_id = ? WHERE status = 'pending'", [batchId]);
-
-  return jsonResponse({
-    success: true,
-    batchId,
-    totalAmount,
-    recipientCount: recipients.length,
-    recipients,
-    message: "Batch ready for on-chain submission",
-  }, corsHeaders);
+  return jsonResponse(legacyDispensePreview(recipients), corsHeaders);
 }
 
 // ============================================================
@@ -962,80 +928,8 @@ async function handleCreateCampaign(request, env, corsHeaders) {
   }, corsHeaders);
 }
 
-// ============================================================
-// AIRDROP REGISTRATION
-// ============================================================
-
-async function handleAirdropRegister(request, env, corsHeaders) {
-  if (!(await rateLimitOk(env, request, "airdrop"))) {
-    return jsonResponse({ error: "Too many requests" }, corsHeaders, 429);
-  }
-
-  const body = await request.json();
-  const { walletAddress, email } = body;
-
-  if (!walletAddress || !email) {
-    return jsonResponse({ error: "Wallet address and email required" }, corsHeaders, 400);
-  }
-
-  // Validate email
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (typeof email !== "string" || email.length > 254 || !emailRegex.test(email)) {
-    return jsonResponse({ error: "Invalid email format" }, corsHeaders, 400);
-  }
-
-  // Validate wallet address (basic check)
-  if (typeof walletAddress !== "string" || !WALLET_RE.test(walletAddress)) {
-    return jsonResponse({ error: "Invalid wallet address" }, corsHeaders, 400);
-  }
-
-  try {
-    await tursoQuery(env, 
-      "INSERT OR IGNORE INTO airdrop_registrations (wallet_address, email) VALUES (?, ?)",
-      [walletAddress.toLowerCase(), email.toLowerCase()]
-    );
-    
-    // Get registration count
-    const countResult = await tursoQuery(env, "SELECT COUNT(*) FROM airdrop_registrations");
-    const totalRegistered = getRows(countResult)?.[0]?.[0];
-
-    return jsonResponse({
-      success: true,
-      message: "Registered for airdrop! You'll be notified when JGT is distributed.",
-      totalRegistered: parseInt(totalRegistered) || 0,
-    }, corsHeaders);
-  } catch (err) {
-    return jsonResponse({ error: "Registration failed" }, corsHeaders, 500);
-  }
-}
-
-async function handleAirdropStatus(request, env, corsHeaders) {
-  const url = new URL(request.url);
-  const wallet = url.searchParams.get("wallet")?.toLowerCase();
-  
-  if (!wallet) {
-    return jsonResponse({ error: "Wallet address required" }, corsHeaders, 400);
-  }
-
-  const result = await tursoQuery(env, 
-    "SELECT wallet_address, email, registered_at, notified, claimed FROM airdrop_registrations WHERE wallet_address = ?",
-    [wallet]
-  );
-  const row = getRows(result)?.[0];
-
-  if (!row) {
-    return jsonResponse({ registered: false }, corsHeaders);
-  }
-
-  // Mask the email: this endpoint is public and keyed only by wallet
-  // address, so returning the full address book entry would let anyone
-  // harvest registrant emails by wallet.
-  return jsonResponse({
-    registered: true,
-    walletAddress: row[0],
-    email: maskEmail(row[1]),
-    registeredAt: row[2],
-    notified: row[3] === "1",
-    claimed: row[4] === "1",
-  }, corsHeaders);
+async function handleAirdropStatus(_request, _env, corsHeaders) {
+  // Retired along with registration: do not provide a public wallet-enumeration
+  // oracle for the legacy registrant table.
+  return jsonResponse({ error: "Legacy airdrop status is retired" }, corsHeaders, 410);
 }

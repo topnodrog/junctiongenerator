@@ -1,3 +1,6 @@
+console.error("[DEPLOYMENT BLOCKED] JGTMarket is marked DO NOT DEPLOY; its receive path can keep ETH without delivering tokens. No key was loaded and no transaction was sent.");
+process.exit(1);
+
 const { ethers } = require("ethers");
 const solc = require("solc");
 const fs = require("fs");

@@ -7,7 +7,7 @@ pragma solidity ^0.8.20;
 ///
 /// ⚠️ DO NOT DEPLOY. Kept for reference only.
 /// 1. Project stance: JGC is grant/donation funded; JGT must not be sold
-///    (securities risk — see vault/06-Website-Backend/project-website.md).
+///    (see the funding stance in the root README and the current project roadmap).
 /// 2. Funds-loss bug: receive() silently KEEPS the sender's ETH when the
 ///    market has insufficient JGT stock (no revert, buyer gets nothing),
 ///    and likewise for sends below MIN_PURCHASE.

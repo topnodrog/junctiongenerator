@@ -34,11 +34,16 @@ No secret or token value was copied into this audit.
 
 ## Dependency baseline
 
-- Next.js and its matching ESLint configuration are pinned to 16.2.11, the
-  patched release identified by the repository alerts current on 2026-07-30.
-- The unused RainbowKit/Wagmi/WalletConnect/Viem wallet surface was removed.
-  It belonged to the retired JGT promotion path and was responsible for most
-  of the production dependency alerts.
+- The root `package.json` and `yarn.lock` currently pin Next.js and its matching
+  ESLint configuration to 16.3.3. The prior 2026-07-30 review referred to the
+  previous 16.2.11 version; this review did not rerun `npm audit` or GitHub
+  advisory checks, so do not treat that older result as a current clearance.
+- The RainbowKit/Wagmi/WalletConnect/Viem surface remains removed; no new wallet
+  SDK dependency was reintroduced. The optional JGT faucet uses the existing
+  `ethers` package with an injected EIP-1193 wallet, and stays inactive until a
+  separately reviewed minting dispenser is deployed and authorized by the
+  verified clean current token owner. The original token-deployer wallet is
+  compromised and must never be used.
 - Patched PostCSS, Sharp, WebSocket, js-yaml, and transitive utility versions
   are locked through package-manager overrides where upstream ranges lag.
 - The JGC node production graph and the retained rescue tool each report zero

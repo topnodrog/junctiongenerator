@@ -2,10 +2,10 @@
   "name": "jgt-rescue",
   "version": "1.0.0",
   "private": true,
-  "description": "One-off tool to sweep JGT + ownership out of the compromised deployer wallet on Base",
+  "description": "Read-only JGT state verification; historical rescue scripts are disabled",
   "type": "commonjs",
   "scripts": {
-    "rescue": "node rescue_jgt.js"
+    "verify": "node verify_jgt_state.js"
   },
   "dependencies": {
     "ethers": "^6.16.0",

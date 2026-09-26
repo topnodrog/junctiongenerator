@@ -1,108 +1,32 @@
-# JGT Attention Mining — Backend Setup Guide
+# Legacy JGT attention-mining backend — retired reference
 
-> **Current status (2026-07-24):** The Worker is deployed and verified. Public
-> newsletter and hire-lead submissions are stored in Turso, then immediately
-> emailed to the owner through Cloudflare; the midnight digest is a durable
-> fallback. This file is historical setup reference. See `api/DEPLOY.md` for
-> the current deployment record.
+> **Do not follow this file to deploy a reward pipeline.** It previously
+> described an automatic JGT ad-reward and batch-payout flow that is not active.
+> The current Worker deployment record is [`api/DEPLOY.md`](api/DEPLOY.md).
+> Repository behavior was reviewed 2026-09-26; no live deployment changes were
+> made during that review.
 
-## Architecture
+## Current behavior
 
-```
-Frontend (Vercel) → Cloudflare Worker API → Turso DB (SQLite)
-                                      ↓
-                              Daily Cron (midnight UTC)
-                                      ↓
-                    JGTBatchDispenser Contract (Base L2)
-                                      ↓
-                         Users receive JGT tokens
-```
+- Public newsletter, hire, community-join, and activation writes require
+  server-verified Turnstile tokens and are rate-limited.
+- The legacy `POST /api/ad-view` route is owner-authenticated. It records rows;
+  it is not a public ad-reward endpoint.
+- `POST /api/dispense` requires the automation bearer token and returns a
+  read-only legacy preview. It does **not** modify pending rows, sign, submit,
+  or confirm a blockchain transaction.
+- Legacy `POST /api/airdrop/register` and `GET /api/airdrop/status` return HTTP 410.
+- No automatic ad or referral JGT payout should be represented as active.
 
-## Cost Breakdown (All Free Tier)
+For endpoint authentication, current Worker bindings, and deployment evidence,
+see [`api/DEPLOY.md`](api/DEPLOY.md) and
+[`docs/WEBSITE_SECURITY.md`](docs/WEBSITE_SECURITY.md).
 
-| Service | Cost | What it does |
-|---|---|---|
-| **Turso** (Database) | $0/mo | Stores user data, ad views, pending claims |
-| **Cloudflare Workers** (API) | $0/mo (500K req/day) | REST API for tracking rewards |
-| **Cloudflare Cron** | $0/mo | Triggers daily batch dispense |
-| **Vercel** (Frontend) | $0/mo | Hosts the website |
-| **Base L2** (Smart Contract) | ~$0.01/batch | Daily token distribution |
+## Separate legacy-token faucet draft
 
-**Total monthly cost: ~$0.30** (just the Base gas for daily batches)
-
-## Setup Steps
-
-### 1. Create Turso Database
-
-```bash
-# Install Turso CLI
-curl -sSfL https://get.tur.so/install.sh | bash
-
-# Login
-turso auth login
-
-# Create database
-turso db create jgt-mining
-
-# Get connection info
-turso db show jgt-mining
-turso db tokens create jgt-mining
-
-# Run schema
-turso db shell jgt-mining < db/schema.sql
-```
-
-Save the database URL and auth token — you'll need them for the Worker.
-
-### 2. Deploy Cloudflare Worker
-
-```bash
-# Install Wrangler
-npm install -g wrangler
-
-# Login to Cloudflare
-wrangler login
-
-# Create D1 database
-wrangler d1 create jgt-mining
-
-# Update wrangler.toml with your database_id
-# Update secrets:
-wrangler secret put API_SECRET
-wrangler secret put CRON_SECRET
-wrangler secret put TURSO_URL
-wrangler secret put TURSO_AUTH_TOKEN
-
-# Deploy
-cd api
-wrangler deploy
-```
-
-### 3. Deploy Smart Contract
-
-1. Deploy JGT token contract first (ERC-20 on Base)
-2. Deploy JGTBatchDispenser with the token address
-3. Fund the dispenser with JGT tokens for the reward pool
-
-### 4. Connect Frontend
-
-Update the AttentionMining component:
-- Set API endpoint to your Worker URL
-- Set ACTIVE_PROVIDER to "bitmedia" when ready
-- Add email collection form for newsletter
-
-## Daily Flow
-
-1. User watches ad → frontend calls `/api/ad-view`
-2. Worker records ad view in Turso DB + adds to pending_claims
-3. At midnight UTC, Cloudflare Cron triggers `/api/dispense`
-4. Worker aggregates all pending claims by wallet
-5. Backend submits batch to JGTBatchDispenser contract
-6. Contract distributes all JGT tokens in ONE transaction
-7. Gas cost: ~$0.01 for up to 200 recipients
-
-## Newsletter
-
-Emails collected in `newsletter_subscribers` table.
-Export anytime: `SELECT email FROM newsletter_subscribers WHERE active = 1`
-Use with Mailchimp, Resend, or any email service.
+The optional `/jgt-faucet` is a separate, inactive minting-contract draft—not a
+continuation of the old Worker batch pipeline. It must not be deployed or
+activated until its contract is reviewed and tested, the token's current owner
+and minter state are verified, and the owner is confirmed clean. The original
+JGT deployer wallet is compromised and must never be reused. See
+[`docs/JGT_FAUCET.md`](docs/JGT_FAUCET.md).

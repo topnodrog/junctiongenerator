@@ -1,3 +1,6 @@
+console.error("[DEPLOYMENT BLOCKED] JGTStaking is marked DO NOT DEPLOY; its current reward logic can lock stakers' principal. No key was loaded and no transaction was sent.");
+process.exit(1);
+
 const { ethers } = require("ethers");
 const solc = require("solc");
 const fs = require("fs");

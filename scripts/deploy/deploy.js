@@ -1,3 +1,9 @@
+if (process.env.DEPLOY_JGT_TOKEN !== "1") {
+  console.error("Deployment disabled by default. Set DEPLOY_JGT_TOKEN=1 only for a separately approved new token deployment.");
+  process.exit(1);
+}
+
+const { assertNotCompromisedDeployer } = require("./deployment-safety.js");
 const { ethers } = require("ethers");
 const solc = require("solc");
 const fs = require("fs");
@@ -17,6 +23,9 @@ if (!PRIVATE_KEY) {
 async function main() {
   const provider = new ethers.JsonRpcProvider(RPC_URL);
   const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
+  assertNotCompromisedDeployer(wallet.address, "JGT token deployment");
+  const network = await provider.getNetwork();
+  if (network.chainId !== 8453n) throw new Error(`Refusing deployment on chain ${network.chainId}; Base mainnet (8453) is required.`);
 
   const balance = await provider.getBalance(wallet.address);
   console.log("Deployer:", wallet.address);

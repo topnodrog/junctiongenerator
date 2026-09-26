@@ -9,7 +9,7 @@ compatibility_flags = ["nodejs_compat"]
 TURSO_URL = "https://jgt-mining-topnodrog.aws-us-east-2.turso.io"
 # Recipient for the daily new-signups digest email
 DIGEST_RECIPIENT = "james_gordon@junctiongenerator.net"
-# Server-authoritative JGT reward credited per ad view (clients cannot set it)
+# Legacy record value only; the Worker does not submit on-chain JGT payouts.
 AD_REWARD_JGT = "1"
 # Siteverify must confirm both the expected hostname and the form action.
 TURNSTILE_HOSTNAMES = "junctiongenerator.net,www.junctiongenerator.net"
@@ -24,9 +24,9 @@ TURNSTILE_HOSTNAMES = "junctiongenerator.net,www.junctiongenerator.net"
 [observability]
 enabled = true
 
-# Per-IP rate limiting for the public write endpoints (subscribe, hire-lead,
-# airdrop register). The worker allows requests if this binding is absent,
-# so removing this block degrades gracefully rather than breaking deploys.
+# Per-IP rate limiting for the active public write endpoints (subscribe,
+# hire-lead, community join, community activation). A missing binding is allowed
+# only on loopback local development; production requests fail closed.
 [[ratelimits]]
 name = "RATE_LIMITER"
 namespace_id = "1001"
