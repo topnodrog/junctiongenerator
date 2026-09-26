@@ -1,3 +1,6 @@
+console.error("[DEPLOYMENT BLOCKED] JGTBatchDispenser is a retired legacy contract; failed mints can be recorded as processed. Do not deploy or use it for the new faucet. No key was loaded and no transaction was sent.");
+process.exit(1);
+
 const { ethers } = require("ethers");
 const solc = require("solc");
 const fs = require("fs");

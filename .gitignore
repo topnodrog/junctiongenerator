@@ -51,6 +51,9 @@ packages/jgc-node/rust/target/
 # production
 /build
 
+# Owner-local Obsidian vault and private working notes; public docs belong in docs/.
+/vault/
+
 # misc
 .DS_Store
 *.pem

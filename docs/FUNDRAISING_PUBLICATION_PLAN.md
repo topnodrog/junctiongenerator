@@ -1,6 +1,16 @@
 # Fundraising publication record
 
-Completed 2026-09-05 UTC. Owner: James Gordon.
+Publication consolidation recorded 2026-09-05 UTC. Corrected during repository review on 2026-09-26. Owner: James Gordon.
+
+## Current public-tree correction
+
+The 2026-09-05 statement below that private vault copies had been removed was
+inaccurate for the repository tree: this review found 46 files under `vault/`
+still tracked on the public branch. This working branch now ignores `/vault/`
+and stages those files for removal from future snapshots while preserving the
+owner's local files. The change has not been committed, pushed, or merged, so the
+public `main` tree is unchanged. Git history is not rewritten; older revisions
+remain accessible through history and any prior copies or caches.
 
 ## Canonical public sources
 
@@ -35,10 +45,11 @@ historical and is not an approved investor data room or current project claims.
 The verified archive commit is `d0f3e19`.
 
 Financial models, decks, outreach templates, and private operations guides were
-removed from the current public vault only after their copies were preserved
-and uploaded. Original root drafts remain locally available and explicitly
-ignored, together with the local `.private/` archive. They are not public
-canonical copies and should not be staged into the public repository.
+preserved in the private archive described above. Original root drafts remain
+locally available and explicitly ignored, together with the local `.private/`
+archive. They are not public canonical copies and should not be staged into the
+public repository. The earlier claim that all owner-local vault copies had
+already been removed is superseded by the current-tree correction above.
 
 ## Historical boundary
 

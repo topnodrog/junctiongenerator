@@ -4,6 +4,10 @@ Turns the scraped crypto knowledge base into a **searchable vector store** so yo
 (and, later, the site's scam-check tool) can ask questions in natural language and
 get back the most relevant passages with their sources.
 
+The input `vault/13-Crypto-Knowledge-Base/` is an owner-local dataset and is
+intentionally not included in the public repository. Populate it locally with
+approved material before running this tool.
+
 Pipeline: `vault/13-Crypto-Knowledge-Base/*.md` → [chonkie](https://github.com/topnodrog/chonkie)
 `RecursiveChunker` → [FastEmbed](https://github.com/qdrant/fastembed) embeddings
 (ONNX, CPU-friendly) → **Qdrant** (local, on-disk, no server).

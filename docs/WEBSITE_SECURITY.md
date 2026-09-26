@@ -1,6 +1,6 @@
 # Website security and recovery
 
-Updated 2026-09-05 UTC. Owner: James Gordon.
+Updated 2026-09-26 UTC — repository review only; these latest Worker changes have not been deployed. Owner: James Gordon.
 
 ## Public forms
 
@@ -14,9 +14,18 @@ Each form initializes when the shared loader finishes, including multiple
 forms mounted together and forms reached through client navigation.
 
 Requests must be JSON objects of at most 16 KiB. Rate limiting runs before
-parsing and verification. No token, secret, or contact detail is logged by the
-verification helper. The existing owner-authenticated routes remain protected.
-Legacy airdrop registration returns 410; reward dispensing is not reopened.
+parsing and verification; only loopback development bypasses a missing binding,
+and production limiter errors fail closed. No token, secret, or contact detail
+is logged by the verification helper. The existing owner-authenticated routes
+remain protected. Both legacy `/api/airdrop/register` and `/api/airdrop/status`
+return 410. The separate
+`/jgt-faucet` page is an optional, direct-to-contract Base claim flow described
+in [`JGT_FAUCET.md`](JGT_FAUCET.md); it is inactive until the reviewed minting
+dispenser is deployed, authorized by the verified clean current token owner,
+and configured with its reviewed runtime hash and expected clean-owner address.
+The page compares the live owner with that exact address. It is not prefunded and does not reopen the legacy registration
+or Worker reward pipeline. The original token-deployer wallet is compromised
+and must not be used.
 
 The public site key is configured in the root layout, with optional
 `TURNSTILE_SITE_KEY` or `NEXT_PUBLIC_TURNSTILE_SITE_KEY` overrides. The secret
@@ -36,7 +45,13 @@ are allowed separately from scripts.
 
 Pages render dynamically because their nonces must be fresh. Development
 allows its local tooling. Loopback node status and the public seed/API remain
-allowed. There is no current RainbowKit or WalletConnect flow to support.
+allowed. The optional JGT faucet uses only an injected EIP-1193 wallet through
+the existing `ethers` dependency; it adds no WalletConnect/RainbowKit provider
+or third-party relay origin. It refuses claim signatures/transactions from the
+known compromised original deployer and disables claims if the token still has
+that owner. It never asks for a recovery phrase or stores a private key. The
+signed-claim file is a scoped, one-use authorization and should be shared only
+with the chosen relayer.
 
 Set `CSP_REPORT_ONLY=true` to observe a proposed policy change before enforcing
 it. Test every route, analytics, challenge loading, and client navigation before
@@ -49,11 +64,18 @@ forms, and lab demonstrations have section boundaries so a rendering failure
 does not remove the rest of a page. Network failures remain handled by their
 existing component messages.
 
-Validation for this change: website lint and production build; Worker syntax,
-five public-write security tests, and Wrangler dry-run; browser checks of home,
-community, and live explorer with report-only followed by enforced CSP. Phone
-checks at 375 and 320 CSS pixels found and corrected the template layout and
-verification-widget overflow. Tests used a local dummy challenge and did not
+Previous website/CSP validation (2026-09-05) included website lint and
+production build, Worker syntax, five public-write security tests, a Wrangler
+dry-run, and browser checks of home, community, and live explorer with
+report-only followed by enforced CSP. Phone checks at 375 and 320 CSS pixels
+found and corrected template layout and verification-widget overflow. Those
+historical checks do not cover the repository changes made on 2026-09-26.
+
+Current repository validation: 25 Node tests passed across six suites, syntax
+checks passed for the reviewed Worker/deployment/relayer/rescue JavaScript, and
+`git diff --check` passed. Website lint/build and Solidity compilation were not
+rerun because dependencies are unavailable locally; no Wrangler dry-run or live
+Worker/deployment action was performed. The tests use local inputs and did not
 create real signup records or send notification emails. Full assistive-device
 or third-party security certification is not claimed.
 

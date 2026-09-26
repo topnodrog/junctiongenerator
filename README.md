@@ -6,7 +6,7 @@ Junction Generator is building a community-owned Proof-of-Useful-Compute
 network where everyday devices contribute verifiable local AI inference.
 
 **Live site:** [junctiongenerator.net](https://junctiongenerator.net)
-**Repo:** [topnodrog/junctiongenerator](https://github.com/topnodrog/junctiongenerator) (GitHub Pages)
+**Repo:** [topnodrog/junctiongenerator](https://github.com/topnodrog/junctiongenerator) (GitHub repository)
 
 ---
 
@@ -25,7 +25,7 @@ development.
 The primary protocol product lives in `packages/jgc-node`; it is separate from
 the legacy JGT token on Base.
 
-Current node milestone (2026-09-01):
+Latest recorded node milestone (2026-09-05):
 
 - Consensus V3 underlies the zero-premine `jgtc-testnet-v2` identity and rejects incompatible
   peers before chain data is exchanged;
@@ -40,9 +40,10 @@ Current node milestone (2026-09-01):
   or a one-command Docker Compose setup;
 - versioned, network-bound, checksum-protected storage now recovers torn tails,
   quarantines bad snapshots, and refuses incompatible data;
-- 40 suites / 329 tests under Node.js 24, plus Node.js 20/22/24 CI, a
+- 44 suites / 351 tests under Node.js 24, plus Node.js 20/22/24 CI, a
   31-block sync demo, a six-proof strict WASM run,
-  cross-platform CI, and the hosted Docker smoke test pass.
+  cross-platform CI, and the hosted Docker smoke test passed in the latest
+  recorded verification.
 
 The node is early, valueless testnet software. Two independent bootstrap seeds
 are reachable: Google Seed A at `wss://seed-a.junctiongenerator.net` and Fly.io
@@ -68,13 +69,16 @@ For protocol details, see [`packages/jgc-node/README.md`](packages/jgc-node/READ
 
 | Contract | Address | Status |
 |----------|---------|--------|
-| JGT Token (ERC-20) | `0x7Fe...c587` | Deployed |
-| Dispenser | `0x6afF...f9C7` | Deployed |
+| JGT Token (ERC-20) | `0x7Fe...c587` | Deployed legacy token; current owner/minters require live verification |
+| Legacy dispenser | `0x6afF...f9C7` | Historical deployment; do not use as the current faucet without code/state review |
 | JGTMarket | reference only | **Do not deploy or fund**; no-sale stance and known funds bugs |
-| JGTBatchDispenser | legacy/reference | Not part of the JGC public-testnet path |
+| JGTBatchDispenser | legacy/reference | **Do not deploy**; failed mints can be marked processed |
+| JGTClaimDispenser | source only | Optional 2-JGT/24h minting faucet draft; not compiled, reviewed, deployed, or authorized |
 | JGTStaking | reference only | **Do not deploy**; known principal-lock and reward-accounting bugs |
 
-**Deployer wallet:** `0x5f89d06E0D4dBe3C125a49FD9213624aD8a991d4`
+The optional [`/jgt-faucet`](docs/JGT_FAUCET.md) route stays inactive until the minting dispenser is reviewed and deployed, the verified clean current token owner authorizes it as a minter, and its address, runtime-code hash, and expected clean-owner address are configured. It is not prefunded and does not use the retired Worker airdrop pipeline. The original token-deployer wallet is compromised: never use it.
+
+**Original deployer wallet (COMPROMISED — DO NOT USE):** `0x5f89d06E0D4dBe3C125a49FD9213624aD8a991d4`
 **Token:** 100M initial mint, 1B max supply, 18 decimals
 
 ---
@@ -87,24 +91,32 @@ For protocol details, see [`packages/jgc-node/README.md`](packages/jgc-node/READ
 | Turso Database | `jgt-mining-topnodrog.aws-us-east-2.turso.io` | Live |
 | Vercel Frontend | `junctiongenerator.net` | Live |
 
-**Worker API endpoints:**
-- `POST /api/subscribe` -- Store a newsletter signup and notify the owner
-- `POST /api/hire-lead` -- Store an email/phone inquiry and notify the owner
-- `POST /api/ad-view` -- Record ad views for rewards
-- `GET /api/user` -- Get user stats
-- `POST /api/airdrop/register` -- Register for airdrop
-- `GET /api/airdrop/status` -- Check airdrop registration
-- `GET /api/referral` -- Get referral link info
-- `POST /api/referral/claim` -- Claim referral bonus
-- `GET /api/ads/campaigns` -- List active ad campaigns
-- `POST /api/ads/campaigns` -- Create ad campaign (self-serve)
-- `POST /api/dispense` -- Trigger batch reward distribution
-- `GET /api/pending-rewards` -- View pending reward queue
+**Worker API access model (repository code):** The 2026-09-26 security changes
+below have not been deployed. The live Worker was last verified on 2026-09-05;
+see [`api/DEPLOY.md`](api/DEPLOY.md) before relying on production behavior.
 
-New newsletter and hire submissions trigger an immediate email to the verified
-owner address. A midnight-UTC digest retries visibility from durable Turso
-records. The live path was verified end-to-end on 2026-07-24; synthetic rows
-were removed afterward.
+- Public writes: `POST /api/subscribe`, `/api/hire-lead`, `/api/community/join`,
+  and `/api/community/activate`. These are rate-limited and require server-verified
+  Turnstile tokens bound to their form action and hostname.
+- Public reads: `GET /api/user`, `/api/referral`, `/api/community/scoreboard`,
+  `/api/ads/campaigns`, and `/api/health`.
+- Owner bearer (`API_SECRET`): legacy `POST /api/ad-view`, `/api/referral/claim`,
+  `/api/ads/campaigns`, `/api/community/funding`, `/api/community/weekly-metrics`,
+  and `GET /api/pending-rewards`.
+- Automation bearer (`CRON_SECRET`): `POST /api/dispense` and `/api/digest/run`.
+- Legacy `POST /api/airdrop/register` and `GET /api/airdrop/status` return HTTP 410.
+
+The ad-view and batch-reward routes are legacy record-preparation paths, not a
+live public ad-reward program: `POST /api/ad-view` requires owner authentication,
+and `/api/dispense` now returns a read-only legacy preview. It does **not**
+change claim rows, submit a blockchain transaction, or pay JGT. Campaign
+creation is owner-authenticated, not self-serve. Current deployment evidence is
+in [`api/DEPLOY.md`](api/DEPLOY.md).
+
+New newsletter and hire submissions are stored in Turso before owner
+notification is attempted. The midnight-UTC digest provides a fallback. The
+live path was verified end-to-end on 2026-07-24; synthetic rows were removed
+afterward.
 
 **DB tables:** users, sessions, ad_views, pending_claims, dispense_batches,
 airdrop_registrations, referrals, ad_campaigns, newsletter_subscribers,

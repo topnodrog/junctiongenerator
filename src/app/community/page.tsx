@@ -46,7 +46,7 @@ export default function CommunityPage() {
             <a className="jg-button jg-button-primary" href={DISCORD_URL} target="_blank" rel="noopener noreferrer">Join the Discord</a>
             <a className="jg-button jg-button-secondary" href="#activate">See the three-minute path</a>
           </div>
-          <p className="jg-trust-note">No token sale. No public mainnet claim. Roles and recognition carry no promise of financial reward.</p>
+          <p className="jg-trust-note">No token sale. The separate legacy JGT faucet is not a community reward; roles and recognition carry no promise of financial reward.</p>
         </div>
         <aside className="jg-goal-card">
           <span>90-day clear goal</span>

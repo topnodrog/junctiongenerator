@@ -309,8 +309,10 @@ Exit criteria:
 
 ## Parallel website security track
 
-Implemented and merged in PR #47; deployment evidence is recorded in
-`api/DEPLOY.md`. The tested current site has no wallet connection flow.
+The public-form protections and enforced CSP are implemented and merged in
+PR #47; deployment evidence is recorded in `api/DEPLOY.md`. The separate JGT
+faucet route now uses a minimal injected-wallet claim flow, but remains inactive
+until a reviewed Base minting dispenser is deployed, authorized by the verified clean current token owner, and configured.
 
 1. [x] Add action/hostname-bound Turnstile checks before public writes.
 2. [x] Exercise report-only CSP, then enforce fresh nonces and the tested allowlist.
@@ -318,8 +320,10 @@ Implemented and merged in PR #47; deployment evidence is recorded in
 4. [x] Check desktop navigation and 375/320px phone layouts; correct demo/widget
    overflow and keep form labels and keyboard controls accessible. This is not
    a full assistive-device certification.
-5. [x] Keep reward promotion retired; new airdrop enrollment returns 410.
-   The midnight cron still sends the digest and does not submit on-chain batches.
+5. [x] Keep legacy reward registration retired; new airdrop enrollment returns 410.
+   The midnight cron sends digests only. The inactive JGT faucet draft is a
+   separate opt-in minting path; it requires independent review, a verified clean
+   token owner, authorization, and configuration before any claim can be made.
 
 ## Explicitly deferred
 
