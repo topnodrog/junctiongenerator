@@ -37,6 +37,6 @@ projects sustain development. There is no token sale and no promise of tokens,
 investment returns, equity, or future value for participating or donating.
 Legacy JGT contracts are separate from this JGC research and are not promoted.
 
-Contact: [james_gordon@junctiongenerator.net](mailto:james_gordon@junctiongenerator.net)
+Contact: [jgordon5240@gmail.com](mailto:jgordon5240@gmail.com)
 · [Source](https://github.com/topnodrog/junctiongenerator)
 · [Join the community](https://junctiongenerator.net/community)

@@ -67,7 +67,7 @@ export default function Turnstile({ action, attempt, onVerify }: {
       {(!siteKey || failed) && <p role="status">
         Verification is unavailable or has expired. {ready && siteKey && <button type="button"
           onClick={() => { onVerify(""); setFailed(false); setRetry((value) => value + 1); }}>Try verification again</button>}
-        {" "}You can also <a href="mailto:james_gordon@junctiongenerator.net">email James</a>.
+        {" "}You can also <a href="mailto:jgordon5240@gmail.com">email James</a>.
       </p>}
     </div>
   );

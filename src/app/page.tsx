@@ -213,8 +213,8 @@ export default function Home() {
           </div>
           <div className="jg-hire-action">
             <p>Tell me what you need. A short description is enough to start.</p>
-            <a href="mailto:james_gordon@junctiongenerator.net?subject=Project%20inquiry%20from%20Junction%20Generator" className="jg-button jg-button-primary">Start a conversation</a>
-            <small>james_gordon@junctiongenerator.net</small>
+            <a href="mailto:jgordon5240@gmail.com?subject=Project%20inquiry%20from%20Junction%20Generator" className="jg-button jg-button-primary">Start a conversation</a>
+            <small>jgordon5240@gmail.com</small>
           </div>
         </section>
       </main>

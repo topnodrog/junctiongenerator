@@ -85,7 +85,7 @@ async function sendOwnerEmail(env, subject, body) {
     return false;
   }
 
-  const recipient = env.DIGEST_RECIPIENT || "james_gordon@junctiongenerator.net";
+  const recipient = env.DIGEST_RECIPIENT || "jgordon5240@gmail.com";
   const msg = createMimeMessage();
   msg.setSender({ name: "Junction Generator", addr: "digest@junctiongenerator.net" });
   msg.setRecipient(recipient);
