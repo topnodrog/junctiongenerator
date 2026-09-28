@@ -26,7 +26,7 @@ CSP; no dummy key is present. See `docs/WEBSITE_SECURITY.md`.
   require the owner bearer token.
 - Each valid submission is written to Turso before notification is attempted.
 - Newsletter signups and hire leads immediately email
-  `james_gordon@junctiongenerator.net`.
+  `jgordon5240@gmail.com`.
 - A notification failure is logged but does not fail or discard the stored
   submission.
 - The `0 0 * * *` cron runs the midnight-UTC digest as a fallback.
@@ -51,7 +51,7 @@ CSP; no dummy key is present. See `docs/WEBSITE_SECURITY.md`.
 | Deployment identity | Existing project Cloudflare API token; previous OAuth session unavailable |
 | Worker secrets | `API_SECRET`, `CRON_SECRET`, `TURSO_AUTH_TOKEN`, `TURNSTILE_SECRET_KEY` present |
 | Send binding | `EMAIL_SENDER` → verified fixed destination |
-| Destination | `james_gordon@junctiongenerator.net`, verified 2026-06-26 |
+| Destination | `jgordon5240@gmail.com`, verified 2026-06-26 |
 | Other bindings | `RATE_LIMITER`, `TURSO_URL`, `DIGEST_RECIPIENT`, `AD_REWARD_JGT` |
 | Scheduled trigger | `0 0 * * *` |
 | Database health | `/api/health` returned 200 and `database: connected` |

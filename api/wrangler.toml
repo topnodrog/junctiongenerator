@@ -8,7 +8,7 @@ compatibility_flags = ["nodejs_compat"]
 # Turso database URL
 TURSO_URL = "https://jgt-mining-topnodrog.aws-us-east-2.turso.io"
 # Recipient for the daily new-signups digest email
-DIGEST_RECIPIENT = "james_gordon@junctiongenerator.net"
+DIGEST_RECIPIENT = "jgordon5240@gmail.com"
 # Legacy record value only; the Worker does not submit on-chain JGT payouts.
 AD_REWARD_JGT = "1"
 # Siteverify must confirm both the expected hostname and the form action.
@@ -41,4 +41,4 @@ crons = ["0 0 * * *"]
 # Routing; the live binding was end-to-end tested on 2026-07-24.
 [[send_email]]
 name = "EMAIL_SENDER"
-destination_address = "james_gordon@junctiongenerator.net"
+destination_address = "jgordon5240@gmail.com"

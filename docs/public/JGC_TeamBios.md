@@ -24,5 +24,5 @@ or partner organizations have been verified for publication.
 - Contributors to documentation and accessible onboarding.
 - Grantmakers and sponsors interested in defined, measurable milestones.
 
-Contact: [james_gordon@junctiongenerator.net](mailto:james_gordon@junctiongenerator.net).
+Contact: [jgordon5240@gmail.com](mailto:jgordon5240@gmail.com).
 See [the project brief](JGC_OnePager.md) for current status and limits.

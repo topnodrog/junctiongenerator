@@ -27,7 +27,7 @@ the product; the site is its shop window and node-runner recruiting funnel.
 - [x] Worker secrets and bindings confirmed: `API_SECRET`, `CRON_SECRET`,
   `TURSO_AUTH_TOKEN`, `EMAIL_SENDER`, `RATE_LIMITER`, `TURSO_URL`,
   `DIGEST_RECIPIENT`, and `AD_REWARD_JGT`.
-- [x] `james_gordon@junctiongenerator.net` is a verified Cloudflare Email
+- [x] `jgordon5240@gmail.com` is a verified Cloudflare Email
   destination.
 - [x] Midnight cron confirmed operational: `digest_state.last_sent_at`
   advanced to `2026-07-24 00:00:01`.
