@@ -89,6 +89,7 @@ export default function Home() {
           <a href="#how-it-works">How it works</a>
           <a href="#status">Progress</a>
           <Link href="/testnet">Testnet</Link>
+          <Link href="/jgt-faucet">JGT faucet</Link>
           <Link href="/community">Join</Link>
           <Link href="/blog">Field notes</Link>
           <a href="#hire">Hire James</a>
@@ -110,7 +111,8 @@ export default function Home() {
               <Link href="/community" className="jg-button jg-button-primary">Join the JG Founding Community</Link>
               <a href="#status" className="jg-button jg-button-secondary">See what actually works</a>
             </div>
-            <p className="jg-trust-note">No token sale. No public mainnet claims. The code, limits, and progress are open for inspection.</p>
+            <p className="jg-trust-note">No token sale. JGT is a separate legacy Base token; its optional faucet is not part of JGC rewards or the JGTC testnet.</p>
+            <p className="jg-trust-note"><Link href="/jgt-faucet">Check the JGT faucet and on-chain claim status →</Link></p>
           </div>
           <div className="jg-system-map" aria-label="Junction Generator network loop">
             <div className="jg-map-label">The useful-compute loop</div>
@@ -211,8 +213,8 @@ export default function Home() {
           </div>
           <div className="jg-hire-action">
             <p>Tell me what you need. A short description is enough to start.</p>
-            <a href="mailto:james_gordon@junctiongenerator.net?subject=Project%20inquiry%20from%20Junction%20Generator" className="jg-button jg-button-primary">Start a conversation</a>
-            <small>james_gordon@junctiongenerator.net</small>
+            <a href="mailto:jgordon5240@gmail.com?subject=Project%20inquiry%20from%20Junction%20Generator" className="jg-button jg-button-primary">Start a conversation</a>
+            <small>jgordon5240@gmail.com</small>
           </div>
         </section>
       </main>
@@ -222,7 +224,7 @@ export default function Home() {
           <a href="#top" className="jg-brand"><span className="jg-mark" aria-hidden="true">JG</span><span><strong>Junction Generator</strong><small>Useful compute, independently verified.</small></span></a>
           <p>Early, valueless JGTC public testnet. No JGC mainnet is deployed.</p>
         </div>
-        <nav aria-label="Footer navigation"><Link href="/community">Join community</Link><Link href="/whitepaper">Concept paper</Link><Link href="/blog">Field notes</Link><a href="https://github.com/topnodrog/junctiongenerator" target="_blank" rel="noopener noreferrer">GitHub</a><a href="#hire">Hire James</a></nav>
+        <nav aria-label="Footer navigation"><Link href="/community">Join community</Link><Link href="/jgt-faucet">Legacy JGT faucet</Link><Link href="/whitepaper">Concept paper</Link><Link href="/blog">Field notes</Link><a href="https://github.com/topnodrog/junctiongenerator" target="_blank" rel="noopener noreferrer">GitHub</a><a href="#hire">Hire James</a></nav>
         <span>© 2026 Junction Generator</span>
       </footer>
     </>

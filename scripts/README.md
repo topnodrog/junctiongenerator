@@ -2,13 +2,20 @@
 
 Utility scripts organized by purpose.
 
+> **Safety:** no deployment, transaction, database, or Cloudflare operation was
+> run during the 2026-09-26 review. Treat operational scripts as privileged and
+> review their effects before using them.
+
 ## Structure
 
-- **`deploy/`** — Smart contract deployment scripts for Base L2
-  - `deploy.js` — Main contract deployment
-  - `deploy_dispenser.js` — JGT Dispenser contract
-  - `deploy_market.js` — JGT Market contract
-  - `deploy_staking.js` — JGT Staking contract
+- **`deploy/`** — Historical contract deployment scripts; not a general deploy tool
+  - `deploy.js` — New JGT token deployment only; requires explicit
+    `DEPLOY_JGT_TOKEN=1`, rejects the compromised original deployer, and checks
+    for Base mainnet. Use only with separate approval.
+  - `deploy_dispenser.js` — Retired `JGTBatchDispenser`; exits before loading keys.
+  - `deploy_market.js` — Known unsafe legacy market; exits before loading keys.
+  - `deploy_staking.js` — Known unsafe legacy staking contract; exits before loading keys.
+  - `deployment-safety.js` — Shared compromised-sender guard.
 
 - **`db/`** — Database and backend operations
   - `migrate_db.py` — Database schema migrations

@@ -1301,3 +1301,142 @@ body::after { display: none; }
 .jg-verification { grid-column: 1 / -1; flex-basis: 100%; width: 100%; min-width: 0; margin: 12px 0; }
 .jg-verification p { font-size: 0.875rem; color: var(--text-secondary); }
 .jg-section-error { padding: 32px; }
+
+/* Legacy JGT faucet: direct claims always remain user-authorized. */
+.jgt-faucet-page {
+  min-height: 100vh;
+  padding-bottom: 32px;
+  background:
+    radial-gradient(circle at 85% 10%, rgba(88, 228, 178, .09), transparent 30rem),
+    #070b0d;
+}
+.jgt-faucet-page .jg-simple-nav { max-width: 100%; }
+.jgt-faucet-page .jg-simple-nav > div a { text-decoration: none; }
+.jgt-faucet {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+  padding: 82px 24px 0;
+}
+.jgt-faucet-intro { max-width: 790px; margin-bottom: 42px; }
+.jgt-faucet-intro h1 {
+  margin-top: 18px;
+  color: #effbf6;
+  font-size: clamp(48px, 7vw, 82px);
+  font-weight: 650;
+  letter-spacing: -.06em;
+  line-height: .98;
+}
+.jgt-faucet-intro > p {
+  max-width: 730px;
+  margin-top: 22px;
+  color: #91a79e;
+  font-size: 16px;
+  line-height: 1.75;
+}
+.jgt-faucet-grid { display: grid; grid-template-columns: minmax(0, 1.12fr) minmax(280px, .88fr); gap: 14px; align-items: start; }
+.jgt-faucet-card {
+  min-width: 0;
+  padding: clamp(22px, 4vw, 36px);
+  border: 1px solid rgba(190,255,231,.12);
+  background: rgba(10,18,17,.82);
+  box-shadow: 0 22px 64px rgba(0,0,0,.2);
+}
+.jgt-faucet-card h2 { margin-top: 9px; color: #e6f6ef; font-size: clamp(25px, 3vw, 34px); letter-spacing: -.04em; }
+.jgt-faucet-card-top { display: flex; justify-content: space-between; gap: 14px; align-items: center; }
+.jgt-network-badge {
+  flex: 0 0 auto;
+  padding: 7px 10px;
+  border: 1px solid rgba(190,255,231,.13);
+  color: #849a91;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.jgt-network-badge.is-online { border-color: rgba(88,228,178,.3); color: #8eecc5; background: rgba(88,228,178,.06); }
+.jgt-wallet-address { display: grid; gap: 5px; margin-top: 24px; color: #72877f; font-size: 10px; }
+.jgt-wallet-address code, .jgt-signed-claim code { overflow-wrap: anywhere; color: #c1e9d7; font-family: var(--font-mono); font-size: 10px; }
+.jgt-faucet-balance-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 28px; }
+.jgt-faucet-balance-grid > div { min-width: 0; padding: 15px 12px; border: 1px solid rgba(190,255,231,.08); background: rgba(255,255,255,.018); }
+.jgt-faucet-balance-grid span { display: block; min-height: 30px; color: #748a81; font-size: 10px; line-height: 1.45; }
+.jgt-faucet-balance-grid strong { display: block; margin-top: 8px; color: #baf6dc; font-family: var(--font-mono); font-size: clamp(14px, 2vw, 19px); font-weight: 600; overflow-wrap: anywhere; }
+.jgt-faucet-note { margin-top: 18px; color: #788d84; font-size: 11px; line-height: 1.7; }
+.jgt-faucet-alert { margin-top: 26px; padding: 16px; border-left: 2px solid #dbb56b; color: #d8c28e; background: rgba(219,181,107,.07); font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; }
+.jgt-faucet-alert code { color: #f0d99d; font-family: var(--font-mono); font-size: 10px; }
+.jgt-gas-quote { display: grid; gap: 8px; margin-top: 20px; padding: 16px; border: 1px solid rgba(88,228,178,.18); background: rgba(88,228,178,.045); }
+.jgt-gas-quote > strong { color: #94cbb4; font-size: 10px; }
+.jgt-gas-quote > span { color: #c2f7df; font-family: var(--font-mono); font-size: 16px; overflow-wrap: anywhere; }
+.jgt-gas-quote small { color: #748a81; font-size: 10px; line-height: 1.65; }
+.jgt-faucet-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
+.jgt-faucet-actions .jg-button, .jgt-faucet-card > .jg-button, .jgt-signed-claim .jg-button { min-height: 43px; padding-inline: 14px; font-size: 11px; cursor: pointer; }
+.jgt-faucet-actions .jg-button:disabled, .jgt-faucet-card > .jg-button:disabled { cursor: not-allowed; opacity: .55; transform: none; }
+.jgt-feedback { margin-top: 17px; font-size: 11px; line-height: 1.6; overflow-wrap: anywhere; }
+.jgt-feedback-ok { color: #8be5bf; }
+.jgt-feedback-error { color: #ff9d9d; }
+.jgt-faucet-relayer-card > p:not(.jg-faucet-note) { margin-top: 15px; color: #8a9f96; font-size: 12px; line-height: 1.72; }
+.jgt-faucet-relayer-card label { display: grid; gap: 6px; margin-top: 22px; color: #a0b6ac; font-size: 10px; font-weight: 700; }
+.jgt-faucet-relayer-card label small { display: inline; color: #61776e; font-size: 9px; font-weight: 400; }
+.jgt-faucet-relayer-card input {
+  width: 100%;
+  min-height: 44px;
+  margin-top: 8px;
+  padding: 0 12px;
+  border: 1px solid rgba(190,255,231,.15);
+  outline: none;
+  color: #e2f5ed;
+  background: #080e0d;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+.jgt-faucet-relayer-card input:focus { border-color: #58e4b2; box-shadow: 0 0 0 3px rgba(88,228,178,.08); }
+.jgt-faucet-relayer-card input:disabled { opacity: .5; }
+.jgt-signed-claim { display: grid; gap: 8px; margin-top: 22px; padding: 14px; border: 1px solid rgba(88,228,178,.2); background: rgba(88,228,178,.05); }
+.jgt-signed-claim > strong { color: #a6efd0; font-size: 11px; }
+.jgt-signed-claim > p { color: #82988e; font-size: 10px; line-height: 1.6; }
+.jgt-signed-claim .jg-button { justify-self: start; }
+.jgt-ad-section { margin-top: 58px; padding-top: 42px; border-top: 1px solid rgba(190,255,231,.1); }
+.jgt-ad-section-heading { max-width: 760px; }
+.jgt-ad-section-heading h2 { margin-top: 12px; color: #e6f6ef; font-size: clamp(27px, 4vw, 42px); letter-spacing: -.045em; }
+.jgt-ad-section-heading > p { margin-top: 14px; color: #849a91; font-size: 12px; line-height: 1.7; }
+.jgt-ad-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 25px; }
+.jgt-ad-card { display: grid; align-content: start; min-width: 0; padding: 17px; border: 1px solid rgba(190,255,231,.11); background: rgba(10,18,17,.72); }
+.jgt-ad-card-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.jgt-ad-duration { color: #a7c8b7; font-family: var(--font-mono); font-size: 9px; }
+.jgt-ad-placeholder { display: grid; align-content: center; justify-items: center; gap: 10px; min-height: 150px; margin-top: 14px; padding: 18px; border: 1px dashed rgba(88,228,178,.25); background: radial-gradient(circle, rgba(88,228,178,.07), transparent 70%), #080e0d; text-align: center; }
+.jgt-ad-placeholder > span { color: #6c857a; font-family: var(--font-mono); font-size: 8px; letter-spacing: .08em; text-transform: uppercase; }
+.jgt-ad-placeholder > strong { color: #baf6dc; font-size: 14px; }
+.jgt-ad-card video { display: block; width: 100%; aspect-ratio: 16 / 9; margin-top: 14px; background: #050808; object-fit: contain; }
+.jgt-ad-button { width: 100%; margin-top: 14px; cursor: pointer; }
+.jgt-ad-setup-note { max-width: 780px; margin-top: 16px; color: #6f837b; font-size: 10px; line-height: 1.7; overflow-wrap: anywhere; }
+.jgt-ad-setup-note code { color: #a7c8b7; font-family: var(--font-mono); font-size: 9px; }
+.jgt-faucet-disclosures { display: grid; gap: 10px; max-width: 940px; margin-top: 28px; color: #6f837b; font-size: 10px; line-height: 1.7; overflow-wrap: anywhere; }
+.jgt-faucet-disclosures strong { color: #9fb7ab; }
+.jgt-faucet-disclosures a { color: #96e4c4; text-decoration: underline; text-underline-offset: 3px; }
+.jgt-faucet-disclosures code { color: #a7c8b7; font-family: var(--font-mono); font-size: 9px; }
+.jgt-faucet-footer { display: flex; justify-content: space-between; gap: 20px; max-width: 1120px; margin: 70px auto 0; padding: 26px 24px 0; border-top: 1px solid rgba(190,255,231,.1); color: #63776f; font-size: 10px; }
+.jgt-faucet-footer a { color: #8fa79d; text-decoration: none; }
+
+@media (max-width: 820px) {
+  .jgt-faucet-grid { grid-template-columns: 1fr; }
+  .jgt-faucet-relayer-card { display: grid; }
+  .jgt-ad-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 700px) {
+  .jgt-faucet { padding: 62px 18px 0; }
+  .jgt-faucet-intro { margin-bottom: 30px; }
+  .jgt-faucet-intro h1 { font-size: clamp(46px, 14vw, 64px); }
+  .jgt-faucet-card-top { align-items: start; flex-direction: column; }
+  .jgt-faucet-balance-grid { grid-template-columns: 1fr; }
+  .jgt-faucet-balance-grid > div { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  .jgt-faucet-balance-grid span { min-height: 0; }
+  .jgt-faucet-balance-grid strong { margin-top: 0; text-align: right; }
+  .jgt-ad-grid { grid-template-columns: 1fr; }
+  .jgt-faucet-actions { display: grid; }
+  .jgt-faucet-actions .jg-button, .jgt-faucet-card > .jg-button { width: 100%; }
+  .jgt-faucet-footer { display: grid; margin-inline: 18px; padding-inline: 0; }
+}
+.jg-trust-note a { color: #9bdcbe; text-decoration: underline; text-underline-offset: 3px; }
+.jgt-relayer-bounty { margin-top: 20px; padding: 14px; border: 1px solid rgba(219,181,107,.18); background: rgba(219,181,107,.045); }
+.jgt-relayer-bounty > strong { color: #e2cb94; font-size: 10px; }
+.jgt-relayer-bounty > p { margin-top: 7px; color: #92886f; font-size: 10px; line-height: 1.65; }
+.jgt-relayer-guide { display: inline-block; margin-top: 14px; color: #96e4c4; font-size: 10px; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }

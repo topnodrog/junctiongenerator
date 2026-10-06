@@ -2,8 +2,11 @@
 pragma solidity ^0.8.20;
 
 /// @title JGTBatchDispenser
-/// @notice Batch reward dispenser for JGT attention mining
-/// @dev Processes daily rewards in a single transaction to save gas
+/// @notice Retired legacy batch reward dispenser for JGT attention mining.
+/// @dev DO NOT DEPLOY OR USE FOR NEW REWARDS. A failed mint is logged but the
+///      batch remains marked processed, so recipients can be recorded as paid
+///      without receiving tokens. Use only after independent review of any
+///      existing deployment; this is not the current 2-JGT faucet.
 contract JGTBatchDispenser {
     address public immutable jgtToken;
     address public owner;

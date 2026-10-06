@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: MIT
+// HISTORICAL SOURCE ONLY — the recovery is complete. Do not deploy this delegate
+// or reuse the compromised original wallet key for any signing or authorization.
 pragma solidity ^0.8.20;
 
 interface IERC20 {

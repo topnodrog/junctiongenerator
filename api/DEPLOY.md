@@ -1,6 +1,8 @@
 # Cloudflare Worker deployment and verification
 
-**Last verified:** 2026-09-05 UTC
+**Last live verification:** 2026-09-05 UTC
+
+**Repository review:** 2026-09-26 UTC — working-tree changes below are not deployed
 
 Worker: `jgt-mining-api`
 
@@ -12,7 +14,7 @@ Website protection merged in PR #47 and deployed through Vercel before the
 Worker update. The production page has its real Turnstile site key and enforced
 CSP; no dummy key is present. See `docs/WEBSITE_SECURITY.md`.
 
-## Live behavior
+## Repository behavior after this review (not yet deployed)
 
 - `POST /api/subscribe`, `POST /api/hire-lead`,
   `POST /api/community/join`, and `POST /api/community/activate` are public
@@ -24,7 +26,7 @@ CSP; no dummy key is present. See `docs/WEBSITE_SECURITY.md`.
   require the owner bearer token.
 - Each valid submission is written to Turso before notification is attempted.
 - Newsletter signups and hire leads immediately email
-  `james_gordon@junctiongenerator.net`.
+  `jgordon5240@gmail.com`.
 - A notification failure is logged but does not fail or discard the stored
   submission.
 - The `0 0 * * *` cron runs the midnight-UTC digest as a fallback.
@@ -32,7 +34,15 @@ CSP; no dummy key is present. See `docs/WEBSITE_SECURITY.md`.
   `Authorization: Bearer <API_SECRET>`.
 - CORS, rate limiting, server-authoritative rewards, and PII masking remain
   enabled.
-- Legacy `POST /api/airdrop/register` is retired and returns 410.
+- Legacy `POST /api/airdrop/register` and `GET /api/airdrop/status` return 410.
+- Legacy `POST /api/ad-view` requires `API_SECRET`; it records pending reward
+  rows but is not a public ad-reward route.
+- `POST /api/dispense` requires `CRON_SECRET` and returns a read-only legacy
+  preview; it does not modify pending rows or submit a blockchain transaction.
+  No automated on-chain JGT payout is active.
+- The older handler could leave database rows in `processing` without an
+  on-chain payout. This review did not query Turso; inspect any existing
+  processing batches against transaction records before changing their status.
 
 ## Verified Cloudflare state
 
@@ -41,7 +51,7 @@ CSP; no dummy key is present. See `docs/WEBSITE_SECURITY.md`.
 | Deployment identity | Existing project Cloudflare API token; previous OAuth session unavailable |
 | Worker secrets | `API_SECRET`, `CRON_SECRET`, `TURSO_AUTH_TOKEN`, `TURNSTILE_SECRET_KEY` present |
 | Send binding | `EMAIL_SENDER` → verified fixed destination |
-| Destination | `james_gordon@junctiongenerator.net`, verified 2026-06-26 |
+| Destination | `jgordon5240@gmail.com`, verified 2026-06-26 |
 | Other bindings | `RATE_LIMITER`, `TURSO_URL`, `DIGEST_RECIPIENT`, `AD_REWARD_JGT` |
 | Scheduled trigger | `0 0 * * *` |
 | Database health | `/api/health` returned 200 and `database: connected` |

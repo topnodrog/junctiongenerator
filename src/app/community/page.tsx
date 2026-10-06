@@ -46,7 +46,7 @@ export default function CommunityPage() {
             <a className="jg-button jg-button-primary" href={DISCORD_URL} target="_blank" rel="noopener noreferrer">Join the Discord</a>
             <a className="jg-button jg-button-secondary" href="#activate">See the three-minute path</a>
           </div>
-          <p className="jg-trust-note">No token sale. No public mainnet claim. Roles and recognition carry no promise of financial reward.</p>
+          <p className="jg-trust-note">No token sale. The separate legacy JGT faucet is not a community reward; roles and recognition carry no promise of financial reward.</p>
         </div>
         <aside className="jg-goal-card">
           <span>90-day clear goal</span>
@@ -77,10 +77,10 @@ export default function CommunityPage() {
         <div className="jg-section-heading"><span className="jg-eyebrow">Support at the right level</span><h2>Start with the action that fits.</h2><p>Everyone gets a useful next step. Funding conversations stay distinct and truthful.</p></div>
         <div className="jg-funding-grid">
           <article><span>Free</span><h3>Share or contribute</h3><p>Help with code, research, testing, storytelling, or one thoughtful introduction.</p><a href="https://github.com/topnodrog/junctiongenerator" target="_blank" rel="noopener noreferrer">Explore the code →</a></article>
-          <article><span>Community</span><h3>Back the experiment</h3><p>Make a one-time contribution or ask about recurring support.</p><a href="mailto:james_gordon@junctiongenerator.net?subject=Supporting%20Junction%20Generator">Discuss support →</a></article>
-          <article><span>Partner</span><h3>Sponsor useful work</h3><p>Sponsor a Weekly Junction, contributor challenge, field note, demo, or research milestone.</p><a href="mailto:james_gordon@junctiongenerator.net?subject=JG%20sponsorship%20or%20grant">Sponsor or grant →</a></article>
-          <article><span>Client</span><h3>Hire the builder</h3><p>Commission a website, AI assistant, automation, or focused technical engagement that sustains JG.</p><a href="mailto:james_gordon@junctiongenerator.net?subject=Project%20inquiry%20from%20the%20JG%20community">Start a project →</a></article>
-          <article><span>Aligned capital</span><h3>Fund a milestone</h3><p>Grantmakers and investors can discuss a defined milestone when mission and expectations align.</p><a href="mailto:james_gordon@junctiongenerator.net?subject=JG%20milestone%20funding">Discuss alignment →</a></article>
+          <article><span>Community</span><h3>Back the experiment</h3><p>Make a one-time contribution or ask about recurring support.</p><a href="mailto:jgordon5240@gmail.com?subject=Supporting%20Junction%20Generator">Discuss support →</a></article>
+          <article><span>Partner</span><h3>Sponsor useful work</h3><p>Sponsor a Weekly Junction, contributor challenge, field note, demo, or research milestone.</p><a href="mailto:jgordon5240@gmail.com?subject=JG%20sponsorship%20or%20grant">Sponsor or grant →</a></article>
+          <article><span>Client</span><h3>Hire the builder</h3><p>Commission a website, AI assistant, automation, or focused technical engagement that sustains JG.</p><a href="mailto:jgordon5240@gmail.com?subject=Project%20inquiry%20from%20the%20JG%20community">Start a project →</a></article>
+          <article><span>Aligned capital</span><h3>Fund a milestone</h3><p>Grantmakers and investors can discuss a defined milestone when mission and expectations align.</p><a href="mailto:jgordon5240@gmail.com?subject=JG%20milestone%20funding">Discuss alignment →</a></article>
         </div>
       </section>
 
