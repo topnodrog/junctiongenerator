@@ -269,12 +269,12 @@ export function observationFindings(
 }
 
 export function startMonitor(windowId: string, participants: string[], observation: MonitorObservation): MonitorState {
-  if (!/^[a-z0-9][a-z0-9-]{0,79}$/.test(windowId) || participants.length !== 2 || new Set(participants).size !== 2 ||
+  if (!/^[a-z0-9][a-z0-9-]{0,79}$/.test(windowId) || participants.length < 2 || participants.length > 8 || new Set(participants).size !== participants.length ||
       participants.some(address => !/^1QGC[a-f0-9]{40}$/.test(address))) throw new Error("Invalid owner window configuration");
   const findings = observationFindings(observation, windowId, participants, {}, true);
   if (hasFailure(findings) || !observation.explorer) throw new Error("Owner-observation baseline must pass before its clock starts");
   const visible = new Set(observation.explorer.epoch.participants.map(p => p.address));
-  if (participants.some(address => !visible.has(address))) throw new Error("Both owner participants must be visible at baseline");
+  if (participants.some(address => !visible.has(address))) throw new Error("Every owner participant must be visible at baseline; participants are missing");
   const now = Date.parse(observation.capturedAt);
   const first = (Math.floor(observation.explorer.height / 144) + 1) * 144;
   const state: MonitorState = {

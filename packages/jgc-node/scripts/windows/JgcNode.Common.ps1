@@ -1,6 +1,7 @@
 Set-StrictMode -Version Latest
 
 $script:JgcNodeTaskName = "JunctionGenerator JGTC Node"
+$script:JgcNodeActivityTaskName = "JunctionGenerator JGTC Node Activity"
 $script:JgcNodeShortcutName = "JGC Node On-Off.lnk"
 
 function Get-JgcNodePackageRoot {
@@ -32,6 +33,36 @@ function Get-JgcNodeExecutable {
   return [pscustomobject]@{
     Path = $resolved
     Version = $versionText
+  }
+}
+
+function Get-JgcNodePowerShell {
+  $path = Join-Path $env:SystemRoot "System32\WindowsPowerShell\v1.0\powershell.exe"
+  if (-not (Test-Path -LiteralPath $path)) {
+    throw "Windows PowerShell was not found at $path"
+  }
+  return $path
+}
+
+function Grant-JgcNodeTaskControl {
+  param(
+    [Parameter(Mandatory = $true)][string]$TaskName,
+    [Parameter(Mandatory = $true)][string]$Account
+  )
+
+  $accountSid = (New-Object System.Security.Principal.NTAccount($Account)).Translate(
+    [System.Security.Principal.SecurityIdentifier]
+  ).Value
+  $scheduleService = New-Object -ComObject "Schedule.Service"
+  $scheduleService.Connect()
+  $registeredTask = $scheduleService.GetFolder("\").GetTask($TaskName)
+  $taskSddl = $registeredTask.GetSecurityDescriptor(0xF)
+  $readOnlyAce = "(A;;FR;;;$accountSid)"
+  $fullAccessAce = "(A;;FA;;;$accountSid)"
+  if ($taskSddl.Contains($readOnlyAce)) {
+    $registeredTask.SetSecurityDescriptor($taskSddl.Replace($readOnlyAce, $fullAccessAce), 0)
+  } elseif (-not $taskSddl.Contains($fullAccessAce)) {
+    throw "Unable to grant $Account control of the scheduled task $TaskName."
   }
 }
 

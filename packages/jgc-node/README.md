@@ -100,8 +100,12 @@ npm run windows:install
 
 The installer uses the active supported Node.js executable, builds the node,
 registers `JunctionGenerator JGTC Node` in Task Scheduler, starts it, and creates
-`JGC Node On-Off` on the desktop. Turning the node off with the shortcut also
-disables automatic startup; turning it on re-enables startup and launches it.
+`JGC Node On-Off` on the desktop. It also registers a companion activity task
+that opens a live `JGC Node Activity` window showing network, height, peers, role,
+uptime, and producer activity. Turning the node off with the shortcut closes the
+activity window and disables both tasks; turning it on re-enables both and
+launches the node and activity window. Existing installations without the
+activity task continue to work until `npm run windows:install` is run again.
 Local chain and participant identity data are never removed by the switch or
 the uninstaller.
 

@@ -15,7 +15,7 @@ const model = process.env.GEMINI_MODEL ?? 'gemini-2.5-flash-lite';
 const schedulerJob = process.env.MONITOR_SCHEDULER_JOB;
 const armed = process.env.MONITOR_ARMED === 'true';
 if (!project || !bucketName || !windowId || !Number.isFinite(deadline) || !schedulerJob || !/^[a-z0-9-]+$/.test(windowId) ||
-  participants.length !== 2 || new Set(participants).size !== 2 || participants.some(address => !/^1QGC[a-f0-9]{40}$/.test(address))) throw new Error('Incomplete monitor configuration');
+  participants.length < 2 || participants.length > 8 || new Set(participants).size !== participants.length || participants.some(address => !/^1QGC[a-f0-9]{40}$/.test(address))) throw new Error('Incomplete monitor configuration');
 const storage = new Storage({ projectId: project, timeout: 15000, retryOptions: { autoRetry: true, maxRetries: 2, totalTimeout: 20, maxRetryDelay: 3 } });
 const bucket = storage.bucket(bucketName);
 const control = `control/${windowId}`;
@@ -153,7 +153,7 @@ async function tick() {
   if (!saved) {
     findings = observationFindings(observation, windowId, participants);
     const visible = new Set(observation.explorer?.epoch.participants.map(p => p.address) ?? []);
-    if (participants.some(address => !visible.has(address))) findings.push({ id: 'participant.baseline', severity: 'fail', message: 'Both owner participants must be visible before starting' });
+    if (participants.some(address => !visible.has(address))) findings.push({ id: 'participant.baseline', severity: 'fail', message: 'Every owner participant must be visible before starting' });
     const modelCheck = await readJson(`${control}/model-preflight.json`);
     if (modelCheck?.value.status !== 'reviewed') findings.push({ id: 'gemini.preflight', severity: 'fail', message: 'Gemini must complete its connection check before starting' });
     if (!armed || findings.some(finding => finding.severity === 'fail')) {
@@ -179,7 +179,8 @@ async function tick() {
 createServer(async (req, res) => {
   res.setHeader('Content-Type', 'application/json'); res.setHeader('Cache-Control', 'no-store');
   try {
-    const path = new URL(req.url, 'http://localhost').pathname;
+    const requestUrl = new URL(req.url, 'http://localhost');
+    const path = requestUrl.pathname;
     if (req.method === 'GET' && (path === '/health' || path === '/healthz')) { res.end('{"ok":true}'); return; }
     if (req.method === 'GET' && path === '/status') {
       const state = await readJson(stateName);
@@ -189,7 +190,7 @@ createServer(async (req, res) => {
     }
     if (req.method === 'POST' && path === '/enroll-participant-recorder') {
       if (Date.now() >= deadline) throw new Error('Window enrollment has expired');
-      const participantAddress = url.searchParams.get('participant') ?? '';
+      const participantAddress = requestUrl.searchParams.get('participant') ?? '';
       if (!participants.includes(participantAddress)) throw new Error('Participant is not enrolled for this window');
       const [uploadUrl] = await bucket.file(recorderName(participantAddress)).getSignedUrl({ version: 'v4', action: 'write', expires: deadline, contentType: 'application/json' });
       res.end(JSON.stringify({ windowId, participantAddress, expiresAt: new Date(deadline).toISOString(), uploadUrl })); return;

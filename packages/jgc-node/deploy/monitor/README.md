@@ -24,8 +24,11 @@ The model and collector run in Google Cloud even when Codex is closed.
 
 Each Windows participant recorder uses an expiring signed URL limited to its own
 address-bound status object. Its private configuration must remain outside Git
-and logs. Windows must remain signed in and awake for the local node and recorder
-to run. Neither the installer nor recorder starts, stops, or modifies the node.
+and logs. Windows must remain awake for the local node and recorder to run. Pass
+`-AtStartup` to both Windows installers to run under the current user's S4U
+principal without requiring an interactive sign-in. Installing an at-startup
+task requires an elevated PowerShell session. Neither the recorder installer nor
+recorder starts, stops, or modifies the node.
 Do not install a recorder configuration on a possibly compromised computer:
 rebuild and independently check the machine first. Recorder status is only
 availability evidence; canonical public blocks remain the source of truth for
@@ -74,7 +77,7 @@ do not reset or waive these requirements.
    concurrency one, 512 MiB memory, one CPU, request-based billing and a 120-second
    timeout. Set `MONITOR_ARMED=false` initially.
 6. Configure `GOOGLE_CLOUD_PROJECT`, `MONITOR_BUCKET`, `MONITOR_WINDOW_ID`,
-   `MONITOR_DEADLINE_UTC`, the two comma-separated `MONITOR_PARTICIPANTS`, and the
+   `MONITOR_DEADLINE_UTC`, the two-to-eight comma-separated `MONITOR_PARTICIPANTS`, and the
    full `MONITOR_SCHEDULER_JOB` name. Create a five-minute OIDC scheduler job using
    the dedicated invoker account, then pause it during enrollment.
 7. On each participant machine, first confirm its local `/status` reports the
@@ -82,7 +85,7 @@ do not reset or waive these requirements.
    Then make an authenticated POST to
    `/enroll-participant-recorder?participant=1QGC...` for that exact enrolled
    address. Save the returned address-bound configuration privately with a
-   machine-local `historyPath`, install `Install-JgcSoakObserver.ps1`, and verify
+   machine-local `historyPath`, install `Install-JgcSoakObserver.ps1 -AtStartup`, and verify
    the first upload from each machine. Do not paste a signed URL into a task or log.
 8. POST `/test-gemini`, check the successful model response, and POST `/tick` to
    inspect preflight findings. Only then deploy with `MONITOR_ARMED=true` and
