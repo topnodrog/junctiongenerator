@@ -10,9 +10,9 @@ import React, { useState } from "react";
 interface Wallet { key: string; label: string; symbol: string; address: string; }
 
 const WALLETS: Wallet[] = [
-  { key: "eth", label: "Ethereum / Base (EVM)", symbol: "Ξ", address: "0x3f3e604eA29bfA66d0e6CA07f4B6BCA5e36ce7C8" },
-  { key: "btc", label: "Bitcoin",               symbol: "₿", address: "bc1q4crtxa5lng0nq9s7y2u9h0ml2egus95p833xf0" },
-  { key: "sol", label: "Solana",                symbol: "◎", address: "43mBkQPgTz3XbM6wBz5RXkzMLuCM1KB3xRTqeE8mTj1E" },
+  { key: "eth", label: "Ethereum",                 symbol: "Ξ", address: "0x7C627730ade9D882Cd01bC92476389477d30d781" },
+  { key: "btc", label: "Bitcoin",                  symbol: "₿", address: "bc1quwwwu9d3p3hdm5y0n55q20c975hv9ca5a63u86" },
+  { key: "sol", label: "Solana",                   symbol: "◎", address: "CrfvwTywsJnoccKn6cftdmn2WjB7wib3JfWugHmkaMuz" },
 ];
 
 export default function BackTheProject() {
