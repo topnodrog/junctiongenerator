@@ -1,3 +1,12 @@
+> **Historical baseline, verified 2026-07-30 (reviewed 2026-11-03).** Settings
+> and live-endpoint observations below are a dated snapshot, not current
+> clearance. A 2026-11-03 push reported 18 Dependabot alerts on the default
+> branch (7 critical, 6 high, 5 moderate); `npm audit` and alert triage are
+> still open. Current engineering security review:
+> [`mainnet/NODE_SECURITY_REVIEW.md`](mainnet/NODE_SECURITY_REVIEW.md) and
+> [`mainnet/RESECURE_REPORT.md`](mainnet/RESECURE_REPORT.md).
+> Current launch state: [`mainnet/README.md`](mainnet/README.md), [`mainnet/LAUNCH_PLAN.md`](mainnet/LAUNCH_PLAN.md), [`mainnet/RESECURE_REPORT.md`](mainnet/RESECURE_REPORT.md) and [`mainnet/gate-status.json`](mainnet/gate-status.json).
+
 # Repository and Deployment Safety Baseline
 
 **Verified:** 2026-07-30
@@ -12,8 +21,12 @@
 - Dependabot security updates: enabled.
 - Secret validity checks: reported as disabled after the enable request; treat
   this as unavailable until the repository settings page offers it.
-- Open pull requests: none after the superseded analytics and post-quantum
-  prototype drafts were closed with explanatory comments.
+- Open pull requests (2026-11-03): several, including dependency-update PRs
+  and PR #66 (hardening / launch preparation). The 2026-07-30 statement that
+  no PRs were open is no longer true.
+- Dependency alerts (2026-11-03): a push reported 18 alerts on the default
+  branch (7 critical, 6 high, 5 moderate). `npm audit` and alert triage have
+  **not** been completed in this pass; treat these as open security work.
 
 ## Production-facing configuration
 

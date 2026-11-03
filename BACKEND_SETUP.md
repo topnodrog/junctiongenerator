@@ -2,7 +2,7 @@
 
 > **Do not follow this file to deploy a reward pipeline.** It previously
 > described an automatic JGT ad-reward and batch-payout flow that is not active.
-> The current Worker deployment record is [`api/DEPLOY.md`](api/DEPLOY.md).
+> The current Worker deployment record is [`worker/DEPLOY.md`](worker/DEPLOY.md).
 > Repository behavior was reviewed 2026-09-26; no live deployment changes were
 > made during that review.
 
@@ -19,7 +19,7 @@
 - No automatic ad or referral JGT payout should be represented as active.
 
 For endpoint authentication, current Worker bindings, and deployment evidence,
-see [`api/DEPLOY.md`](api/DEPLOY.md) and
+see [`worker/DEPLOY.md`](worker/DEPLOY.md) and
 [`docs/WEBSITE_SECURITY.md`](docs/WEBSITE_SECURITY.md).
 
 ## Separate legacy-token faucet draft

@@ -1,4 +1,11 @@
-# Public Seed Deployment Gate
+# Public Seed Deployment Gate (archived pilot)
+
+> **Archived 2026-11-02.** This runbook documents the historical two-provider
+> pilot on Google Compute Engine and Fly.io. It is **not** the mainnet path: the
+> project no longer uses Fly.io or Google Cloud, and this evidence is not
+> independent mainnet decentralization evidence. The current provider-neutral
+> candidate is `packages/jgc-node/deploy/selfhosted/README.md`, with the
+> go/no-go conditions in `docs/mainnet/LAUNCH_PLAN.md`.
 
 **Status (2026-09-01):** Seed A is deployed and reachable at
 `wss://seed-a.junctiongenerator.net`; its HTTPS health check answers `ok`, and a

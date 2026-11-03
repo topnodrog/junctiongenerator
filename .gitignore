@@ -4,7 +4,7 @@
 /node_modules
 packages/*/node_modules
 tools/*/node_modules
-api/node_modules
+worker/node_modules
 
 # python (kb-crawler / kb-index tools)
 tools/*/.venv/
@@ -100,7 +100,7 @@ next-env.d.ts
 .cf_token
 .turso-token
 .turso-url
-api/.dev.vars
-api/.wrangler
+worker/.dev.vars
+worker/.wrangler
 deployment-base.json
 .deployment_wallet.json

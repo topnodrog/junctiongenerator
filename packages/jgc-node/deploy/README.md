@@ -1,4 +1,13 @@
-# Continuous two-seed pilot
+# Continuous two-seed pilot — ARCHIVED DEPLOYMENT PATH
+
+> **Do not use this path for new deployments.** As of 2026-11-02 the active
+> deployment kit is [`selfhosted/README.md`](selfhosted/README.md): three
+> independently operated seeds on owner-controlled hardware or non-Google,
+> non-Fly VPS providers. `google/`, `fly/`, `monitor/` and the scheduled
+> Fly cost-guard workflow are retained only as historical research material.
+> No workflow, release bundle or runner script depends on them, and
+> `npm run infra:guard` rejects their CLIs, hostnames and credentials in the
+> active kit. The text below describes the retired 2026 pilot verbatim.
 
 > Current rollout, completed 2026-08-26 (America/Toronto): Google Seed A and
 > independent Fly.io Seed B run Node.js 22.23.2 on `jgtc-testnet-v2`. Block 1

@@ -1,3 +1,7 @@
+> **Requirements draft (reviewed 2026-11-03).** `paymentPrivacy` is open; no
+> privacy backend is selected and no gate is completed by this draft. Current
+> state: [`gate-status.json`](gate-status.json).
+
 # Shielded payments V3: design requirements and gap audit
 
 Revision 0, 2026-09-13. **Draft for cryptographic review; not an approved

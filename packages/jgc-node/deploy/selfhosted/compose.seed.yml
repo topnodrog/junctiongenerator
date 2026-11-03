@@ -1,0 +1,67 @@
+# Provider-neutral seed node. No cloud-specific CLI, metadata service, IAM role,
+# or managed database is used. Each operator runs this on their own machine.
+name: jgc-seed
+
+services:
+  node:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    command:
+      - --host
+      - 0.0.0.0
+      - --status-host
+      - 127.0.0.1
+      - --datadir
+      - /data
+    environment:
+      JGC_P2P_HOST: "0.0.0.0"
+      JGC_P2P_PORT: "19444"
+      JGC_STATUS_HOST: "127.0.0.1"
+      JGC_STATUS_PORT: "7777"
+      # Narrow public-read listener: /healthz, /explorer, /balance only.
+      JGC_PUBLIC_API_HOST: "0.0.0.0"
+      JGC_PUBLIC_API_PORT: "7778"
+      JGC_DATA_DIR: "/data"
+      JGC_ADVERTISE_URL: "${JGC_ADVERTISE_URL:?set your own wss:// seed hostname}"
+      JGC_SEEDS: "${JGC_SEEDS:?set comma-separated wss:// seed URLs}"
+      JGC_PRODUCE: "${JGC_PRODUCE:-false}"
+      JGC_PARTICIPATE: "${JGC_PARTICIPATE:-false}"
+      JGC_BLOCK_INTERVAL_SEC: "600"
+      JGC_STATUS_ALLOWED_ORIGINS: "https://junctiongenerator.net,https://www.junctiongenerator.net"
+      # Frozen zero-value pilot genesis; never set a reset token for mainnet.
+      JGC_RESET_TO_GENESIS: "da5c0c28e076211e13e75f8cd28fe98f81080dafefc5ad803620961d16ee1d77"
+      JGC_RESET_ID: "settlement-txid-v1"
+    ports:
+      # Caddy terminates public TLS/WSS. Only these loopback ports are published
+      # to the host; port 7777 (operator status) is never published at all.
+      - "127.0.0.1:19444:19444"
+      - "127.0.0.1:7778:7778"
+    volumes:
+      - seed-data:/data
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  caddy:
+    image: caddy:2.10.2-alpine
+    network_mode: host
+    environment:
+      JGC_SEED_HOSTNAME: "${JGC_SEED_HOSTNAME:?set the DNS name for this seed}"
+      JGC_ACME_EMAIL: "${JGC_ACME_EMAIL:?set the TLS notification address}"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+volumes:
+  seed-data:
+  caddy-data:
+  caddy-config:

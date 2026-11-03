@@ -15,14 +15,21 @@ can earn valueless JGTC according to signed pilot receipts, but those
 coins have no cash value and do not promise a future payment. The network may
 be reset while the protocol is under development.
 
-The public pilot currently has two reachable bootstrap nodes in independent
-provider failure domains:
+**There are no built-in bootstrap peers.** The retired Google Cloud / Fly.io
+pilot hostnames are no longer used. Ask your operator for at least two
+independent `wss://` seed URLs and supply them through `JGC_SEEDS` (or repeated
+`--seed`):
 
-- Seed A: `wss://seed-a.junctiongenerator.net`
-- Seed B: `wss://jgc-testnet-seed-b.fly.dev`
+```text
+JGC_SEEDS="wss://seed-a.example.net,wss://seed-b.example.org" npm run testnet:participate
+```
 
-The public runner dials both. If either seed is unavailable, your node keeps
-its local data and can stay connected through the other seed while retrying.
+The runner dials exactly those seeds and retries them while preserving local
+chain data. Plain `ws://` is accepted only for loopback, single-label hostnames
+or private RFC1918 addresses. See
+[`deploy/selfhosted/README.md`](../deploy/selfhosted/README.md) for the current
+provider-neutral seed kit. The old two-seed runbook is
+[archived](../../../docs/PUBLIC_SEED_DEPLOYMENT.md).
 
 ### Supported setup
 
@@ -42,7 +49,7 @@ Open Terminal, PowerShell, or Command Prompt and run:
 git clone https://github.com/topnodrog/junctiongenerator.git
 cd junctiongenerator/packages/jgc-node
 npm ci
-npm run testnet:participate
+JGC_SEEDS="wss://seed-a.example.net,wss://seed-b.example.org" npm run testnet:participate
 ```
 
 The last command builds the node automatically and starts it. A successful
@@ -50,20 +57,27 @@ startup prints lines like these:
 
 ```text
 [testnet] network: jgtc-testnet-v2 (simnet-receipts-v1)
-[testnet] seeds:   wss://seed-a.junctiongenerator.net, wss://jgc-testnet-seed-b.fly.dev
+[testnet] seeds:   wss://seed-a.example.net, wss://seed-b.example.org
 [testnet] role:    participant
 ```
+
+Node status is private: on the default loopback bind use
+`http://127.0.0.1:7777/status`; on a container or public bind use the narrow
+`http://127.0.0.1:7777/explorer` instead (see
+[Network exposure](../README.md#network-exposure)).
 
 Leave that terminal open. Press `Ctrl+C` to stop the node cleanly. Its chain
 data remains in `data/testnet` and is reused on the next start.
 
 ### Use the pinned closed-beta release
 
-Known closed-beta operators should use the `jgc-node-v0.1.0` GitHub prerelease
-instead of a moving `main` branch. Download its ZIP and `SHA256SUMS.txt`, verify
-the archive as described in the release notes, extract it, then run `npm ci`
-and the same `npm run testnet:public` or `npm run testnet:participate` command.
-The included `RELEASE-MANIFEST.json` must report:
+The `jgc-node-v0.1.0` GitHub prerelease is a **historical closed-beta artifact**:
+it embeds the now-retired Google/Fly seed hostnames and must not be used as the
+current runner path. It is referenced here only so old evidence can be
+reproduced. Download its ZIP and `SHA256SUMS.txt`, verify the archive as
+described in the release notes, extract it, then run `npm ci`. For a current
+node, build from this checkout and supply `JGC_SEEDS` as shown above.
+The historical `RELEASE-MANIFEST.json` reports:
 
 - `"version": "0.1.0"`;
 - `"network": "jgtc-testnet-v2"`;
@@ -102,9 +116,11 @@ For a closed-beta check-in, send the coordinator only your assigned runner ID,
 role, OS/architecture, Node.js version, release tag and commit, start time, and
 the public `1QGC...` address if you participate. Never send
 `participant-identity.json`, a wallet keystore, private provider output, or raw
-logs containing credentials. The operator-side template is
-`deploy/ops/closed-beta-checkin.template.json`; copy it into `.tmp` before
-filling it out so it cannot be committed accidentally.
+logs containing credentials. The `deploy/ops/closed-beta-checkin.template.json`
+template belongs to the archived Google/Fly closed-beta runbook; it is not part
+of the current provider-neutral onboarding funnel. Use the
+[independent review program](../../../docs/public/JGC_INDEPENDENT_REVIEW_PROGRAM.md)
+and [review pack](../../../docs/mainnet/REVIEW_PACK.md) instead.
 
 On Windows, if PowerShell says that `npm.ps1` cannot be loaded because script
 execution is disabled, replace `npm` with `npm.cmd` in the two npm commands.
@@ -154,26 +170,35 @@ Look for:
   `1QGC...` address for an owner participant-recorder
 - `"producer": { "enabled": false, ... }`
 
-An ordinary observer can instead run `npm run testnet:public`; it reports
-`"role": "back-checker"` and `"participating": false`. The status endpoint is
-loopback-only by default, so neither mode exposes private key material.
+An ordinary observer can instead run `npm run testnet:public` with the same
+`JGC_SEEDS`; it reports `"role": "back-checker"` and `"participating": false`.
+The status endpoint is loopback-only by default, so neither mode exposes
+private key material. On a non-loopback bind, `/status` is hidden — use
+`/explorer` instead.
 
 The designated producer targets one block every ten minutes and includes signed
-pilot participation receipts. Seed A
-provides an anchor receipt so the chain continues when no outside participant
-is online; additional participant nodes are recorded alongside it.
+pilot participation receipts. In the retired pilot a single anchor seed kept
+the chain advancing when no outside participant was online; the current
+provider-neutral design requires at least three independently operated failure
+domains before any production claim.
 
 ## Docker alternative
 
 Install Docker Desktop, clone or download this repository, open a terminal in
-`packages/jgc-node`, and run:
+`packages/jgc-node`, and set your own bootstrap peers (no vendor hostnames are
+baked in):
 
 ```text
-docker compose -f compose.runner.yml up --build -d
+JGC_SEEDS=wss://seed-a.example.net,wss://seed-b.example.org \
+  docker compose -f compose.runner.yml up --build -d
 ```
 
 Check the node at
-[http://127.0.0.1:7777/status](http://127.0.0.1:7777/status). Useful Docker
+[http://127.0.0.1:7777/explorer](http://127.0.0.1:7777/explorer). The private
+`/status` route is deliberately unavailable in the container, which binds its
+status listener to `0.0.0.0` for Docker port publishing; `/explorer` and
+`/healthz` are the narrow read-only public routes. If you run the node directly
+on loopback, `http://127.0.0.1:7777/status` remains available. Useful Docker
 commands are:
 
 ```text
@@ -211,7 +236,7 @@ testnet release may require a fresh data directory.
 
 ## Run privately or use another seed
 
-For a standalone node that does not contact the public pilot:
+For a standalone node that contacts no bootstrap peers:
 
 ```text
 npm run testnet
@@ -234,9 +259,11 @@ an advanced task: put TLS/WSS on TCP 443 in front of the node, publish an
 persistent storage and backups, and monitor peer health and disk integrity.
 Do not expose raw TCP 19444 or status port 7777 directly to the internet.
 
-See [`../deploy/README.md`](../deploy/README.md) for the reference two-provider
-seed design and [`STORAGE-RECOVERY.md`](STORAGE-RECOVERY.md) before backup,
-restore, reset, or recovery work.
+See [`../deploy/selfhosted/README.md`](../deploy/selfhosted/README.md) for the
+current provider-neutral seed design (three independent failure domains) and
+[`STORAGE-RECOVERY.md`](STORAGE-RECOVERY.md) before backup, restore, reset, or
+recovery work. [`../deploy/README.md`](../deploy/README.md) is the archived
+Google/Fly pilot record.
 
 ## Get help
 

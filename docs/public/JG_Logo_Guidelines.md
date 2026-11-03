@@ -1,3 +1,7 @@
+> **Brand guidance (2026-09-05; reviewed 2026-11-03).** Design reference only;
+> no product, launch or funding claim. Current public entry point:
+> [`JGC_INDEPENDENT_REVIEW_PROGRAM.md`](JGC_INDEPENDENT_REVIEW_PROGRAM.md).
+
 # Junction Generator brand guidance
 
 Updated 2026-09-05 UTC. Document owner: James Gordon.

@@ -1,3 +1,7 @@
+> **Research evaluation (reviewed 2026-11-03).** Triton VM and PQ experiments
+> are bounded arithmetic only; `postQuantumSecurity` and `proofSystem` remain
+> open. No backend is selected. Current state: [`gate-status.json`](gate-status.json).
+
 # PQ proof backend evaluation: Triton VM
 
 2026-09-13. **Offline verifier hardening complete locally; no mainnet gate acceptance.**

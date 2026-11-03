@@ -1,7 +1,8 @@
 [CmdletBinding()]
 param(
   [string]$NodePath,
-  [switch]$NoStart
+  [switch]$NoStart,
+  [string[]]$Seeds = @("wss://seed-a.junctiongenerator.net", "wss://seed-b.junctiongenerator.net")
 )
 
 $ErrorActionPreference = "Stop"
@@ -40,12 +41,11 @@ if ($existingStatus -and $existingStatus.running) {
 }
 
 $account = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
-$arguments = @(
-  "dist/scripts/testnet-node.js",
-  "--participate",
-  "--seed", "wss://seed-a.junctiongenerator.net",
-  "--seed", "wss://jgc-testnet-seed-b.fly.dev"
-) -join " "
+if ($Seeds.Count -lt 1 -or ($Seeds | Where-Object { $_ -notmatch '^wss://' })) {
+  throw "Every -Seeds entry must be a wss:// URL. Do not use cleartext public seeds."
+}
+$seedArguments = $Seeds | ForEach-Object { @("--seed", $_) }
+$arguments = (@("dist/scripts/testnet-node.js", "--participate") + $seedArguments) -join " "
 
 $action = New-ScheduledTaskAction -Execute $node.Path -Argument $arguments -WorkingDirectory $packageRoot
 $trigger = New-ScheduledTaskTrigger -AtLogOn -User $account

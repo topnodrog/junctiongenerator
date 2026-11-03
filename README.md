@@ -25,7 +25,8 @@ development.
 The primary protocol product lives in `packages/jgc-node`; it is separate from
 the legacy JGT token on Base.
 
-Latest recorded node milestone (2026-09-05):
+Current node verification (2026-11-03; see
+[`docs/mainnet/RESECURE_REPORT.md`](docs/mainnet/RESECURE_REPORT.md)):
 
 - Consensus V3 underlies the zero-premine `jgtc-testnet-v2` identity and rejects incompatible
   peers before chain data is exchanged;
@@ -36,25 +37,34 @@ Latest recorded node milestone (2026-09-05):
   a bonded roster exists;
 - a persistent designated producer, network-aware wallet/explorer path, and
   two-node container topology are implemented;
-- an external runner can join the live two-provider pilot with one npm command
-  or a one-command Docker Compose setup;
+- bootstrap peers are operator-supplied through `JGC_SEEDS`; no Google Cloud or
+  Fly.io hostname is embedded in the release;
+- the status/API surface is hardened (exact CORS allowlist, no PNA reflection,
+  private `/status` disabled on public binds, bounded inbound sockets), and a
+  signed M-of-N launch gate plus reviewed-proof-registry check keep mainnet
+  fail-closed;
 - versioned, network-bound, checksum-protected storage now recovers torn tails,
   quarantines bad snapshots, and refuses incompatible data;
-- 44 suites / 351 tests under Node.js 24, plus Node.js 20/22/24 CI, a
-  31-block sync demo, a six-proof strict WASM run,
-  cross-platform CI, and the hosted Docker smoke test passed in the latest
-  recorded verification.
+- **57 suites / 496 tests**, `npm run release:check`, the provider-neutral
+  `infra:guard`, the blocked `mainnet:launch` gate, website/Worker tests, a
+  24-block / 3-node local soak rehearsal and the Docker Compose smoke in CI
+  all pass. This is engineering verification, not an independent security
+  review.
 
-The node is early, valueless testnet software. Two independent bootstrap seeds
-are reachable: Google Seed A at `wss://seed-a.junctiongenerator.net` and Fly.io
-Seed B at `wss://jgc-testnet-seed-b.fly.dev`. After the v1 soak exposed
-non-unique settlement transaction IDs, the repaired chain was isolated as
-`jgtc-testnet-v2` on 2026-08-26 with the old state preserved in recoverable
-archives. A 2026-09-02 UTC public snapshot at height 878 passed all ten soak
-checks, including six settlements, exact supply conservation, contiguous
-ten-minute blocks, and healthy seed connectivity. Only the Seed A anchor
-appeared in the current epoch, so independent-runner evidence and a measured
-multi-day real-network soak remain gates. No JGC mainnet has been deployed.
+The node is early, valueless testnet software. The historic pilot used two
+bootstrap seeds on Google Cloud and Fly.io; **those deployments are retired and
+archived**, not a current mainnet path. New deployments are provider-neutral
+and operator-owned — see
+[`packages/jgc-node/deploy/selfhosted/README.md`](packages/jgc-node/deploy/selfhosted/README.md).
+Runner commands read `JGC_SEEDS` from the environment instead of embedding a
+cloud hostname. Mainnet remains fail-closed; see
+[`docs/mainnet/LAUNCH_PLAN.md`](docs/mainnet/LAUNCH_PLAN.md). Historical pilot
+evidence (not current): after the v1 soak exposed non-unique settlement
+transaction IDs, the repaired chain was isolated as `jgtc-testnet-v2` on
+2026-08-26; a 2026-09-02 UTC snapshot at height 878 passed all ten soak checks,
+including six settlements and exact supply conservation. That evidence came
+from owner-operated machines and does not satisfy the independent-review or
+multi-host soak gates. No JGC mainnet has been deployed.
 JGTC is valueless. Production rewards and slashing remain disabled until
 mandatory bonded-validator activation and an economics/security review.
 
@@ -91,9 +101,19 @@ The optional [`/jgt-faucet`](docs/JGT_FAUCET.md) route stays inactive until the 
 | Turso Database | `jgt-mining-topnodrog.aws-us-east-2.turso.io` | Live |
 | Vercel Frontend | `junctiongenerator.net` | Live |
 
+> **Vercel Hobby function budget:** Cloudflare Worker source lives in
+> [`worker/`](worker/DEPLOY.md), **not** in a root `api/` directory. Vercel
+> auto-deploys every source file in root `api/` as a Serverless Function and
+> the Hobby plan allows 12; the 11 Worker files (helpers, tests and migration
+> scripts included) were silently consuming that budget and caused preview
+> deployments to fail. CI enforces zero root-`api` functions via
+> `scripts/vercel-function-budget.mjs`. See
+> [`docs/VERCEL_FUNCTION_BUDGET.md`](docs/VERCEL_FUNCTION_BUDGET.md). No HTTP
+> route changed.
+
 **Worker API access model (repository code):** The 2026-09-26 security changes
 below have not been deployed. The live Worker was last verified on 2026-09-05;
-see [`api/DEPLOY.md`](api/DEPLOY.md) before relying on production behavior.
+see [`worker/DEPLOY.md`](worker/DEPLOY.md) before relying on production behavior.
 
 - Public writes: `POST /api/subscribe`, `/api/hire-lead`, `/api/community/join`,
   and `/api/community/activate`. These are rate-limited and require server-verified
@@ -111,7 +131,7 @@ live public ad-reward program: `POST /api/ad-view` requires owner authentication
 and `/api/dispense` now returns a read-only legacy preview. It does **not**
 change claim rows, submit a blockchain transaction, or pay JGT. Campaign
 creation is owner-authenticated, not self-serve. Current deployment evidence is
-in [`api/DEPLOY.md`](api/DEPLOY.md).
+in [`worker/DEPLOY.md`](worker/DEPLOY.md).
 
 New newsletter and hire submissions are stored in Turso before owner
 notification is attempted. The midnight-UTC digest provides a fallback. The
@@ -129,26 +149,52 @@ hire_leads, digest_state
 JGC development is funded through grants, donations, sponsorships, and paid
 client work. JGT is a legacy Base token and is not being sold or promoted.
 Marketplace, staking, ad-reward, and referral code is historical/reference
-material, not the current launch strategy.
+material, not the current launch strategy. The current testnet has **no
+premine**; a proposed genesis allocation to fund independent review and future
+bug bounties is explicitly under review and is not implemented — see
+[`docs/mainnet/PREMINE_FUNDING_DECISION.md`](docs/mainnet/PREMINE_FUNDING_DECISION.md).
+
+## Get involved (independent review)
+
+JGC is a zero-value testnet candidate with ten open mainnet gates. The
+lowest-friction way to help is the ten-minute reproducible-build challenge;
+you can also run an independent seed on your own hardware/VPS or review one
+specific gate. Start with the
+[review pack](docs/mainnet/REVIEW_PACK.md), the
+[shareable one-pager](docs/public/JGC_INDEPENDENT_REVIEW_PROGRAM.md), the
+[public gate snapshot](docs/mainnet/gate-status.json) and the GitHub issue
+templates. See [`SECURITY.md`](SECURITY.md) for safe harbor.
 
 ---
 
 ## What needs doing now
 
-The active plan is [`docs/NEXT_STEPS_PLAN.md`](docs/NEXT_STEPS_PLAN.md). Work is
-sequenced behind explicit gates:
+The active launch plan is [`docs/mainnet/LAUNCH_PLAN.md`](docs/mainnet/LAUNCH_PLAN.md)
+(secure → prepare → resecure → launch, without Fly.io or Google Cloud), with
+gate evidence contracts in
+[`docs/mainnet/GATE_CLOSURE_PROTOCOL.md`](docs/mainnet/GATE_CLOSURE_PROTOCOL.md)
+and the current machine-readable state in
+[`docs/mainnet/gate-status.json`](docs/mainnet/gate-status.json).
+`docs/NEXT_STEPS_PLAN.md` is an archived 2026-09 plan, not the current path.
+Work is sequenced behind explicit gates:
 
 The [v0.1.0 prerelease](https://github.com/topnodrog/junctiongenerator/releases/tag/jgc-node-v0.1.0)
 and checksum were published on 2026-09-02. The pending node foundations and
 release rehearsal fixes are merged in PR #46. The current v2 difficulty rules
 are preserved for compatibility with installed nodes.
 
-1. Complete the measured multi-host soak: at least 72 hours and three complete
-   settlement cycles. The owner reports two installed computers and a third
-   downloading; this is preparation, not measured acceptance evidence.
-2. Exercise approved restart and one-seed-loss drills while preserving evidence.
-3. Recruit and record independent operators separately from owner-run machines.
-4. Publish only the participation and reliability claims supported by that evidence.
+1. Close the ten remaining gates with signed, reproducible evidence per gate
+   contract — starting with a real reviewed Groth16 registry, end-to-end PQ
+   security and shielded payments.
+2. Recruit independent operators and an external security reviewer through the
+   [review funnel](docs/mainnet/REVIEW_PACK.md); owner-only rehearsal is not
+   independent decentralization evidence.
+3. Run a measured multi-host soak across three independent failure domains and
+   publish signed, immutable evidence.
+4. Publish only claims supported by that evidence. A proposed 3–5 week premine
+   to fund review/bounties is an **open, unreviewed governance decision**, not
+   consensus code — see
+   [`docs/mainnet/PREMINE_FUNDING_DECISION.md`](docs/mainnet/PREMINE_FUNDING_DECISION.md).
 
 Neither evaluated local model passed the operations safety gate. They may help
 with sanitized, non-authoritative drafts and summaries; they do not receive
@@ -156,7 +202,9 @@ secrets or decide, execute, or verify live operations.
 
 Website protections are merged in PR #47: server-verified Turnstile, a tested
 Content Security Policy, error isolation, clear demo labels, and phone layout
-fixes. See [security and deployment notes](docs/WEBSITE_SECURITY.md). The current midnight
+fixes. PR #66 adds an exact browser-origin allowlist to the Worker API; that
+change is in review and is **not deployed** yet. See
+[security and deployment notes](docs/WEBSITE_SECURITY.md). The current midnight
 Worker cron sends the owner digest; `/api/dispense` is an authenticated legacy
 batch-preparation endpoint and does not submit an on-chain transaction.
 
@@ -192,13 +240,15 @@ Historical financial and outreach drafts are preserved privately. The
 - Self-serve ad slots with ETH payments
 - Cloudflare security: Bot Fight Mode + rate limiting
 
-**Public JGTC testnet pilot** (Live; closed soak in progress)
+**Public JGTC testnet pilot** (archived 2026-11-02; no live value-bearing network)
 - Consensus V3 and local/container testnet foundation complete
-- Storage hardening and local operations-model evaluation complete; Google
-  Seed A and independent Fly.io Seed B are live
-- The repaired zero-premine `jgtc-testnet-v2` explorer/participation chain is
-  live; six settlements and exact supply conservation were observed by the
-  2026-09-02 UTC snapshot; independent-runner soak evidence follows
+- Storage hardening and local operations-model evaluation complete; the retired
+  two-provider pilot has been replaced by a provider-neutral, three-failure-domain
+  deployment **candidate** that has not been deployed
+- The repaired zero-premine `jgtc-testnet-v2` chain ran in the archived pilot;
+  six settlements and exact supply conservation were observed by the 2026-09-02
+  UTC snapshot. Independent-runner evidence and a real multi-host soak remain
+  open gates
 
 ---
 
@@ -206,12 +256,19 @@ Historical financial and outreach drafts are preserved privately. The
 
 ```bash
 # Join and record participation in the JGTC testnet pilot
+# Set JGC_SEEDS to comma-separated wss:// bootstrap URLs from your operator.
 cd packages/jgc-node
 npm ci
-npm run testnet:participate
+JGC_SEEDS="wss://seed-a.example.net,wss://seed-b.example.org" npm run testnet:participate
 
-# Local website development
-cd C:/dev/JunctionGenerator
+# Mainnet readiness (all expect a blocked result today)
+npm run gates:status
+npm run proof:registry
+npm run mainnet:launch -- --assert-blocked
+npm run infra:guard
+
+# Local website development (from the repository root)
+corepack yarn install --frozen-lockfile
 corepack yarn dev
 
 # Verify the JGC node
@@ -229,8 +286,11 @@ npm run sync-demo
 - **Frontend:** Next.js 16 + React 19 + TypeScript; no globally mounted EVM
   wallet SDK
 - **Styling:** Custom CSS design system (dark cyberpunk)
-- **Deployment:** Vercel
-- **Backend:** Cloudflare Workers + Turso (SQLite)
+- **Deployment (website only):** Vercel
+- **Backend (website only):** Cloudflare Workers + Turso (SQLite)
+- **Node deployment:** provider-neutral, operator-owned hosts; the website
+  stack is outside the consensus trust boundary and its long-term provider
+  scope is still under review
 - **Blockchain:** Base network (Ethereum L2)
 - **Contracts:** Solidity ^0.8.20 (no OpenZeppelin deps)
 - **Fonts:** Outfit + JetBrains Mono

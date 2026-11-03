@@ -38,6 +38,13 @@ import { encodePeerMessage, decodePeerMessage } from "./wire.js";
 const MAX_FRAME_BYTES = 8 * 1024 * 1024;
 export const MAX_QUEUED_PEER_BYTES = 16 * 1024 * 1024;
 export const MAX_QUEUED_PEER_MESSAGES = 128;
+/**
+ * Global cap on simultaneously attached inbound sockets. Per-peer frame and
+ * queue bounds are not enough: an attacker opening thousands of idle sockets
+ * from many source addresses could still allocate a WebSocket and a
+ * serialized-processing pipeline per connection before peer admission runs.
+ */
+export const MAX_INBOUND_SOCKETS = 64;
 
 /**
  * Bind an open WebSocket to a node as a peer.
@@ -164,11 +171,22 @@ export function startP2PServer(
   node: JGCNode,
   port: number,
   host: string = "127.0.0.1",
+  opts: { maxInboundSockets?: number } = {},
 ): Promise<P2PServer> {
+  const maxInboundSockets = opts.maxInboundSockets ?? MAX_INBOUND_SOCKETS;
+  if (!Number.isSafeInteger(maxInboundSockets) || maxInboundSockets < 1 || maxInboundSockets > 4096) {
+    return Promise.reject(new Error("maxInboundSockets must be an integer from 1 to 4096"));
+  }
   return new Promise((resolve, reject) => {
     const wss = new WebSocketServer({ port, host, maxPayload: MAX_FRAME_BYTES });
 
     wss.on("connection", (ws, req) => {
+      // `clients` already contains this socket. Terminate before allocating a
+      // peer object or message pipeline when the global bound is reached.
+      if (wss.clients.size > maxInboundSockets) {
+        ws.terminate();
+        return;
+      }
       const address = `${req.socket.remoteAddress}:${req.socket.remotePort}`;
       attachSocket(node, ws, address, true);
     });

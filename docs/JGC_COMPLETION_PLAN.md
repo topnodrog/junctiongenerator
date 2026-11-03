@@ -1,3 +1,8 @@
+> **Requirements document (2026-09-11; still authoritative for the four added
+> product gates).** This is a specification of missing work, **not** a
+> completion claim: none of the four gates is satisfied and no mainnet is
+> launchable. Current launch state: [`mainnet/README.md`](mainnet/README.md), [`mainnet/LAUNCH_PLAN.md`](mainnet/LAUNCH_PLAN.md), [`mainnet/RESECURE_REPORT.md`](mainnet/RESECURE_REPORT.md) and [`mainnet/gate-status.json`](mainnet/gate-status.json).
+
 # JGC completion plan
 
 Updated 2026-09-11. Product direction: a semi-private, quantum-ready blockchain

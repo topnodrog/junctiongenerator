@@ -9,21 +9,27 @@
  * sourced from the operator's OWN node rather than re-simulated. A node has no
  * UI, so it exposes a single JSON snapshot a browser can poll.
  *
- * SECURITY POSTURE
- * ────────────────
+ * SECURITY POSTURE (hardened 2026-11-02)
+ * ────────────────────────────────────
  *  - Loopback only by default (127.0.0.1). Wallet balances must never be served
  *    to the LAN; bind elsewhere only with deliberate intent.
- *  - `/status` remains loopback-only by default. The optional public API is also
- *    read-only: explorer and public-address balance queries expose no key material.
- *  - CORS + Private-Network-Access headers are set so an HTTPS page may fetch the
- *    loopback endpoint. Chrome/Edge/Firefox treat http://127.0.0.1 as potentially
- *    trustworthy (not mixed content) and gate it behind a PNA preflight, which we
- *    answer with `Access-Control-Allow-Private-Network: true`.
+ *  - `/status` is private. When the server is bound to a non-loopback address,
+ *    private routes are disabled unless `allowPrivateStatusOnPublicBind` AND a
+ *    `statusToken` are both supplied. This prevents a deployment that exposes
+ *    port 7777 "just for the explorer" from leaking operator status/balances.
+ *  - CORS origins are allowlisted, never reflected. An unrelated web page can
+ *    no longer read a local node's private status through a browser.
+ *  - `Access-Control-Allow-Private-Network` is emitted only for an allowlisted
+ *    origin on a loopback-bound server, so arbitrary sites cannot use the
+ *    browser as a private-network proxy.
+ *  - The optional public API is read-only: /healthz, /explorer and /balance.
+ *    No key material, configuration or operator status is exposed.
  *
  * Dependency-free (Node's built-in `http`) so it adds nothing to the node's
  * supply chain.
  */
 
+import { createHash, timingSafeEqual } from "crypto";
 import { createServer, type Server, type IncomingMessage, type ServerResponse } from "http";
 import type { AddressBalance, ExplorerSnapshot } from "./public-testnet-api.js";
 
@@ -76,13 +82,23 @@ export type StatusProvider = () => NodeStatus | Promise<NodeStatus>;
 export interface StatusServerOptions {
   /** TCP port. Default $JGC_STATUS_PORT or 7777. */
   port?: number;
-  /** Bind address. Default 127.0.0.1 (loopback). Override at your own risk. */
+  /** Bind address. Default 127.0.0.1 (loopback). */
   host?: string;
   /** Optional, deliberately narrow public testnet API. `/status` stays private. */
   publicApi?: {
     explorer(): ExplorerSnapshot | Promise<ExplorerSnapshot>;
     balance(address: string): AddressBalance | Promise<AddressBalance>;
   };
+  /** Exact browser origins allowed to read responses cross-origin. */
+  allowedOrigins?: readonly string[];
+  /** Bearer token required for private /status routes. Never sent by browsers. */
+  statusToken?: string;
+  /** Expose private routes on a public bind; requires statusToken. */
+  allowPrivateStatusOnPublicBind?: boolean;
+  /** Serve only the narrow public read-only routes, even on loopback. */
+  publicApiOnly?: boolean;
+  /** Permit the loopback Private-Network-Access preflight for allowlisted origins. */
+  allowPrivateNetwork?: boolean;
 }
 
 export interface StatusServerHandle {
@@ -93,40 +109,76 @@ export interface StatusServerHandle {
 
 const DEFAULT_PORT = 7777;
 const DEFAULT_HOST = "127.0.0.1";
+const LOOPBACK_HOSTS = new Set(["127.0.0.1", "::1", "localhost", "[::1]", "0:0:0:0:0:0:0:1"]);
+const SITE_ORIGINS = ["https://junctiongenerator.net", "https://www.junctiongenerator.net"];
+const LOCAL_DEV_ORIGINS = ["http://localhost:3000", "http://127.0.0.1:3000"];
+const MAX_REQUEST_URL_BYTES = 2048;
 
-/** Apply CORS + Private-Network-Access headers for the browser-facing routes. */
-function setCorsHeaders(req: IncomingMessage, res: ServerResponse): void {
-  const origin = req.headers.origin;
-  // No credentials are ever used, so echoing the origin (or "*") is safe.
-  res.setHeader("Access-Control-Allow-Origin", origin ?? "*");
+export function isLoopbackHost(host: string): boolean {
+  return LOOPBACK_HOSTS.has(host.trim().toLowerCase());
+}
+
+/** Resolve the exact, non-reflecting CORS allowlist for this bind. */
+export function allowedStatusOrigins(host: string, override?: readonly string[]): string[] {
+  if (override) return [...new Set(override.map((origin) => origin.trim()).filter(Boolean))];
+  const env = process.env.JGC_STATUS_ALLOWED_ORIGINS;
+  if (env !== undefined) return [...new Set(env.split(",").map((origin) => origin.trim()).filter(Boolean))];
+  return isLoopbackHost(host) ? [...SITE_ORIGINS, ...LOCAL_DEV_ORIGINS] : [...SITE_ORIGINS];
+}
+
+function setSecurityHeaders(res: ServerResponse): void {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Referrer-Policy", "no-referrer");
+  res.setHeader("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'");
+  res.setHeader("Cache-Control", "no-store");
   res.setHeader("Vary", "Origin");
+}
+
+/** Return whether an Origin header is present and allowed. Never reflect it. */
+function setCorsHeaders(
+  req: IncomingMessage,
+  res: ServerResponse,
+  allowedOrigins: readonly string[],
+  allowPrivateNetwork: boolean,
+): { originPresent: boolean; originAllowed: boolean } {
+  const origin = req.headers.origin;
+  setSecurityHeaders(res);
+  if (!origin) return { originPresent: false, originAllowed: true };
+  if (!allowedOrigins.includes(origin)) return { originPresent: true, originAllowed: false };
+  res.setHeader("Access-Control-Allow-Origin", origin);
   res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "*");
-  // Answer the PNA preflight so an HTTPS page may reach this loopback server.
-  if (req.headers["access-control-request-private-network"] === "true") {
+  res.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type");
+  res.setHeader("Access-Control-Max-Age", "600");
+  if (allowPrivateNetwork && req.headers["access-control-request-private-network"] === "true") {
     res.setHeader("Access-Control-Allow-Private-Network", "true");
   }
-  res.setHeader("Access-Control-Max-Age", "600");
+  return { originPresent: true, originAllowed: true };
 }
 
 function sendJson(res: ServerResponse, status: number, body: unknown): void {
   const payload = JSON.stringify(body);
   res.statusCode = status;
   res.setHeader("Content-Type", "application/json; charset=utf-8");
-  res.setHeader("Cache-Control", "no-store");
   res.end(payload);
+}
+
+function bearerMatches(req: IncomingMessage, expected: string): boolean {
+  const header = req.headers.authorization ?? "";
+  const provided = header.startsWith("Bearer ") ? header.slice(7) : "";
+  const digest = (value: string): Buffer => createHash("sha256").update(value, "utf8").digest();
+  return timingSafeEqual(digest(provided), digest(expected)) && provided.length > 0;
 }
 
 /**
  * Start the status server. Returns a handle once it is listening. The `provider`
  * is invoked on every GET /status; keep it cheap (a UTXO scan, not a re-sync).
  *
- * Routes:
- *   GET  /status   → NodeStatus JSON
+ * Routes (GET only, plus OPTIONS preflight):
  *   GET  /healthz  → { ok: true }   (liveness, no wallet data)
  *   GET  /explorer → public chain snapshot (when configured)
  *   GET  /balance  → public address balance (when configured)
- *   OPTIONS *      → 204 (CORS/PNA preflight)
+ *   GET  /status   → NodeStatus JSON (private; loopback by default)
+ *   GET  /         → alias of /status (private)
  */
 export function startStatusServer(
   provider: StatusProvider,
@@ -134,12 +186,33 @@ export function startStatusServer(
 ): Promise<StatusServerHandle> {
   const port = opts.port ?? (Number(process.env.JGC_STATUS_PORT) || DEFAULT_PORT);
   const host = opts.host ?? DEFAULT_HOST;
+  const loopback = isLoopbackHost(host);
+  const privateRoutesAllowed = !opts.publicApiOnly
+    && (loopback || opts.allowPrivateStatusOnPublicBind === true);
+  if (!loopback && privateRoutesAllowed && !opts.statusToken) {
+    return Promise.reject(new Error("exposing /status on a public bind requires statusToken"));
+  }
+  const allowedOrigins = allowedStatusOrigins(host, opts.allowedOrigins);
+  const allowPrivateNetwork = (opts.allowPrivateNetwork ?? true) && loopback;
   const server: Server = createServer((req, res) => {
-    setCorsHeaders(req, res);
+    const cors = setCorsHeaders(req, res, allowedOrigins, allowPrivateNetwork);
 
     if (req.method === "OPTIONS") {
-      res.statusCode = 204;
-      res.end();
+      res.statusCode = cors.originAllowed ? 204 : 403;
+      if (!cors.originAllowed) sendJson(res, 403, { error: "origin not allowed" });
+      else res.end();
+      return;
+    }
+    if (cors.originPresent && !cors.originAllowed) {
+      sendJson(res, 403, { error: "origin not allowed" });
+      return;
+    }
+    if (req.method !== "GET") {
+      sendJson(res, 405, { error: "method not allowed" });
+      return;
+    }
+    if ((req.url?.length ?? 0) > MAX_REQUEST_URL_BYTES) {
+      sendJson(res, 414, { error: "request too long" });
       return;
     }
 
@@ -151,7 +224,7 @@ export function startStatusServer(
       return;
     }
 
-    if (opts.publicApi && path === "/explorer" && req.method === "GET") {
+    if (opts.publicApi && path === "/explorer") {
       Promise.resolve(opts.publicApi.explorer())
         .then((snapshot) => sendJson(res, 200, snapshot))
         .catch((err: unknown) => sendJson(res, 503, {
@@ -160,7 +233,7 @@ export function startStatusServer(
       return;
     }
 
-    if (opts.publicApi && path === "/balance" && req.method === "GET") {
+    if (opts.publicApi && path === "/balance") {
       const address = url.searchParams.get("address") ?? "";
       Promise.resolve()
         .then(() => opts.publicApi!.balance(address))
@@ -171,12 +244,17 @@ export function startStatusServer(
       return;
     }
 
-    if (req.method !== "GET") {
-      sendJson(res, 405, { error: "method not allowed" });
-      return;
-    }
-
     if (path === "/status" || path === "/") {
+      if (!privateRoutesAllowed) {
+        // Do not distinguish "private route exists" from "unknown route" on a
+        // public bind: a 404 gives an attacker less information than a 401.
+        sendJson(res, 404, { error: "not found" });
+        return;
+      }
+      if (opts.statusToken && !bearerMatches(req, opts.statusToken)) {
+        sendJson(res, 401, { error: "unauthorized" });
+        return;
+      }
       Promise.resolve()
         .then(provider)
         .then((status) => sendJson(res, 200, status))

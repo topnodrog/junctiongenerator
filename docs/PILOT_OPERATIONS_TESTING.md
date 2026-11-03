@@ -1,3 +1,12 @@
+> **Archived runbook (2026-09; reviewed 2026-11-03).** The two-seed Google /
+> Fly.io acceptance window described here is retired. Current independent-operator
+> onboarding is in
+> [`mainnet/EXTERNAL_REVIEW_ONBOARDING.md`](mainnet/EXTERNAL_REVIEW_ONBOARDING.md)
+> and [`mainnet/REVIEW_PACK.md`](mainnet/REVIEW_PACK.md); the provider-neutral
+> deployment kit is
+> [`../packages/jgc-node/deploy/selfhosted/README.md`](../packages/jgc-node/deploy/selfhosted/README.md).
+> Current launch state: [`mainnet/README.md`](mainnet/README.md), [`mainnet/LAUNCH_PLAN.md`](mainnet/LAUNCH_PLAN.md), [`mainnet/RESECURE_REPORT.md`](mainnet/RESECURE_REPORT.md) and [`mainnet/gate-status.json`](mainnet/gate-status.json).
+
 # JGC pilot operations testing
 
 This runbook turns the two-seed readiness requirements into repeatable evidence.

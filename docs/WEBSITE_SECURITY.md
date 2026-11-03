@@ -1,3 +1,9 @@
+> **Dated review (2026-09-26; reviewed 2026-11-03).** Repository review only.
+> The exact Worker CORS allowlist added in PR #66 is **in review and not
+> deployed**; see [`mainnet/NODE_SECURITY_REVIEW.md`](mainnet/NODE_SECURITY_REVIEW.md)
+> §2 M-05. Current website build/lint results are in
+> [`mainnet/RESECURE_REPORT.md`](mainnet/RESECURE_REPORT.md).
+
 # Website security and recovery
 
 Updated 2026-09-26 UTC — repository review only; these latest Worker changes have not been deployed. Owner: James Gordon.
@@ -33,6 +39,22 @@ belongs only in the Worker's `TURNSTILE_SECRET_KEY` secret binding.
 `TURNSTILE_HOSTNAMES` is `junctiongenerator.net,www.junctiongenerator.net`.
 Preview domains need a separate test configuration; production does not accept
 localhost tokens. Use Cloudflare's documented dummy keys only in local tests.
+
+## API origin policy
+
+`worker/cors.mjs` reflects only an exact allowlist: the production origins, the
+two loopback development origins, and any explicitly configured
+`ALLOWED_PREVIEW_ORIGINS` entries (exact `https://` origins). The previous
+wildcard trust of any `https://*.vercel.app` origin was removed; an
+unrecognized origin receives a non-reflecting fallback header and cannot read
+cross-origin responses. `worker/cors.test.mjs` pins this behavior and runs in
+`website-ci.yml`. Preview origins must be configured in the hosting dashboard,
+never copied into Git with secrets.
+
+The node status server applies the same principle: `JGC_STATUS_ALLOWED_ORIGINS`
+is an exact allowlist, private-network-access preflights are answered only for
+allowlisted origins on a loopback bind, and `/status` is never served on a
+public bind. See [`docs/mainnet/NODE_SECURITY_REVIEW.md`](mainnet/NODE_SECURITY_REVIEW.md).
 
 ## Browser policy
 
@@ -82,4 +104,4 @@ or third-party security certification is not claimed.
 Deploy the challenge-bearing frontend before enforcing the new Worker checks.
 After deployment, verify production response headers, challenge rendering,
 health and scoreboard reads, rejection of absent/forged tokens, and retired
-airdrop behavior. Record the deployed Worker version in `api/DEPLOY.md`.
+airdrop behavior. Record the deployed Worker version in `worker/DEPLOY.md`.

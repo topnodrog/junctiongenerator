@@ -1,3 +1,8 @@
+> **Historical public material (2026-09-05; reviewed 2026-11-03).** Describes
+> intended use cases, not shipped services. Useful-compute, inference and
+> storage settlement remain open mainnet gates. Current status:
+> [`../mainnet/README.md`](../mainnet/README.md).
+
 # Use cases and evidence boundaries
 
 Updated 2026-09-05 UTC. Document owner: James Gordon.

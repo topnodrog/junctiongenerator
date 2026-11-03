@@ -1,3 +1,8 @@
+> **Prototype record (2026-08; reviewed 2026-11-03).** Offline simulation only;
+> it does not change consensus, issuance or settlement. Zero-premine issuance
+> remains enforced; the proposed premine is an unreviewed governance decision in
+> [`mainnet/PREMINE_FUNDING_DECISION.md`](mainnet/PREMINE_FUNDING_DECISION.md).
+
 # Ten-day JGC daily-distribution prototype
 
 This prototype exercises a proposed UTC/height-based distribution policy

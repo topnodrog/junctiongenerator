@@ -1,3 +1,9 @@
+> **Historical roadmap (updated 2026-09-05; reviewed 2026-11-03).** The phase
+> status and test counts below are a dated snapshot. The 2026-09-11 product
+> requirements in [`JGC_COMPLETION_PLAN.md`](JGC_COMPLETION_PLAN.md) remain
+> mandatory gates; none is satisfied by this roadmap. Current launch state: [`mainnet/README.md`](mainnet/README.md), [`mainnet/LAUNCH_PLAN.md`](mainnet/LAUNCH_PLAN.md), [`mainnet/RESECURE_REPORT.md`](mainnet/RESECURE_REPORT.md) and [`mainnet/gate-status.json`](mainnet/gate-status.json).
+> No value-bearing mainnet has been launched.
+
 # Junction Generator — Completion Roadmap
 
 **Product reset, 2026-09-11:** Follow [JGC completion plan](JGC_COMPLETION_PLAN.md)
@@ -11,9 +17,9 @@ Three components, one repo. Keep them distinct:
 
 | Component | What it is | Status |
 |---|---|---|
-| **JGC coin** (`packages/jgc-node`) | Sovereign PoUC Layer-1 — the actual product | Repaired zero-premine `jgtc-testnet-v2` pilot live; runner prerelease published; 351 node tests pass; measured soak pending |
+| **JGC coin** (`packages/jgc-node`) | Sovereign PoUC Layer-1 — the actual product | Retired zero-premine `jgtc-testnet-v2` pilot (archived 2026-11-02); current verification 57 suites / 496 tests; independent soak pending |
 | **JGT token** (`contracts/`) | ERC-20 on Base (legacy) | Deployed; no-sale stance retained; optional 2-JGT/24h minting faucet draft is not yet reviewed, deployed, or authorized |
-| **junctiongenerator.net** (`src/` + `api/`) | Public site + Cloudflare Worker backend | Worker live and verified; community-first site merged to `main` |
+| **junctiongenerator.net** (`src/` + `worker/`) | Public site + Cloudflare Worker backend | Worker live and verified; community-first site merged to `main` |
 
 The strategy on record: fund via grants/donations, never JGT sales. JGC is
 the product; the site is its shop window and node-runner recruiting funnel.
@@ -211,9 +217,10 @@ measured multi-day soak; independently operated runners must be identified as su
   checksums, PQ wallet integration, strict proof verification, and documented
   quantum-readiness boundaries.
 - Audit evidence survives mining, peer sync, restart, and reorg; forged votes
-  and replayed verdicts are rejected. Current local verification on 2026-09-05
-  UTC: 44 suites / 351 tests under Node.js 24, plus
-  a passing 31-block two-node sync demo and a real six-proof strict WASM demo.
+  and replayed verdicts are rejected. Current local verification on 2026-11-03
+  UTC: 57 suites / 496 tests, `npm run release:check`, a 24-block / 3-node local
+  soak rehearsal and a passing Docker Compose smoke in CI. Historical 2026-09-05
+  evidence included a 31-block sync demo and a six-proof strict WASM demo.
 - JGT rescued to a clean wallet after the 2026-06 key compromise; no rogue
   minters on-chain; no-sale stance adopted.
 - Worker API hardened (2026-07-07): server-authoritative rewards, auth-gated

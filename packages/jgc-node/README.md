@@ -11,13 +11,16 @@ local testnet tools.
 git clone https://github.com/topnodrog/junctiongenerator.git
 cd junctiongenerator/packages/jgc-node
 npm ci
-npm run testnet:public
+JGC_SEEDS="wss://seed-a.example.net,wss://seed-b.example.org" npm run testnet:public
 ```
 
-This starts a safe outbound-only validator/back-checker and connects it to the
-live two-seed pilot. To add signed participation records and earn valueless
-JGTC at epoch settlement, use `npm run testnet:participate`. Test coins have no cash value
-and do not promise future compensation.
+`JGC_SEEDS` is operator-supplied: no cloud hostname is baked into the release.
+This starts a safe outbound-only validator/back-checker. To add signed
+participation records and earn valueless JGTC at epoch settlement, use
+`npm run testnet:participate`. Test coins have no cash value and do not
+promise future compensation. The historical Google Cloud / Fly.io pilot is
+retired; the current provider-neutral kit is
+[`deploy/selfhosted/README.md`](deploy/selfhosted/README.md).
 
 ## Requirements
 
@@ -41,20 +44,32 @@ npm run mainnet:preflight
 ```
 
 It is expected to exit non-zero until every gate in
-[`docs/mainnet/README.md`](../../docs/mainnet/README.md) is complete.
+[`docs/mainnet/README.md`](../../docs/mainnet/README.md) is complete. The
+signed launch-control checks are also fail-closed today:
+
+```text
+npm run gates:status
+npm run proof:registry
+npm run mainnet:launch -- --assert-blocked
+npm run infra:guard
+```
+
+See [`docs/mainnet/RESECURE_REPORT.md`](../../docs/mainnet/RESECURE_REPORT.md)
+for the current verification results.
 
 ## Node modes
 
-Join the public pilot as an outbound-only validator/back-checker:
+Join an operator-provided testnet as an outbound-only validator/back-checker:
 
 ```text
-npm run testnet:public
+JGC_SEEDS="wss://seed-a.example.net,wss://seed-b.example.org" npm run testnet:public
 ```
 
-The public pilot has two reachable bootstrap peers: Google Seed A at
-`wss://seed-a.junctiongenerator.net` and Fly.io Seed B at
-`wss://jgc-testnet-seed-b.fly.dev`. The `testnet:public` command builds before
-starting and dials both seeds.
+There are **no built-in bootstrap peers**. `JGC_SEEDS` (or repeated `--seed`)
+must name `wss://` URLs for public hosts; plain `ws://` is accepted only for
+loopback, single-label hostnames or RFC1918 addresses. The retired Google Cloud
+and Fly.io seed hostnames are not used. The `testnet:public` command builds
+before starting and dials exactly the seeds you supply (maximum 32).
 
 Run an outbound-only participant with a persistent post-quantum identity:
 
@@ -80,14 +95,17 @@ Both safe presets:
   contribution signatures and all other consensus checks;
 - stores chain data under `./data/testnet`;
 - listens for peers at `ws://127.0.0.1:19444`;
-- exposes read-only status at `http://127.0.0.1:7777/status`;
+- exposes the **private** operator status at `http://127.0.0.1:7777/status`
+  on loopback only, plus the narrow read-only `/healthz`, `/explorer` and
+  `/balance` routes;
 - bind P2P and status to loopback, so they are not exposed to the internet;
 - identifies itself as `jgtc-testnet-v2` and rejects peers with a different
   genesis hash, consensus version, or proof mode before accepting chain data.
 
-The standalone preset starts with no seed peers. The public preset makes only
-outbound connections to both public seeds. Check the local node at
-`http://127.0.0.1:7777/status` and press `Ctrl+C` to stop it cleanly.
+The standalone preset starts with no seed peers. Any preset with `JGC_SEEDS`
+makes only outbound connections to those seeds. Check the local node at
+`http://127.0.0.1:7777/status` and press `Ctrl+C` to stop it cleanly. On a
+non-loopback status bind, `/status` is deliberately hidden; use `/explorer`.
 
 ### Windows automatic startup and desktop switch
 
@@ -149,14 +167,21 @@ Never reuse a testnet wallet on a valuable network.
 
 ## Containerized two-node testnet
 
-For the simplest single public runner, use:
+For the simplest single outbound runner, set your own bootstrap peers first:
 
 ```text
-docker compose -f compose.runner.yml up --build -d
+JGC_SEEDS=wss://seed-a.example.net,wss://seed-b.example.org \
+  docker compose -f compose.runner.yml up --build -d
 ```
 
-This keeps chain data in the `runner-data` volume, connects outbound to both
-public seeds, and exposes status only at `http://127.0.0.1:7777/status`. See
+`JGC_SEEDS` is required; no vendor hostnames are baked into the release. This
+keeps chain data in the `runner-data` volume and publishes only
+`http://127.0.0.1:7777` on the host. Because the container binds its status
+listener to `0.0.0.0`, the **private** `/status` route is disabled there: use
+the narrow public `http://127.0.0.1:7777/explorer` (or `/healthz`) instead.
+Operator status remains available on a loopback-bound node, or on an explicit
+deployment that sets both `JGC_ALLOW_PRIVATE_STATUS_ON_PUBLIC_BIND=true` and
+`JGC_STATUS_TOKEN=<token>` (environment variables, not CLI flags). See
 [`docs/RUN-A-NODE.md`](docs/RUN-A-NODE.md) for stop, update, and troubleshooting
 commands.
 
@@ -191,8 +216,9 @@ producer and back-checker to report the same non-zero chain height.
 Inbound P2P stays on loopback unless `--host 0.0.0.0` is explicitly supplied.
 An ordinary public-pilot runner does not need an inbound port. Public seed
 operators should terminate TLS/WSS on TCP 443 and follow
-[`deploy/README.md`](deploy/README.md); do not expose raw P2P or status ports to
-the internet. Peer traffic uses a
+[`deploy/selfhosted/README.md`](deploy/selfhosted/README.md); do not expose raw
+P2P or status ports to the internet. [`deploy/README.md`](deploy/README.md) is
+the archived Google/Fly pilot record, not an active deployment path. Peer traffic uses a
 bounded, versioned binary envelope with network identity and SHA3-256 checksums.
 The node now also enforces per-host inbound caps, per-peer message budgets,
 misbehavior scores, and temporary host bans. A real-network adversarial soak
@@ -231,6 +257,17 @@ is needed, place it behind an authenticated tunnel instead of changing
 --block-interval <sec>   production attempt interval (default 30)
 ```
 
+Environment-only settings (no CLI flag):
+
+```text
+JGC_SEEDS                          comma-separated wss:// bootstrap URLs
+JGC_PUBLIC_API_HOST / _PORT        separate narrow public API listener
+JGC_STATUS_ALLOWED_ORIGINS         exact browser-origin allowlist
+JGC_STATUS_TOKEN                   bearer token for private /status
+JGC_ALLOW_PRIVATE_STATUS_ON_PUBLIC_BIND   true only with JGC_STATUS_TOKEN
+JGC_ADVERTISE_URL / JGC_PRODUCE / JGC_PARTICIPATE / JGC_BLOCK_INTERVAL_SEC
+```
+
 Consensus V3 corrected the genesis timestamp and body commitments. Delete or
 archive any older local `data/testnet` directory before first use; V2 and early
 V3 development data are intentionally incompatible with this testnet identity.
@@ -243,8 +280,11 @@ restore, upgrade, or reset operations.
 
 This is an early testnet node, not mainnet software.
 
-For the continuously running Google Cloud + Fly.io pilot, see
-[`deploy/README.md`](deploy/README.md).
+The historical Google Cloud + Fly.io pilot is archived in
+[`deploy/README.md`](deploy/README.md); the active provider-neutral path is
+[`deploy/selfhosted/README.md`](deploy/selfhosted/README.md). Mainnet status,
+gate contracts and the external-review funnel are in
+[`docs/mainnet/README.md`](../../docs/mainnet/README.md).
 
 Architecture references:
 

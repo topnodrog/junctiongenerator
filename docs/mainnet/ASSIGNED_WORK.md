@@ -1,3 +1,7 @@
+> **Implementation record (2026-09-13; reviewed 2026-11-03).** The bounded
+> assigned-work journal is real, but it is a rehearsal store, not a funded
+> production service. The `usefulServices` gate remains open. Current launch state: [`README.md`](README.md), [`LAUNCH_PLAN.md`](LAUNCH_PLAN.md), [`RESECURE_REPORT.md`](RESECURE_REPORT.md) and [`gate-status.json`](gate-status.json).
+
 # Assigned useful-work foundation
 
 The local `AssignedWorkJournal` in `packages/jgc-node/src/broker/assigned-work.ts`

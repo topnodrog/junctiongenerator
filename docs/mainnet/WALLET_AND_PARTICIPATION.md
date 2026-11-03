@@ -1,3 +1,9 @@
+> **Pilot-era reference (reviewed 2026-11-03).** Describes the valueless JGTC
+> testnet wallet/participation flow. Zero-premine issuance still holds; a
+> genesis premine is an unreviewed governance decision in
+> [`PREMINE_FUNDING_DECISION.md`](PREMINE_FUNDING_DECISION.md). No value-bearing
+> mainnet exists.
+
 # Wallet and participation requirements
 
 Owner direction, 2026-09-12: keep every mainnet gate mandatory while building

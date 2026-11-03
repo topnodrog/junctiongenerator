@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a vulnerability privately
+    url: https://github.com/topnodrog/junctiongenerator/security/advisories/new
+    about: Use a private GitHub security advisory for exploitable issues. See SECURITY.md for the safe-harbor policy and response windows.
+  - name: Read the independent review pack first
+    url: https://github.com/topnodrog/junctiongenerator/blob/main/docs/mainnet/REVIEW_PACK.md
+    about: The 10-minute first win, all review artifacts, and the current gate status.
+  - name: Share the public one-pager
+    url: https://github.com/topnodrog/junctiongenerator/blob/main/docs/public/JGC_INDEPENDENT_REVIEW_PROGRAM.md
+    about: A short, no-hype description of the program you can forward to potential reviewers and operators.

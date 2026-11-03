@@ -1,3 +1,10 @@
+> **Historical marketing draft (reviewed 2026-11-03).** Retained as background
+> only. Do not use its funding, membership or token language as current policy:
+> JGT is not promoted, there is no token sale, no implemented premine and no
+> value-bearing mainnet. Current low-friction outreach funnel:
+> [`docs/mainnet/OUTREACH_PLAN.md`](docs/mainnet/OUTREACH_PLAN.md) and
+> [`docs/mainnet/REVIEW_PACK.md`](docs/mainnet/REVIEW_PACK.md).
+
 # JunctionGenerator Community Flywheel
 
 This is the operating manual for the 90-day founding-community campaign.

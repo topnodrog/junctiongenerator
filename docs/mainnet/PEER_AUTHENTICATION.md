@@ -1,3 +1,7 @@
+> **Design and acceptance record (reviewed 2026-11-03).** `peerAuthentication`
+> passes its engineering gate; this is not a deployed mainnet launcher and does
+> not close the other ten gates. Current state: [`gate-status.json`](gate-status.json).
+
 # Peer authentication acceptance record
 
 Status: **complete** for the `peerAuthentication` engineering gate in the candidate node.

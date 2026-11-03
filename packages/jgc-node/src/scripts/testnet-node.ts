@@ -76,6 +76,12 @@ async function main(): Promise<void> {
   let p2p: P2PServer | undefined;
   let links: PeerLinks | undefined;
   let status: StatusServerHandle | undefined;
+  let publicApi: StatusServerHandle | undefined;
+
+  const explorerApi = {
+    explorer: () => explorerSnapshot(node, producer),
+    balance: (address: string) => addressBalance(node, address),
+  };
 
   try {
     p2p = await startP2PServer(node, opts.port, opts.host);
@@ -110,11 +116,24 @@ async function main(): Promise<void> {
     }, {
       host: opts.statusHost,
       port: opts.statusPort,
-      publicApi: {
-        explorer: () => explorerSnapshot(node, producer),
-        balance: (address) => addressBalance(node, address),
-      },
+      statusToken: opts.statusToken,
+      allowPrivateStatusOnPublicBind: opts.allowPrivateStatusOnPublicBind,
+      allowedOrigins: opts.allowedOrigins,
+      // Backwards compatibility: without a dedicated public listener, keep the
+      // narrow public routes on the private loopback status server.
+      publicApi: opts.publicApiPort === undefined ? explorerApi : undefined,
     });
+    if (opts.publicApiPort !== undefined) {
+      publicApi = await startStatusServer((): NodeStatus => {
+        throw new Error("private status is not available on the public API listener");
+      }, {
+        host: opts.publicApiHost ?? "127.0.0.1",
+        port: opts.publicApiPort,
+        publicApi: explorerApi,
+        publicApiOnly: true,
+        allowedOrigins: opts.allowedOrigins,
+      });
+    }
 
     console.log(`[testnet] network: ${TESTNET_NETWORK.chainId} (${TESTNET_NETWORK.proofMode})`);
     console.log(`[testnet] genesis: ${genesisHash}`);
@@ -122,13 +141,17 @@ async function main(): Promise<void> {
     console.log(`[testnet] p2p:     ws://${opts.host}:${p2p.port}`);
     console.log(`[testnet] status:  http://${status.host}:${status.port}/status`);
     console.log(`[testnet] seeds:   ${opts.seeds.length ? opts.seeds.join(", ") : "(none; standalone node)"}`);
-    console.log(`[testnet] explorer: http://${status.host}:${status.port}/explorer`);
+    console.log(`[testnet] explorer: http://${publicApi?.host ?? status.host}:${publicApi?.port ?? status.port}/explorer`);
+    if (publicApi) {
+      console.log(`[testnet] private status: http://${status.host}:${status.port}/status (not routed by the public listener)`);
+    }
     console.log(`[testnet] role:    ${opts.produce ? `designated producer (${opts.blockIntervalSec}s interval)` : participant ? "participant" : "validator/back-checker"}`);
     if (participant) console.log(`[testnet] participant: ${participant.address} (equal-weight pilot receipts)`);
     if (opts.produce) producer.start();
     participant?.start();
   } catch (error) {
     links?.close();
+    await publicApi?.close();
     await status?.close();
     await p2p?.close();
     throw error;
@@ -142,6 +165,7 @@ async function main(): Promise<void> {
     participant?.stop();
     producer.stop();
     links?.close();
+    await publicApi?.close();
     await status?.close();
     await p2p?.close();
   };

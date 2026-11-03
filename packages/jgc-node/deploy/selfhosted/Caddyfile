@@ -1,0 +1,37 @@
+# Public TLS/WSS edge for a self-hosted JGC seed.
+# Only the narrow read-only API and the P2P WebSocket are routed. The operator
+# status endpoint (port 7777) is never reachable from this listener.
+{$JGC_SEED_HOSTNAME} {
+	tls {$JGC_ACME_EMAIL}
+
+	header {
+		-Server
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "no-referrer"
+	}
+
+	handle /healthz {
+		respond "ok" 200
+	}
+
+	handle /explorer {
+		reverse_proxy 127.0.0.1:7778
+	}
+
+	handle /balance {
+		reverse_proxy 127.0.0.1:7778
+	}
+
+	# Explicitly refuse any attempt to reach private operator state.
+	handle /status {
+		respond "Not found" 404
+	}
+
+	handle / {
+		respond "Not found" 404
+	}
+
+	# Everything else is the authenticated P2P WebSocket surface.
+	reverse_proxy 127.0.0.1:19444
+}

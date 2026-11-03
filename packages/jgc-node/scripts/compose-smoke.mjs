@@ -6,9 +6,12 @@ async function readStatus(url) {
 
 async function main() {
   const timeoutMs = Number(process.env.JGC_COMPOSE_SMOKE_TIMEOUT_MS ?? 120_000);
+  // Containers bind 0.0.0.0, where the private /status route is intentionally
+  // disabled. /explorer is the narrow public snapshot and carries network,
+  // height, peerCount and producer status — everything this check needs.
   const endpoints = {
-    producer: process.env.JGC_PRODUCER_STATUS ?? "http://127.0.0.1:7777/status",
-    backchecker: process.env.JGC_BACKCHECKER_STATUS ?? "http://127.0.0.1:7778/status",
+    producer: process.env.JGC_PRODUCER_STATUS ?? "http://127.0.0.1:7777/explorer",
+    backchecker: process.env.JGC_BACKCHECKER_STATUS ?? "http://127.0.0.1:7778/explorer",
   };
   const deadline = Date.now() + timeoutMs;
   let lastError = "containers did not become ready";

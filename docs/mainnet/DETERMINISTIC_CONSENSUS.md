@@ -1,3 +1,8 @@
+> **Design and acceptance record (reviewed 2026-11-03).** `deterministicConsensus`
+> passes its engineering gate, but this document is not launch clearance: the
+> deterministic proposer schedule is not yet enforced by validation/fork choice.
+> Current state: [`gate-status.json`](gate-status.json).
+
 # Deterministic consensus acceptance record
 
 Status: **complete** for the candidate's `deterministicConsensus` engineering gate.

@@ -1,3 +1,10 @@
+> **Historical release (2026-09-02; reviewed 2026-11-03).** This prerelease
+> embeds the now-retired Google Cloud / Fly.io seed defaults and is kept only
+> so old evidence can be reproduced. Do not use it as a current runner path:
+> build from the current checkout and supply `JGC_SEEDS`. See
+> [`deploy/selfhosted/README.md`](deploy/selfhosted/README.md) and the current
+> verification in [`../../docs/mainnet/RESECURE_REPORT.md`](../../docs/mainnet/RESECURE_REPORT.md).
+
 # JGC Node v0.1.0 — JGTC v2 closed beta
 
 This is the first pinned runner release for the early, valueless
@@ -7,7 +14,7 @@ This is the first pinned runner release for the early, valueless
 
 - the frozen v2 chain identity and repaired settlement transaction IDs;
 - outbound-only validator/back-checker and participant modes;
-- two-provider WSS seed defaults;
+- two-provider WSS seed defaults (retired; current builds require `JGC_SEEDS`);
 - zero-premine 144-block JGTC settlement;
 - versioned crash-safe storage and recoverable incompatible-state handling;
 - compiled JavaScript, source, locked npm dependencies, Docker runner files,

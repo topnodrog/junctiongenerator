@@ -29,12 +29,13 @@ function positiveInteger(raw: string | undefined, fallback: number, name: string
   return value;
 }
 
-async function statusHeight(url: string): Promise<number> {
+/** Read tip height from the narrow public /explorer snapshot, never /status. */
+async function snapshotHeight(url: string): Promise<number> {
   const response = await fetch(url);
-  if (!response.ok) throw new Error(`status endpoint returned HTTP ${response.status}`);
+  if (!response.ok) throw new Error(`explorer endpoint returned HTTP ${response.status}`);
   const body = await response.json() as { height?: unknown };
   if (!Number.isInteger(body.height) || (body.height as number) < 0) {
-    throw new Error("status endpoint returned an invalid height");
+    throw new Error("explorer endpoint returned an invalid height");
   }
   return body.height as number;
 }
@@ -58,7 +59,7 @@ async function main(): Promise<void> {
   }
 
   const seed = process.env.JGC_SMOKE_SEED ?? "ws://producer:19444";
-  const statusUrl = process.env.JGC_SMOKE_STATUS ?? "http://producer:7777/status";
+  const snapshotUrl = process.env.JGC_SMOKE_STATUS ?? "http://producer:7777/explorer";
   const targetHeight = positiveInteger(
     process.env.JGC_SMOKE_TARGET_HEIGHT,
     1,
@@ -91,8 +92,8 @@ async function main(): Promise<void> {
     // producer a moment to verify it before sending chain data behind it.
     await new Promise((resolve) => setTimeout(resolve, 500));
 
-    while (await statusHeight(statusUrl) < targetHeight) {
-      const height = await statusHeight(statusUrl) + 1;
+    while (await snapshotHeight(snapshotUrl) < targetHeight) {
+      const height = await snapshotHeight(snapshotUrl) + 1;
       for (const miner of DEFAULT_MINERS) {
         await node.processMessage(
           localMiner.conn.info.peerId,
@@ -100,7 +101,7 @@ async function main(): Promise<void> {
         );
       }
       await waitFor(
-        async () => await statusHeight(statusUrl) >= height,
+        async () => (await snapshotHeight(snapshotUrl)) >= height,
         timeoutMs,
         `producer height ${height}`,
       );
