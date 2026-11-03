@@ -81,7 +81,9 @@ So the "12 most practical functions" are **~3–4 that serve the website, and 8�
 2. `node --check` over `worker/*.js`, `worker/*.mjs`; `node --test worker/*.test.mjs scripts/deploy/deployment-safety.test.cjs` → 21 tests.
 3. `yarn lint` + `yarn build` (Next.js still builds with no root `api/`).
 4. `node --test scripts/deploy/deployment-safety.test.cjs`, `npm run release:check`, `infra:guard`, `mainnet:launch --assert-blocked` — no gate changes.
-5. Push and confirm the Vercel preview check turns green.
+5. **Confirmed:** commit `f34546e` produced a successful Vercel preview
+   (`Deployment has completed`, `dpl_H4ztnkmnZxvW7kix9h7gAoSzW54w`). The
+   Vercel check on PR #66 is green; all GitHub Actions checks pass.
 
 **Not run from this sandbox:** `wrangler deploy --dry-run` (Cloudflare API is not reachable here) and a live endpoint check against the deployed Worker. Both are in `worker/DEPLOY.md` for the owner.
 

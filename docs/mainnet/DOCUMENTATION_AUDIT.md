@@ -100,8 +100,9 @@ remain valid design records; none is launch clearance.
    including helpers, tests and migrations); `main` sat at 9 and just fit.
    All Cloudflare Worker source was moved to `worker/`, leaving zero root-`api`
    functions, plus a CI guard. Full analysis and the 12-route shortlist:
-   [`../VERCEL_FUNCTION_BUDGET.md`](../VERCEL_FUNCTION_BUDGET.md). Preview
-   confirmation after push is recorded in `RESECURE_REPORT.md` §1b.
+   [`../VERCEL_FUNCTION_BUDGET.md`](../VERCEL_FUNCTION_BUDGET.md). The Vercel
+   preview is now **green** (`dpl_H4ztnkmnZxvW7kix9h7gAoSzW54w`); see
+   `RESECURE_REPORT.md` §1b/§1c.
 2. **Dependency triage:** 18 Dependabot alerts reported; `npm audit` not run.
 3. Not performed: Docker image build, Wrangler dry-run, live endpoint check,
    Solidity compilation, website end-to-end deployment verification.

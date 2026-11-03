@@ -61,8 +61,12 @@ Preview confirmation after the fix is recorded in §1c.
 
 ## 1c. Vercel preview confirmation
 
-Pending: the fix commit is pushed and the Vercel preview status is checked in
-the GitHub PR. This section is updated with the result before handoff.
+**Confirmed 2026-11-03.** Commit `f34546e` (the `api/` → `worker/` move plus
+the CI budget guard) produced a successful preview deployment:
+`Deployment has completed`, Vercel check **pass**
+(`dpl_H4ztnkmnZxvW7kix9h7gAoSzW54w`). GitHub Actions checks on the same commit
+also pass. This closes the last failing external check from §1b; no Vercel
+dashboard access or plan upgrade was needed.
 
 ## 2. New regression coverage
 
