@@ -24,9 +24,11 @@ Also see: [outreach funnel](OUTREACH_PLAN.md), [review pack](REVIEW_PACK.md),
 [premine funding decision](PREMINE_FUNDING_DECISION.md) and the
 [provider-neutral deployment kit](../../packages/jgc-node/deploy/selfhosted/README.md).
 
-See [findings and prioritized todo](FINDINGS_AND_TODO.md) for the current audit,
-including the owner's mandatory Zcash-like privacy and quantum requirements,
-and [peer authentication evidence](PEER_AUTHENTICATION.md) for the candidate
+See the [full node security review](NODE_SECURITY_REVIEW.md) for the current
+audit, including the owner's mandatory Zcash-like privacy and quantum
+requirements. [Findings and prioritized todo](FINDINGS_AND_TODO.md) is a dated
+2026-09-13 snapshot retained for background. See
+[peer authentication evidence](PEER_AUTHENTICATION.md) for the candidate
 connection protocol and its acceptance checks.
 Candidate arithmetic, fork ordering and replay are tracked in the
 [deterministic-consensus acceptance record](DETERMINISTIC_CONSENSUS.md).
@@ -137,3 +139,29 @@ See the [V3 shielded-payment requirements draft](SHIELDED_PAYMENTS_V3_DESIGN.md)
 for the bounded gap audit, authority separation, transaction relation,
 parameter/review blockers and versioned migration requirements. No backend is
 selected and no privacy or quantum gate is completed by this draft.
+
+## Documentation status (2026-11-03 audit)
+
+All 69 Markdown files in the repository were reviewed; see the
+[documentation audit](DOCUMENTATION_AUDIT.md) for the full findings and fixes.
+
+**Authoritative now:** this file, `LAUNCH_PLAN.md`, `GATE_CLOSURE_PROTOCOL.md`,
+`NODE_SECURITY_REVIEW.md`, `RESECURE_REPORT.md`, `REVIEW_PACK.md`,
+`EXTERNAL_REVIEW_ONBOARDING.md`, `OUTREACH_PLAN.md`,
+`PREMINE_FUNDING_DECISION.md`, `gate-status.json`,
+`../public/JGC_INDEPENDENT_REVIEW_PROGRAM.md`, root `README.md`, `SECURITY.md`,
+`../../packages/jgc-node/README.md`, `../../packages/jgc-node/docs/RUN-A-NODE.md`
+and `../../packages/jgc-node/deploy/selfhosted/README.md`.
+
+**Historical / dated (banner added, preserved for evidence):** `FINDINGS_AND_TODO.md`,
+`REMAINING_GATES_HANDOFF.md`, `NEXT_CONVERSATION.md`, `ASSIGNED_WORK.md`,
+`WALLET_AND_PARTICIPATION.md`, `../NEXT_STEPS_PLAN.md`,
+`../PILOT_OPERATIONS_TESTING.md`, `../PUBLIC_SEED_DEPLOYMENT.md`,
+`../ROADMAP.md`, `../SECURITY_BASELINE.md`, `../concept-paper.md`,
+`../public/JGC_OnePager.md` and the other 2026-09 public drafts, plus the
+archived `../../packages/jgc-node/deploy/README.md` and `deploy/monitor/README.md`.
+
+**Unchanged technical references:** protocol/design docs under this directory
+and `../../packages/jgc-node/docs/` remain valid design records, but none
+constitutes launch clearance. `../../AGENTS.md` and `../../CLAUDE.md` remain
+the operative agent instructions.

@@ -1,3 +1,8 @@
+> **Archived plan (last updated 2026-09-05; reviewed 2026-11-03).** The status
+> line below describes the retired Google Cloud / Fly.io two-seed pilot and is
+> no longer the operational plan. Current launch state: [`mainnet/README.md`](mainnet/README.md), [`mainnet/LAUNCH_PLAN.md`](mainnet/LAUNCH_PLAN.md), [`mainnet/RESECURE_REPORT.md`](mainnet/RESECURE_REPORT.md) and [`mainnet/gate-status.json`](mainnet/gate-status.json).
+> No value-bearing mainnet exists and no external review has been completed.
+
 # Junction Generator Next-Steps Plan
 
 **Status:** Execution approved; Phases 1–4 complete. Phase 5 is active. Google

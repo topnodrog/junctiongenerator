@@ -1,3 +1,10 @@
+> **Dated findings snapshot (2026-09-13; reviewed 2026-11-03).** The ten open
+> gates are still open, but the 2026-11-02 hardening and launch-control work
+> supersedes the implementation notes here. Current security review:
+> [`NODE_SECURITY_REVIEW.md`](NODE_SECURITY_REVIEW.md); current verification:
+> [`RESECURE_REPORT.md`](RESECURE_REPORT.md); current machine-readable state:
+> [`gate-status.json`](gate-status.json).
+
 # Mainnet findings and todo
 
 Updated 2026-09-13. Owner priorities: **Zcash-like payment privacy and

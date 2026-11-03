@@ -1,3 +1,9 @@
+> **Archived handoff (2026-09-13; reviewed 2026-11-03).** The PR #53 / commit
+> references below are a historical snapshot. Current work is PR #66 on branch
+> `arena/08b59d79-junctiongenerator`; start with
+> [`README.md`](README.md), [`LAUNCH_PLAN.md`](LAUNCH_PLAN.md) and
+> [`RESECURE_REPORT.md`](RESECURE_REPORT.md). Do not waive gates.
+
 # Mainnet continuation handoff
 
 Updated 2026-09-13 after PQ verifier hardening. Start with AGENTS.md and

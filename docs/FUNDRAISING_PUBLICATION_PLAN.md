@@ -1,3 +1,9 @@
+> **Historical publication record (2026-09-05/26; reviewed 2026-11-03).** Not a
+> current funding claim. Funding stance: grants/donations/paid work, no token
+> sale, no implemented premine. See
+> [`mainnet/PREMINE_FUNDING_DECISION.md`](mainnet/PREMINE_FUNDING_DECISION.md)
+> and the root `README.md` funding section.
+
 # Fundraising publication record
 
 Publication consolidation recorded 2026-09-05 UTC. Corrected during repository review on 2026-09-26. Owner: James Gordon.

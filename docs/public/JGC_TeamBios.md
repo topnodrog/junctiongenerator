@@ -1,3 +1,8 @@
+> **Historical public material (2026-09-05; reviewed 2026-11-03).** Retained
+> for background only; not a current launch, funding or team-status claim.
+> Current public entry point:
+> [`JGC_INDEPENDENT_REVIEW_PROGRAM.md`](JGC_INDEPENDENT_REVIEW_PROGRAM.md).
+
 # Builder and collaboration
 
 Updated 2026-09-05 UTC. Document owner: James Gordon.

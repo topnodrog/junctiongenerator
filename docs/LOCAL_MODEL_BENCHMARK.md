@@ -1,3 +1,8 @@
+> **Historical evaluation (2026-08-03; reviewed 2026-11-03).** Neither model was
+> approved to control infrastructure then, and no model has authority now. The
+> current provider-neutral monitor is deterministic and model-free:
+> [`../packages/jgc-node/deploy/selfhosted/README.md`](../packages/jgc-node/deploy/selfhosted/README.md).
+
 # Local operations-model benchmark
 
 **Date:** 2026-08-03  

@@ -1,3 +1,9 @@
+> **Dated review (2026-09-26; reviewed 2026-11-03).** Repository review only.
+> The exact Worker CORS allowlist added in PR #66 is **in review and not
+> deployed**; see [`mainnet/NODE_SECURITY_REVIEW.md`](mainnet/NODE_SECURITY_REVIEW.md)
+> §2 M-05. Current website build/lint results are in
+> [`mainnet/RESECURE_REPORT.md`](mainnet/RESECURE_REPORT.md).
+
 # Website security and recovery
 
 Updated 2026-09-26 UTC — repository review only; these latest Worker changes have not been deployed. Owner: James Gordon.

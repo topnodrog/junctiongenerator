@@ -2,7 +2,9 @@
 
 **Run:** 2026-11-02/03 (sandbox UTC 2026-11-03), branch `arena/08b59d79-junctiongenerator`
 **Scope:** re-verification after the security fixes, provider-neutral deployment kit, gate closure mechanism, launch-control code and outreach/funnel documentation.
-**Result:** all automated checks pass; **mainnet remains deliberately blocked**. This is engineering verification, not an external security review.
+**Result:** all repository-local automated checks pass; one external Vercel
+preview deployment check remains failing (§1b). **Mainnet remains deliberately
+blocked.** This is engineering verification, not an external security review.
 
 > Note: `node_modules/` and `dist/` are not persisted between sandbox sessions. Re-run `npm ci` and `npm run build` in `packages/jgc-node` before any command below.
 
@@ -24,6 +26,34 @@
 | Local soak rehearsal | `npm run solo-soak -- --blocks 24 --nodes 3 --output .tmp/soak-rehearsal.json` | PASS — 3 nodes, 24 blocks, partition reconnect synced, all tips agree; local simnet evidence only |
 | Split-listener runtime smoke | Start `testnet-node.js` with `JGC_PUBLIC_API_PORT`, then curl both listeners | PASS — public `/healthz` and `/explorer` 200; public `/status` 404; private `/status` 200; disallowed `Origin` 403 |
 | Whitespace / patch hygiene | `git diff --check` | PASS |
+
+## 1b. CI regression found and fixed (2026-11-03)
+
+PR #66's first CI run exposed a real consequence of the H-02 fix: the Docker
+HEALTHCHECK and the two-node compose smoke used the **private** `/status` route,
+which is intentionally disabled on a `0.0.0.0` bind. Containers now use only
+the narrow public routes:
+
+| File | Change |
+| --- | --- |
+| `packages/jgc-node/Dockerfile` | HEALTHCHECK → `/healthz` |
+| `packages/jgc-node/compose.smoke.yml` | `JGC_SMOKE_STATUS` → `/explorer` |
+| `packages/jgc-node/scripts/compose-smoke.mjs` | default endpoints → `/explorer` (the snapshot carries `network`, `height`, `peerCount` and `producer`, so assertions are unchanged) |
+| `packages/jgc-node/src/scripts/testnet-smoke-contributor.ts` | reads tip height from `/explorer` instead of `/status` |
+
+Verified on a real `0.0.0.0` bind: `/healthz` 200, `/explorer` 200 with the
+expected fields, `/status` 404. **Docker Compose testnet smoke now passes in
+CI** (run 41582619326). Runner docs and `docs/PUBLIC_SEED_DEPLOYMENT.md` were
+corrected in the same commit.
+
+**One external check remains failing:** Vercel preview deployments for both
+`75f9f09` and `e0a3970` report `Deployment has failed`, while the equivalent
+GitHub Actions `Website lint and build` job passes (`yarn install
+--frozen-lockfile`, `yarn lint`, `yarn build`) and a local `npm install` +
+`npm run lint` + `npm run build` also passes. Vercel build logs are not
+accessible from this sandbox; the owner needs `npx vercel inspect
+dpl_<id> --logs` or the Vercel dashboard. This is a deployment-platform issue
+to resolve, not a gate waiver.
 
 ## 2. New regression coverage
 
@@ -59,7 +89,9 @@ H-01 arbitrary-origin CORS/PNA reflection; H-02 private `/status` on a public bi
 3. **The release binary must actually load the reviewed proof registry.** Enforced as `reproducibleArtifacts`/`proofSystem` artifacts, not by the preflight alone.
 4. **No external review exists.** This report is self-verification. [`EXTERNAL_REVIEW_ONBOARDING.md`](EXTERNAL_REVIEW_ONBOARDING.md), [`OUTREACH_PLAN.md`](OUTREACH_PLAN.md), [`REVIEW_PACK.md`](REVIEW_PACK.md) and the public one-pager exist to make one possible.
 5. **Owner decisions recorded:** prepare only (no network started), mixed provider-neutral infrastructure, low-friction public funnel, and a proposed 3–5 week premine that is **not implemented** and must not fund the review that authorizes it ([`PREMINE_FUNDING_DECISION.md`](PREMINE_FUNDING_DECISION.md)).
-6. Website/API still use Vercel, Cloudflare Workers and Turso — third parties, but neither Fly.io nor Google Cloud, and outside consensus trust. Provider/secret rotation remains in the recurring checklist.
+6. Website/API still use Vercel, Cloudflare Workers and Turso — third parties, but neither Fly.io nor Google Cloud, and outside consensus trust. Provider/secret rotation remains in the recurring checklist; the Vercel preview deployment check is currently failing (see §1b).
+7. **Dependency alerts are open:** a 2026-11-03 push reported 18 alerts on the default branch (7 critical, 6 high, 5 moderate). `npm audit`, alert triage, Docker image build, Wrangler dry-run, live endpoint check and Solidity compilation have not been run in this pass.
+8. **Documentation was audited on 2026-11-03** (`DOCUMENTATION_AUDIT.md`): 69 Markdown files, all relative links verified, stale provider/test-count/launch claims corrected or bannered as historical.
 
 ## 6. Correct label after this pass
 

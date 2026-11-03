@@ -1,23 +1,30 @@
+> **Historical concept draft (version 0.7, 2026-09-11; reviewed 2026-11-03).**
+> This paper records the original product vision. It is **not** current status.
+> The Google Cloud / Fly.io pilot described below is retired; new deployments
+> are provider-neutral. Current launch state, gates and evidence:
+> [`mainnet/README.md`](mainnet/README.md),
+> [`mainnet/LAUNCH_PLAN.md`](mainnet/LAUNCH_PLAN.md),
+> [`mainnet/RESECURE_REPORT.md`](mainnet/RESECURE_REPORT.md) and
+> [`mainnet/gate-status.json`](mainnet/gate-status.json).
+> No value-bearing mainnet exists; JGTC is valueless; no premine is implemented.
+
 # Junction Generator: Proof-of-Useful-Compute
 
 **A Protocol for Redirecting Mining Compute to Real AI Workloads**
 
 *Version 0.7 — Implementation-aligned draft, 2026-09-11*
 
-> **Implementation status:** JGC currently runs as early, valueless testnet
-> software. Owner-operated Google Cloud and Fly.io public pilot seeds on the
-> repaired `jgtc-testnet-v2` network have completed six zero-premine
-> settlements with exact supply conservation; the independent multi-machine
-> soak remains incomplete. Consensus V3
-> commits delayed-beacon, ML-DSA-signed historical-audit
-> evidence through `auditRoot`, uses portable canonical encodings and integer
-> work weights, separates heterogeneous verification roles, and uses versioned,
-> checksum-protected, network-bound persistent storage. Forty suites /
-> 329 tests under Node.js 24, a 31-block two-node sync demo, and a bounded six-proof strict WASM
-> run pass. Mandatory bonded-validator activation, economic rewards/slashing,
-> the marketplace, and mainnet are not deployed. See the
-> [node-runner guide](../packages/jgc-node/docs/RUN-A-NODE.md) for the supported
-> pilot path and its limitations.
+> **Historical implementation snapshot (2026-09-11):** the valueless
+> `jgtc-testnet-v2` pilot ran on two provider-hosted seeds and recorded six
+> zero-premine settlements; those seeds are now retired. Local verification at
+> that time reported 40 suites / 329 tests, a 31-block sync demo and a bounded
+> six-proof strict WASM run. As of 2026-11-03 the node suite is
+> **57 suites / 496 tests**. Mandatory bonded-validator activation, economic
+> rewards/slashing, the marketplace and mainnet remain unimplemented. See
+> [`mainnet/RESECURE_REPORT.md`](mainnet/RESECURE_REPORT.md) for current
+> verification and the
+> [provider-neutral deployment kit](../packages/jgc-node/deploy/selfhosted/README.md)
+> for the current deployment path.
 
 ---
 
@@ -270,10 +277,10 @@ The GPU hardware is already deployed. The AI demand is already there. Junction G
 
 Junction Generator is open source and actively seeking contributors:
 
-- **GitHub**: [github.com/junctiongenerator/junction-generator](https://github.com/junctiongenerator/junction-generator)
-- **Developers**: See [CONTRIBUTING.md](../CONTRIBUTING.md) for how to start contributing
-- **Miners**: Join the early miner waitlist to test the mining client
-- **AI Companies**: Register interest as a compute buyer
+- **GitHub**: [github.com/topnodrog/junctiongenerator](https://github.com/topnodrog/junctiongenerator)
+- **Developers / reviewers**: See the [independent review program](public/JGC_INDEPENDENT_REVIEW_PROGRAM.md) and the [review pack](mainnet/REVIEW_PACK.md)
+- **Node operators**: Run a provider-neutral seed using [`packages/jgc-node/deploy/selfhosted/README.md`](../packages/jgc-node/deploy/selfhosted/README.md) (zero-value pilot only)
+- **AI companies**: Useful-compute settlement is an open research gate, not a live service
 - **Researchers**: Help formalize the Proof-of-Useful-Compute specification
 
 Contributions are welcome, but no OSCRP reward is currently guaranteed or

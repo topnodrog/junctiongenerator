@@ -1,3 +1,9 @@
+> **Dated handoff (2026-09-13; reviewed 2026-11-03).** Gate acceptance criteria
+> remain relevant, but the closure mechanism is now
+> [`GATE_CLOSURE_PROTOCOL.md`](GATE_CLOSURE_PROTOCOL.md) and the current state is
+> [`gate-status.json`](gate-status.json). No gate has been flipped; no value-bearing
+> mainnet has been launched.
+
 # Mainnet remaining-gates handoff
 
 Prepared 2026-09-13 after the offline PQ verifier hardening. This is a continuation

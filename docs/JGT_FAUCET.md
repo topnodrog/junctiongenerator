@@ -1,3 +1,8 @@
+> **Legacy JGT draft (reviewed 2026-11-03).** Status is unchanged: not
+> compiled, reviewed, deployed or authorized. JGT is a legacy Base token, not
+> the JGC mainnet product; JGTC is valueless. Current launch state:
+> [`mainnet/README.md`](mainnet/README.md).
+
 # Legacy JGT Base faucet
 
 **Status:** implementation draft only. The minting dispenser has not been

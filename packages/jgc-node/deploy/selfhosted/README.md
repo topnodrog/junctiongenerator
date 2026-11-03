@@ -9,7 +9,7 @@ organization-wide API token.
 
 > This kit runs the **zero-value `jgtc-testnet-v2` pilot only**. It does not
 > launch mainnet. `npm run mainnet:launch` remains fail-closed; see
-> [`docs/mainnet/LAUNCH_PLAN.md`](../../../docs/mainnet/LAUNCH_PLAN.md).
+> [`docs/mainnet/LAUNCH_PLAN.md`](../../../../docs/mainnet/LAUNCH_PLAN.md).
 
 ## 1. Topology and trust boundaries
 

@@ -1,3 +1,11 @@
+> **Historical public brief (2026-09-05; reviewed 2026-11-03).** Retained as
+> background only. It describes the retired Google/Fly pilot and an old test
+> count; do not quote it as current status. The current shareable one-pager is
+> [`JGC_INDEPENDENT_REVIEW_PROGRAM.md`](JGC_INDEPENDENT_REVIEW_PROGRAM.md), and
+> current launch state is in
+> [`../mainnet/README.md`](../mainnet/README.md). No value-bearing mainnet
+> exists; JGTC is valueless; no premine is implemented.
+
 # Junction Generator — project brief
 
 Updated 2026-09-05 UTC. Document owner: James Gordon.
@@ -11,15 +19,18 @@ The intended product is JGC, a sovereign Proof-of-Useful-Compute network.
 - A node implementation with local Ollama inference, deterministic reference
   replay, delayed-beacon audit selection, signed quorum evidence, persistent
   chain storage, and post-quantum identity/signature components.
-- The early, valueless `jgtc-testnet-v2` public pilot, served by Google Cloud
-  and Fly.io seeds. It starts with zero spendable supply and creates JGTC
-  through 144-block settlements. Its signed test receipts record participation;
-  they are not production proofs of useful computation.
+- The early, valueless `jgtc-testnet-v2` pilot (Google Cloud / Fly.io seeds,
+  **retired 2026-11-02**), which started with zero spendable supply and created
+  JGTC through 144-block settlements. Its signed test receipts recorded
+  participation; they were not production proofs of useful computation. The
+  current path is provider-neutral and has not been deployed.
 - A published [v0.1.0 runner prerelease](https://github.com/topnodrog/junctiongenerator/releases/tag/jgc-node-v0.1.0),
   [node guide](../../packages/jgc-node/docs/RUN-A-NODE.md), and
   [live explorer](https://junctiongenerator.net/testnet).
-- On 2026-09-05 UTC, all 44 node test suites / 351 tests passed locally.
-  Automated tests are distinct from a measured multi-day field soak.
+- On 2026-09-05 UTC, all 44 node test suites / 351 tests passed locally
+  (historical). As of 2026-11-03 the suite is 57 suites / 496 tests;
+  automated tests are distinct from a measured multi-day field soak and from
+  an independent security review.
 
 ## Next evidence
 

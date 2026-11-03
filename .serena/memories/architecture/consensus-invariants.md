@@ -1,3 +1,7 @@
+> **Historical agent memory (reviewed 2026-11-03).** Internal
+> implementation snapshot, not user-facing documentation or current
+> launch status. Current state: `docs/mainnet/gate-status.json`.
+
 # Consensus Invariants
 
 - Never use measured processor speed, elapsed time, benchmark output, or local scheduling as proof of consensus work.

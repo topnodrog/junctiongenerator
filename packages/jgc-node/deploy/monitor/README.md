@@ -1,3 +1,8 @@
+> **Archived hosted monitor (reviewed 2026-11-03).** This Google Cloud
+> Scheduler / GCS / Gemini-based monitor is retired and must not be used for
+> mainnet evidence. The active dependency-free, cloud-free monitor is
+> [`../selfhosted/README.md`](../selfhosted/README.md).
+
 # Gemini owner rehearsal monitor
 
 This collector observes an owner-operated rehearsal. It cannot approve independent

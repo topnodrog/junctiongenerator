@@ -1,3 +1,7 @@
+> **Historical agent memory (reviewed 2026-11-03).** Internal
+> implementation snapshot, not user-facing documentation or current
+> launch status. Current state: `docs/mainnet/gate-status.json`.
+
 # JGTC Testnet V1 Deployment State
 
 This record supersedes the retired `jgc-testnet-v3` deployment state. The old
