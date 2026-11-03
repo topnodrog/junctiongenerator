@@ -166,14 +166,20 @@ is online; additional participant nodes are recorded alongside it.
 ## Docker alternative
 
 Install Docker Desktop, clone or download this repository, open a terminal in
-`packages/jgc-node`, and run:
+`packages/jgc-node`, and set your own bootstrap peers (no vendor hostnames are
+baked in):
 
 ```text
-docker compose -f compose.runner.yml up --build -d
+JGC_SEEDS=wss://seed-a.example.net,wss://seed-b.example.org \
+  docker compose -f compose.runner.yml up --build -d
 ```
 
 Check the node at
-[http://127.0.0.1:7777/status](http://127.0.0.1:7777/status). Useful Docker
+[http://127.0.0.1:7777/explorer](http://127.0.0.1:7777/explorer). The private
+`/status` route is deliberately unavailable in the container, which binds its
+status listener to `0.0.0.0` for Docker port publishing; `/explorer` and
+`/healthz` are the narrow read-only public routes. If you run the node directly
+on loopback, `http://127.0.0.1:7777/status` remains available. Useful Docker
 commands are:
 
 ```text

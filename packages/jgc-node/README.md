@@ -149,14 +149,20 @@ Never reuse a testnet wallet on a valuable network.
 
 ## Containerized two-node testnet
 
-For the simplest single public runner, use:
+For the simplest single outbound runner, set your own bootstrap peers first:
 
 ```text
-docker compose -f compose.runner.yml up --build -d
+JGC_SEEDS=wss://seed-a.example.net,wss://seed-b.example.org \
+  docker compose -f compose.runner.yml up --build -d
 ```
 
-This keeps chain data in the `runner-data` volume, connects outbound to both
-public seeds, and exposes status only at `http://127.0.0.1:7777/status`. See
+`JGC_SEEDS` is required; no vendor hostnames are baked into the release. This
+keeps chain data in the `runner-data` volume and publishes only
+`http://127.0.0.1:7777` on the host. Because the container binds its status
+listener to `0.0.0.0`, the **private** `/status` route is disabled there: use
+the narrow public `http://127.0.0.1:7777/explorer` (or `/healthz`) instead.
+Operator status remains available on a loopback-bound node, or on an explicit
+`--allow-private-status-on-public-bind --status-token <token>` deployment. See
 [`docs/RUN-A-NODE.md`](docs/RUN-A-NODE.md) for stop, update, and troubleshooting
 commands.
 
