@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 import { resolve } from "path";
-import { parseTestnetOptions } from "../config/testnet-options.js";
+import { isLocalPeerHost, parseTestnetOptions, validatePeerUrl } from "../config/testnet-options.js";
 
 describe("public testnet options", () => {
   it("keeps the safe local defaults", () => {
@@ -15,6 +15,7 @@ describe("public testnet options", () => {
       produce: false,
       participate: false,
       blockIntervalSec: 600,
+      allowPrivateStatusOnPublicBind: false,
     });
   });
 
@@ -77,5 +78,58 @@ describe("public testnet options", () => {
     ["JGC_BLOCK_INTERVAL_SEC", "0"],
   ])("rejects invalid %s", (name, value) => {
     expect(() => parseTestnetOptions([], { [name]: value })).toThrow();
+  });
+
+  it("reads the separate public API listener and status token from the environment", () => {
+    expect(parseTestnetOptions([], {
+      JGC_PUBLIC_API_HOST: "0.0.0.0",
+      JGC_PUBLIC_API_PORT: "7778",
+      JGC_STATUS_TOKEN: "operator-secret",
+      JGC_STATUS_ALLOWED_ORIGINS: "https://junctiongenerator.net, https://www.junctiongenerator.net",
+    })).toMatchObject({
+      publicApiHost: "0.0.0.0",
+      publicApiPort: 7778,
+      statusToken: "operator-secret",
+      allowedOrigins: ["https://junctiongenerator.net", "https://www.junctiongenerator.net"],
+    });
+  });
+});
+
+describe("bootstrap URL validation", () => {
+  it("accepts only websocket URLs and preserves the operator's literal string", () => {
+    expect(validatePeerUrl("wss://seed.example.test", "seed")).toBe("wss://seed.example.test");
+    expect(validatePeerUrl("wss://seed.example.test/peer", "seed")).toBe("wss://seed.example.test/peer");
+    expect(validatePeerUrl(" ws://producer:19444 ", "seed")).toBe("ws://producer:19444");
+  });
+
+  it.each([
+    "http://seed.example.test",
+    "https://seed.example.test",
+    "ws://public-seed.example.net",
+    "wss://user:password@seed.example.test",
+    "wss://seed.example.test/?token=abc",
+    "wss://seed.example.test/#fragment",
+    "not-a-url",
+  ])("rejects unsafe bootstrap URL %s", (value) => {
+    expect(() => validatePeerUrl(value, "seed")).toThrow();
+  });
+
+  it("rejects cleartext public seeds, duplicate seeds, and seed floods", () => {
+    expect(() => parseTestnetOptions([], { JGC_SEEDS: "ws://seed.example.net" })).toThrow(/cleartext/);
+    expect(() => parseTestnetOptions([], {
+      JGC_SEEDS: "wss://a.example.test,wss://a.example.test",
+    })).toThrow(/duplicate/);
+    expect(() => parseTestnetOptions([], {
+      JGC_SEEDS: Array.from({ length: 33 }, (_, i) => `wss://s${i}.example.test`).join(","),
+    })).toThrow(/at most 32/);
+  });
+
+  it("classifies only local/private hosts as eligible for cleartext ws", () => {
+    for (const host of ["localhost", "127.0.0.1", "10.1.2.3", "192.168.1.4", "172.20.0.2", "producer", "[::1]"]) {
+      expect(isLocalPeerHost(host)).toBe(true);
+    }
+    for (const host of ["seed.example.net", "8.8.8.8", "172.32.0.1"]) {
+      expect(isLocalPeerHost(host)).toBe(false);
+    }
   });
 });

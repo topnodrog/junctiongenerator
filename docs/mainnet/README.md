@@ -7,6 +7,23 @@ Two engineering gates are satisfied: peer authentication and deterministic
 consensus. The other ten, including payment privacy and end-to-end quantum
 security, remain incomplete and block launch.
 
+**2026-11-02 security and launch-control pass:** the node, Worker API and
+deployment surface were hardened (see [full node security review](NODE_SECURITY_REVIEW.md)
+and [re-verification report](RESECURE_REPORT.md)); a provider-neutral deployment
+kit replaced the Google Cloud/Fly.io seed plan; and a signed, machine-checkable
+gate closure mechanism was added. No gate was flipped and **no value-bearing
+mainnet was launched** — the owner chose *prepare only* for this pass.
+
+Start with [the launch plan](LAUNCH_PLAN.md),
+[the gate closure protocol](GATE_CLOSURE_PROTOCOL.md) and
+[the external-review onboarding plan](EXTERNAL_REVIEW_ONBOARDING.md).
+
+Also see: [outreach funnel](OUTREACH_PLAN.md), [review pack](REVIEW_PACK.md),
+[public one-pager](../public/JGC_INDEPENDENT_REVIEW_PROGRAM.md),
+[machine-readable gate snapshot](gate-status.json),
+[premine funding decision](PREMINE_FUNDING_DECISION.md) and the
+[provider-neutral deployment kit](../../packages/jgc-node/deploy/selfhosted/README.md).
+
 See [findings and prioritized todo](FINDINGS_AND_TODO.md) for the current audit,
 including the owner's mandatory Zcash-like privacy and quantum requirements,
 and [peer authentication evidence](PEER_AUTHENTICATION.md) for the candidate
@@ -24,6 +41,20 @@ npm run mainnet:preflight
 The command builds the node, prints a machine-readable JSON result, and exits
 non-zero until every required gate is complete. A non-zero result is expected
 for the current repository.
+
+Additional fail-closed checks (all from `packages/jgc-node`):
+
+```text
+npm run gates:status                  # per-gate owners, deliverables, evidence state
+npm run proof:registry                # placeholder proving-key report
+npm run mainnet:launch                # signed M-of-N launch record + evidence verification
+npm run infra:guard                   # active kit has no Fly.io / Google Cloud dependency
+```
+
+`npm run mainnet:launch` is a launch **gate**, not an activator. It never starts
+a node. With zero trusted keys, an empty evidence ledger, a placeholder proof
+registry and no signed launch record, it always fails closed. CI asserts this
+in `.github/workflows/infra-guard.yml`.
 
 ## Required gates
 

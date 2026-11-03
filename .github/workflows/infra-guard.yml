@@ -1,0 +1,71 @@
+name: Provider-neutral infrastructure and launch gate
+
+on:
+  push:
+    paths:
+      - "packages/jgc-node/deploy/selfhosted/**"
+      - "packages/jgc-node/scripts/infra-guard.mjs"
+      - "packages/jgc-node/scripts/mainnet-launch.mjs"
+      - "packages/jgc-node/scripts/gate-status.mjs"
+      - "packages/jgc-node/scripts/proof-registry-check.mjs"
+      - "packages/jgc-node/src/config/mainnet-launch-control.ts"
+      - "packages/jgc-node/src/crypto/proof-registry.ts"
+      - "docs/mainnet/**"
+      - "docs/public/**"
+      - "SECURITY.md"
+      - ".github/ISSUE_TEMPLATE/**"
+      - ".github/workflows/infra-guard.yml"
+  pull_request:
+    paths:
+      - "packages/jgc-node/deploy/selfhosted/**"
+      - "packages/jgc-node/scripts/infra-guard.mjs"
+      - "packages/jgc-node/scripts/mainnet-launch.mjs"
+      - "packages/jgc-node/scripts/gate-status.mjs"
+      - "packages/jgc-node/scripts/proof-registry-check.mjs"
+      - "packages/jgc-node/src/config/mainnet-launch-control.ts"
+      - "packages/jgc-node/src/crypto/proof-registry.ts"
+      - "docs/mainnet/**"
+      - "docs/public/**"
+      - "SECURITY.md"
+      - ".github/ISSUE_TEMPLATE/**"
+      - ".github/workflows/infra-guard.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: infra-launch-guard
+  cancel-in-progress: false
+
+jobs:
+  guard:
+    name: No cloud lock-in and mainnet stays fail-closed
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: packages/jgc-node
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: packages/jgc-node/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - name: Active deployment kit has no Fly.io or Google Cloud dependency
+        run: node scripts/infra-guard.mjs
+      - name: Provider-neutral monitor tests
+        run: node --test deploy/selfhosted/monitor.test.mjs
+      - name: Proof registry is still blocked
+        run: node scripts/proof-registry-check.mjs --assert-blocked
+      - name: Gate evidence status (published to the CI summary)
+        run: |
+          echo '## Mainnet gate status' >> "$GITHUB_STEP_SUMMARY"
+          echo '```json' >> "$GITHUB_STEP_SUMMARY"
+          node scripts/gate-status.mjs >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+      - name: Value-bearing mainnet launch remains blocked
+        run: node scripts/mainnet-launch.mjs --assert-blocked

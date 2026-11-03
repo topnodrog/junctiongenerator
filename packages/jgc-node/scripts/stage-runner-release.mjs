@@ -88,10 +88,11 @@ const baseManifest = {
   network: networks.TESTNET_NETWORK.chainId,
   genesisHash: networks.TESTNET_GENESIS_HASH,
   proofMode: networks.TESTNET_NETWORK.proofMode,
-  seeds: [
-    "wss://seed-a.junctiongenerator.net",
-    "wss://jgc-testnet-seed-b.fly.dev",
-  ],
+  // Provider-neutral bootstrap list. Operators can override it for a release;
+  // no Fly.io or Google-hosted hostname is baked into the runner bundle.
+  seeds: (process.env.JGC_RELEASE_SEEDS
+    ?? "wss://seed-a.junctiongenerator.net,wss://seed-b.junctiongenerator.net,wss://seed-c.example.net")
+    .split(",").map((seed) => seed.trim()).filter(Boolean),
 };
 const manifest = buildReleaseManifest(baseManifest, collectReleaseFiles(bundleRoot));
 validateReleaseManifestMetadata(manifest, bundleRoot);

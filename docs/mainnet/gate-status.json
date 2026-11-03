@@ -1,0 +1,280 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-11-03T04:46:39.817Z",
+  "network": "jgc-mainnet-v3",
+  "ready": false,
+  "policy": {
+    "valid": false,
+    "reasons": [
+      "threshold exceeds the number of trusted keys",
+      "launch policy has no independent reviewer key"
+    ],
+    "trustedKeys": 0
+  },
+  "proofRegistry": {
+    "status": "blocked",
+    "reasons": [
+      "proof registry does not match the compiled mainnet identity",
+      "ceremony transcript, participant list, or completion date is missing",
+      "external cryptographic review attestation is missing or incomplete",
+      "proof registry must contain 1..64 reviewed circuit keys"
+    ],
+    "registrySha256": null
+  },
+  "builtInRegistry": {
+    "status": "placeholder",
+    "circuitCount": 5
+  },
+  "ledgerSha256": "63db4627cc84c1fc050cbcdbe919db8dd665c1efc24668ca446f0ad935b8a9c1",
+  "baselineMissingGates": [
+    "proofSystem",
+    "postQuantumSecurity",
+    "paymentPrivacy",
+    "usefulServices",
+    "governance",
+    "permissionlessProduction",
+    "validatorEconomics",
+    "reproducibleArtifacts",
+    "soloSoak",
+    "independentSecurityReview"
+  ],
+  "gates": [
+    {
+      "gate": "proofSystem",
+      "baselineGate": false,
+      "evidenceSatisfied": false,
+      "reasons": [
+        "no signed evidence record"
+      ],
+      "owner": "Cryptography lead + independent ZK reviewers",
+      "deliverable": "Versioned ceremony transcript, signed proof-registry manifest, strict verifier tests",
+      "requiredArtifacts": [
+        "proof-registry",
+        "ceremony-transcript",
+        "verifier-binary",
+        "external-crypto-review"
+      ],
+      "verificationCommands": [
+        "npm test -- --runTestsByPath src/tests/proof-registry.test.ts",
+        "npm run proof:registry -- --check"
+      ],
+      "requiresIndependentReview": true
+    },
+    {
+      "gate": "postQuantumSecurity",
+      "baselineGate": false,
+      "evidenceSatisfied": false,
+      "reasons": [
+        "no signed evidence record"
+      ],
+      "owner": "Cryptography lead + independent PQ reviewers",
+      "deliverable": "Full-length commitments, PQ proof backend, key-migration spec, adversarial tests",
+      "requiredArtifacts": [
+        "pq-threat-model",
+        "pq-migration-spec",
+        "pq-adversarial-tests",
+        "external-crypto-review"
+      ],
+      "verificationCommands": [
+        "npm test -- --runTestsByPath src/tests/pq-signatures.test.ts src/tests/pq-zkp.test.ts",
+        "npm run pq:evaluate"
+      ],
+      "requiresIndependentReview": true
+    },
+    {
+      "gate": "paymentPrivacy",
+      "baselineGate": false,
+      "evidenceSatisfied": false,
+      "reasons": [
+        "no signed evidence record"
+      ],
+      "owner": "Protocol + wallet leads + external privacy reviewers",
+      "deliverable": "Implemented V3 shielded transaction, wallet scanning/recovery, value-conservation tests",
+      "requiredArtifacts": [
+        "shielded-spec",
+        "shielded-adversarial-tests",
+        "wallet-recovery-tests",
+        "external-crypto-review"
+      ],
+      "verificationCommands": [
+        "npm test -- --runTestsByPath src/tests/shielded-payments.test.ts src/tests/wallet-recovery.test.ts"
+      ],
+      "requiresIndependentReview": true
+    },
+    {
+      "gate": "usefulServices",
+      "baselineGate": false,
+      "evidenceSatisfied": false,
+      "reasons": [
+        "no signed evidence record"
+      ],
+      "owner": "Broker + consensus leads",
+      "deliverable": "Remote dispatch API, consensus ledger settlement, storage availability challenges",
+      "requiredArtifacts": [
+        "service-settlement-spec",
+        "funded-work-tests",
+        "recovery-tests"
+      ],
+      "verificationCommands": [
+        "npm test -- --runTestsByPath src/tests/funded-work.test.ts src/tests/assigned-work.test.ts",
+        "npm test -- --runTestsByPath src/tests/reorg.test.ts"
+      ],
+      "requiresIndependentReview": false
+    },
+    {
+      "gate": "governance",
+      "baselineGate": false,
+      "evidenceSatisfied": false,
+      "reasons": [
+        "no signed evidence record"
+      ],
+      "owner": "Protocol lead + independent governance reviewer",
+      "deliverable": "Governance spec, authority-limit tests, upgrade/recovery drills",
+      "requiredArtifacts": [
+        "governance-spec",
+        "governance-tests",
+        "recovery-drill-evidence"
+      ],
+      "verificationCommands": [
+        "npm test -- --runTestsByPath src/tests/governance.test.ts"
+      ],
+      "requiresIndependentReview": true
+    },
+    {
+      "gate": "deterministicConsensus",
+      "baselineGate": true,
+      "evidenceSatisfied": false,
+      "reasons": [
+        "no signed evidence record"
+      ],
+      "owner": "Consensus lead",
+      "deliverable": "Pinned cross-platform vectors and restart validation",
+      "requiredArtifacts": [
+        "consensus-vectors",
+        "restart-evidence"
+      ],
+      "verificationCommands": [
+        "npm test -- --runTestsByPath src/tests/candidate-consensus.test.ts src/tests/canonical.test.ts"
+      ],
+      "requiresIndependentReview": false
+    },
+    {
+      "gate": "permissionlessProduction",
+      "baselineGate": false,
+      "evidenceSatisfied": false,
+      "reasons": [
+        "no signed evidence record"
+      ],
+      "owner": "Consensus lead + independent consensus reviewer",
+      "deliverable": "Enforced proposer schedule, adversarial proposer tests, activation height",
+      "requiredArtifacts": [
+        "proposer-spec",
+        "proposer-adversarial-tests",
+        "activation-plan"
+      ],
+      "verificationCommands": [
+        "npm test -- --runTestsByPath src/tests/proposer.test.ts src/tests/network-identity.test.ts"
+      ],
+      "requiresIndependentReview": true
+    },
+    {
+      "gate": "peerAuthentication",
+      "baselineGate": true,
+      "evidenceSatisfied": false,
+      "reasons": [
+        "no signed evidence record"
+      ],
+      "owner": "Networking lead",
+      "deliverable": "Mutual handshake, sequence/replay and transport-bound acceptance tests",
+      "requiredArtifacts": [
+        "session-acceptance-tests",
+        "transport-bounds-tests"
+      ],
+      "verificationCommands": [
+        "npm test -- --runTestsByPath src/tests/network-authentication.test.ts src/tests/auth-session.test.ts src/tests/transport-bounds.test.ts"
+      ],
+      "requiresIndependentReview": false
+    },
+    {
+      "gate": "validatorEconomics",
+      "baselineGate": false,
+      "evidenceSatisfied": false,
+      "reasons": [
+        "no signed evidence record"
+      ],
+      "owner": "Economics + consensus leads + independent economics reviewer",
+      "deliverable": "Consensus-owned bond ledger, adversarial reward/slash tests, activation spec",
+      "requiredArtifacts": [
+        "economics-spec",
+        "bond-adversarial-tests",
+        "activation-plan"
+      ],
+      "verificationCommands": [
+        "npm test -- --runTestsByPath src/tests/validator-bonds.test.ts src/tests/emission.test.ts"
+      ],
+      "requiresIndependentReview": true
+    },
+    {
+      "gate": "reproducibleArtifacts",
+      "baselineGate": false,
+      "evidenceSatisfied": false,
+      "reasons": [
+        "no signed evidence record"
+      ],
+      "owner": "Release engineer",
+      "deliverable": "Two independent rebuilds with identical digests and signatures",
+      "requiredArtifacts": [
+        "release-manifest",
+        "sbom",
+        "independent-rebuild-attestation"
+      ],
+      "verificationCommands": [
+        "npm run release:check",
+        "npm run release:verify"
+      ],
+      "requiresIndependentReview": false
+    },
+    {
+      "gate": "soloSoak",
+      "baselineGate": false,
+      "evidenceSatisfied": false,
+      "reasons": [
+        "no signed evidence record"
+      ],
+      "owner": "Operations lead + independent operators",
+      "deliverable": "Restart, seed-loss, reorg and 72-hour/cadence soak evidence",
+      "requiredArtifacts": [
+        "soak-evidence",
+        "restore-drill-evidence",
+        "inventory"
+      ],
+      "verificationCommands": [
+        "npm run solo-soak -- --blocks 100000 --nodes 5",
+        "npm run gates:status"
+      ],
+      "requiresIndependentReview": false
+    },
+    {
+      "gate": "independentSecurityReview",
+      "baselineGate": false,
+      "evidenceSatisfied": false,
+      "reasons": [
+        "no signed evidence record"
+      ],
+      "owner": "Independent reviewers (not the project owner)",
+      "deliverable": "Signed reports, resolved findings, re-review, public disclosure record",
+      "requiredArtifacts": [
+        "external-review-reports",
+        "findings-register",
+        "remediation-attestation",
+        "disclosure-record"
+      ],
+      "verificationCommands": [
+        "npm run gates:evidence -- --verify"
+      ],
+      "requiresIndependentReview": true
+    }
+  ],
+  "launchIsValueBearing": true,
+  "note": "This is an evidence report. It cannot mark a gate true or activate mainnet."
+}

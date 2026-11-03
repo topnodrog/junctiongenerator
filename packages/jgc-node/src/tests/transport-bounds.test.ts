@@ -1,6 +1,6 @@
 import { WebSocket } from "ws";
 import { jest } from "@jest/globals";
-import { startP2PServer, MAX_QUEUED_PEER_MESSAGES, MAX_QUEUED_PEER_BYTES } from "../network/transport.js";
+import { startP2PServer, MAX_QUEUED_PEER_MESSAGES, MAX_QUEUED_PEER_BYTES, MAX_INBOUND_SOCKETS } from "../network/transport.js";
 import { JGCNode } from "../network/node.js";
 import { createGenesisBlock } from "../consensus/block.js";
 import { encodePeerMessage } from "../network/wire.js";
@@ -41,4 +41,35 @@ test("terminates an outbound peer when its buffered bytes exceed the bound", asy
     });
     expect(node.peerCount()).toBe(0);
   } finally { buffered.mockRestore(); socket.terminate(); await server.close(); }
+});
+
+test("bounds simultaneous inbound sockets before allocating peer state", async () => {
+  const node = new JGCNode({ listenPort: 0, rpcPort: 0, networkMagic: 321, maxPeers: 8, enableBroker: false, junctionGeneratorMode: false }, createGenesisBlock());
+  const server = await startP2PServer(node, 0, "127.0.0.1", { maxInboundSockets: 2 });
+  const sockets: WebSocket[] = [];
+  try {
+    for (let i = 0; i < 4; i++) {
+      const socket = new WebSocket(`ws://127.0.0.1:${server.port}`);
+      sockets.push(socket);
+      await new Promise<void>((resolve, reject) => {
+        socket.once("open", () => resolve());
+        socket.once("error", reject);
+      });
+    }
+    const openCount = () => sockets.filter((socket) => socket.readyState === WebSocket.OPEN).length;
+    for (let attempt = 0; attempt < 100 && openCount() > 2; attempt++) {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+    expect(openCount()).toBe(2);
+    expect(node.peerCount()).toBeLessThanOrEqual(2);
+  } finally {
+    for (const socket of sockets) socket.terminate();
+    await server.close();
+  }
+});
+
+test("rejects an invalid global socket bound and keeps the default bounded", async () => {
+  const node = new JGCNode({ listenPort: 0, rpcPort: 0, networkMagic: 322, maxPeers: 8, enableBroker: false, junctionGeneratorMode: false }, createGenesisBlock());
+  await expect(startP2PServer(node, 0, "127.0.0.1", { maxInboundSockets: 0 })).rejects.toThrow(/maxInboundSockets/);
+  expect(MAX_INBOUND_SOCKETS).toBe(64);
 });

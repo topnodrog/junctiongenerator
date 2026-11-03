@@ -1,0 +1,6 @@
+{
+  "schemaVersion": 1,
+  "releaseCommit": "0000000000000000000000000000000000000000",
+  "records": [],
+  "note": "No gate is closed. Each record must be a SignedEnvelope<GateEvidencePayload> with the exact artifacts and verification commands from GATE_EVIDENCE_REQUIREMENTS. See docs/mainnet/GATE_CLOSURE_PROTOCOL.md."
+}

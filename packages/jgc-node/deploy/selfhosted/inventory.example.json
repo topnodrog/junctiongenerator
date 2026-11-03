@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "network": "jgtc-testnet-v2",
+  "note": "Example only. Replace every placeholder hostname with independently operated, DNS-verified wss:// seeds before deployment. Only owner-controlled hardware and independent VPS providers are permitted; hyperscale providers from the retired pilot are excluded.",
+  "operators": [
+    {
+      "operator": "owner-homelab-ca",
+      "failureDomain": "owner home lab / Cambridge ON",
+      "provider": "owner-owned hardware",
+      "region": "CA-ON",
+      "seedUrl": "wss://seed-a.junctiongenerator.net",
+      "role": "bootstrap and designated producer for the zero-value pilot only"
+    },
+    {
+      "operator": "community-operator-eu",
+      "failureDomain": "independent operator / EU datacenter",
+      "provider": "independent VPS (Hetzner)",
+      "region": "EU",
+      "seedUrl": "wss://seed-b.example.org",
+      "role": "back-checker and independent availability witness"
+    },
+    {
+      "operator": "community-operator-na",
+      "failureDomain": "independent operator / NA datacenter",
+      "provider": "independent VPS (OVH)",
+      "region": "CA-QC",
+      "seedUrl": "wss://seed-c.example.net",
+      "role": "back-checker and independent availability witness"
+    }
+  ]
+}

@@ -20,31 +20,9 @@ import { createMimeMessage } from "mimetext";
 import { PUBLIC_ACTIONS, readPublicJson, validateTurnstile } from "./public-write.mjs";
 import { legacyDispensePreview } from "./legacy-rewards.mjs";
 import { rateLimitOk } from "./rate-limit.mjs";
+import { corsHeadersFor } from "./cors.mjs";
 
 // ── Security helpers ─────────────────────────────────────────
-
-// Origins allowed to call this API from a browser.
-const ALLOWED_ORIGINS = new Set([
-  "https://junctiongenerator.net",
-  "https://www.junctiongenerator.net",
-  "http://localhost:3000",
-  "http://127.0.0.1:3000",
-]);
-
-function corsHeadersFor(request) {
-  const origin = request.headers.get("Origin") || "";
-  const isVercelPreview = origin.startsWith("https://") && origin.endsWith(".vercel.app");
-  const allowed = ALLOWED_ORIGINS.has(origin) || isVercelPreview
-    ? origin
-    : "https://junctiongenerator.net";
-  return {
-    "Access-Control-Allow-Origin": allowed,
-    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization",
-    "Access-Control-Max-Age": "86400",
-    "Vary": "Origin",
-  };
-}
 
 // Constant-time string comparison. Hashing both sides first equalizes
 // length so the XOR loop leaks nothing about either value.
@@ -107,7 +85,7 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname;
 
-    const corsHeaders = corsHeadersFor(request);
+    const corsHeaders = corsHeadersFor(request, env);
 
     if (request.method === "OPTIONS") {
       return new Response(null, { headers: corsHeaders });

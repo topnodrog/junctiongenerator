@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "status": "not-generated",
+  "network": {
+    "chainId": "jgc-mainnet-v3",
+    "consensusVersion": 0,
+    "proofMode": "strict-groth16-v1"
+  },
+  "ceremony": null,
+  "review": null,
+  "keys": [],
+  "note": "Placeholder only. A real trusted-setup ceremony and an external cryptographic review must produce full-length BN254 points, a transcript digest and signed review attestation before this file can pass proof-registry-check.mjs."
+}

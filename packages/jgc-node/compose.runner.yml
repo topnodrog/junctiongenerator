@@ -2,7 +2,7 @@ services:
   runner:
     build: .
     environment:
-      JGC_SEEDS: "${JGC_SEEDS:-wss://seed-a.junctiongenerator.net,wss://jgc-testnet-seed-b.fly.dev}"
+      JGC_SEEDS: "${JGC_SEEDS:?set JGC_SEEDS to comma-separated wss:// seed URLs}"
       JGC_PARTICIPATE: "${JGC_PARTICIPATE:-false}"
     ports:
       - "127.0.0.1:7777:7777"

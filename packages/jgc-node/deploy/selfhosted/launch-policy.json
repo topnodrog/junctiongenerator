@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "network": "jgc-mainnet-v3",
+  "threshold": 2,
+  "minIndependentReviewers": 1,
+  "trustedKeys": [],
+  "note": "Fail-closed by design. Add Ed25519 public keys only after independent reviewers are onboarded and their identities are verified out of band. A keyId has the form <name>.<role>; fingerprint is sha256 of the SPKI DER. A value-bearing launch record needs at least threshold distinct signatures, including an independent reviewer."
+}

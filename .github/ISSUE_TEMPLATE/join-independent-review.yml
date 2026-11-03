@@ -1,0 +1,67 @@
+name: Join the independent review program
+description: Apply as an independent operator, reviewer or rebuilder. Zero-value testnet candidate; no real funds involved.
+title: "[Review] "
+labels: ["review-program"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping make an independent security review possible.
+
+        JGC is a **zero-value testnet candidate**. No value-bearing mainnet exists, JGT is a legacy token we do not promote, and there is no token sale. Please read the [one-pager](https://github.com/topnodrog/junctiongenerator/blob/main/docs/public/JGC_INDEPENDENT_REVIEW_PROGRAM.md), the [review pack](https://github.com/topnodrog/junctiongenerator/blob/main/docs/mainnet/REVIEW_PACK.md) and [SECURITY.md](https://github.com/topnodrog/junctiongenerator/blob/main/SECURITY.md) first.
+
+        The easiest first step is the 10-minute reproducible-build challenge. You do not need to complete it before opening this issue.
+  - type: dropdown
+    id: track
+    attributes:
+      label: Which track are you joining?
+      options:
+        - Independent seed operator
+        - Protocol / cryptography reviewer
+        - Consensus / network / economics reviewer
+        - Independent release rebuilder
+    validations:
+      required: true
+  - type: input
+    id: first-win
+    attributes:
+      label: First reproducible result (optional)
+      description: "For example: commit, `npm run release:check`, and your tree digest; or a local node height. Leave blank if not yet."
+      placeholder: "a1b2c3d… / treeSha256=… / height=20"
+  - type: input
+    id: affiliation
+    attributes:
+      label: Affiliation or organization (optional)
+      description: Used only to verify that two signers are genuinely independent. Do not include personal contact details.
+  - type: dropdown
+    id: conflict
+    attributes:
+      label: Conflict of interest
+      options:
+        - "None"
+        - "I have contributed code to JGC"
+        - "I am the project owner"
+        - "Other (explain below)"
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: What would you like to work on?
+      description: "Name one gate, one assumption you want to test, or the seed you plan to run. Short is fine."
+    validations:
+      required: true
+  - type: input
+    id: key-fingerprint
+    attributes:
+      label: Ed25519 public key fingerprint (optional, later)
+      description: "sha256 of the SPKI DER. Never paste a private key. See GATE_CLOSURE_PROTOCOL.md."
+  - type: checkboxes
+    id: agreement
+    attributes:
+      label: Agreement
+      options:
+        - label: I will not include private keys, secrets, or other people's data in this issue.
+          required: true
+        - label: I understand findings are public by default and that any compensation is never tied to a clean report.
+          required: true

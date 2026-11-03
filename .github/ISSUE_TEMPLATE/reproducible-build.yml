@@ -1,0 +1,61 @@
+name: Reproducible build challenge
+description: Publish two SHA-256 digests for a pinned jgc-node release. About ten minutes; a mismatch is a useful finding.
+title: "[Rebuild] "
+labels: ["rebuild-attestation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Reproduce a pinned `jgc-node` release on your own machine and post the digests below. A **mismatch is a finding**, not a failure — we will log it publicly. Two independent matches are needed before we can call the artifacts reproducible.
+
+        ```text
+        cd packages/jgc-node
+        npm ci
+        npm run typecheck
+        npm run build
+        npm run release:check
+        npm run gates:status
+        ```
+
+        See the [review pack](https://github.com/topnodrog/junctiongenerator/blob/main/docs/mainnet/REVIEW_PACK.md) and the [release manifest docs](https://github.com/topnodrog/junctiongenerator/blob/main/packages/jgc-node/README.md).
+  - type: input
+    id: commit
+    attributes:
+      label: Release commit or tag
+      placeholder: "jgc-node-v0.1.0 / full 40-character commit"
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: OS, architecture and Node version
+      placeholder: "Ubuntu 24.04 / x86_64 / Node 22.22.3"
+    validations:
+      required: true
+  - type: input
+    id: tree-digest
+    attributes:
+      label: RELEASE-MANIFEST.json treeSha256
+    validations:
+      required: true
+  - type: input
+    id: archive-digest
+    attributes:
+      label: Release archive SHA-256
+    validations:
+      required: true
+  - type: dropdown
+    id: matched
+    attributes:
+      label: Did your digests match the published values?
+      options:
+        - "Yes — both matched"
+        - "No — one or both differ (finding)"
+        - "I could not complete the build"
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes / mismatch details
+      description: "If it did not match, include the command output and the first point of divergence. No secrets."

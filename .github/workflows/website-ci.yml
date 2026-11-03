@@ -71,7 +71,7 @@ jobs:
       - name: Test Worker and deployment safety
         run: >-
           node --test api/public-write.test.mjs api/legacy-rewards.test.mjs
-          api/rate-limit.test.mjs scripts/deploy/deployment-safety.test.cjs
+          api/rate-limit.test.mjs api/cors.test.mjs scripts/deploy/deployment-safety.test.cjs
       - name: Check JGT relayer script syntax
         run: node --check scripts/relayer/submit_jgt_claim.mjs
 

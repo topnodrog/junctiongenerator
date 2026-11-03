@@ -13,6 +13,9 @@ DIGEST_RECIPIENT = "jgordon5240@gmail.com"
 AD_REWARD_JGT = "1"
 # Siteverify must confirm both the expected hostname and the form action.
 TURNSTILE_HOSTNAMES = "junctiongenerator.net,www.junctiongenerator.net"
+# Optional exact https:// preview origins allowed to call this Worker from a
+# browser. A wildcard *.vercel.app origin is no longer trusted.
+# ALLOWED_PREVIEW_ORIGINS = "https://jg-preview-team.vercel.app"
 # Secrets (set via wrangler secret put):
 # TURSO_AUTH_TOKEN - Turso auth token
 # TURNSTILE_SECRET_KEY - widget secret; never store in source or local files

@@ -34,6 +34,22 @@ belongs only in the Worker's `TURNSTILE_SECRET_KEY` secret binding.
 Preview domains need a separate test configuration; production does not accept
 localhost tokens. Use Cloudflare's documented dummy keys only in local tests.
 
+## API origin policy
+
+`api/cors.mjs` reflects only an exact allowlist: the production origins, the
+two loopback development origins, and any explicitly configured
+`ALLOWED_PREVIEW_ORIGINS` entries (exact `https://` origins). The previous
+wildcard trust of any `https://*.vercel.app` origin was removed; an
+unrecognized origin receives a non-reflecting fallback header and cannot read
+cross-origin responses. `api/cors.test.mjs` pins this behavior and runs in
+`website-ci.yml`. Preview origins must be configured in the hosting dashboard,
+never copied into Git with secrets.
+
+The node status server applies the same principle: `JGC_STATUS_ALLOWED_ORIGINS`
+is an exact allowlist, private-network-access preflights are answered only for
+allowlisted origins on a loopback bind, and `/status` is never served on a
+public bind. See [`docs/mainnet/NODE_SECURITY_REVIEW.md`](mainnet/NODE_SECURITY_REVIEW.md).
+
 ## Browser policy
 
 `src/proxy.ts` creates a fresh nonce per document response. Next's hydration

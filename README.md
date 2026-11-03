@@ -45,9 +45,13 @@ Latest recorded node milestone (2026-09-05):
   cross-platform CI, and the hosted Docker smoke test passed in the latest
   recorded verification.
 
-The node is early, valueless testnet software. Two independent bootstrap seeds
-are reachable: Google Seed A at `wss://seed-a.junctiongenerator.net` and Fly.io
-Seed B at `wss://jgc-testnet-seed-b.fly.dev`. After the v1 soak exposed
+The node is early, valueless testnet software. The historic pilot used two
+bootstrap seeds on Google Cloud and Fly.io; those deployments are being retired.
+New deployments are provider-neutral and operator-owned — see
+[`packages/jgc-node/deploy/selfhosted/README.md`](packages/jgc-node/deploy/selfhosted/README.md).
+Runner commands now read `JGC_SEEDS` from the environment instead of embedding a
+cloud hostname. Mainnet remains fail-closed; see
+[`docs/mainnet/LAUNCH_PLAN.md`](docs/mainnet/LAUNCH_PLAN.md). After the v1 soak exposed
 non-unique settlement transaction IDs, the repaired chain was isolated as
 `jgtc-testnet-v2` on 2026-08-26 with the old state preserved in recoverable
 archives. A 2026-09-02 UTC public snapshot at height 878 passed all ten soak
@@ -129,13 +133,29 @@ hire_leads, digest_state
 JGC development is funded through grants, donations, sponsorships, and paid
 client work. JGT is a legacy Base token and is not being sold or promoted.
 Marketplace, staking, ad-reward, and referral code is historical/reference
-material, not the current launch strategy.
+material, not the current launch strategy. The current testnet has **no
+premine**; a proposed genesis allocation to fund independent review and future
+bug bounties is explicitly under review and is not implemented — see
+[`docs/mainnet/PREMINE_FUNDING_DECISION.md`](docs/mainnet/PREMINE_FUNDING_DECISION.md).
+
+## Get involved (independent review)
+
+JGC is a zero-value testnet candidate with ten open mainnet gates. The
+lowest-friction way to help is the ten-minute reproducible-build challenge;
+you can also run an independent seed on your own hardware/VPS or review one
+specific gate. Start with the
+[review pack](docs/mainnet/REVIEW_PACK.md), the
+[shareable one-pager](docs/public/JGC_INDEPENDENT_REVIEW_PROGRAM.md), the
+[public gate snapshot](docs/mainnet/gate-status.json) and the GitHub issue
+templates. See [`SECURITY.md`](SECURITY.md) for safe harbor.
 
 ---
 
 ## What needs doing now
 
-The active plan is [`docs/NEXT_STEPS_PLAN.md`](docs/NEXT_STEPS_PLAN.md). Work is
+The active launch plan is [`docs/mainnet/LAUNCH_PLAN.md`](docs/mainnet/LAUNCH_PLAN.md)
+(secure → prepare → resecure → launch, without Fly.io or Google Cloud), with the
+operational plan in [`docs/NEXT_STEPS_PLAN.md`](docs/NEXT_STEPS_PLAN.md). Work is
 sequenced behind explicit gates:
 
 The [v0.1.0 prerelease](https://github.com/topnodrog/junctiongenerator/releases/tag/jgc-node-v0.1.0)
@@ -194,8 +214,9 @@ Historical financial and outreach drafts are preserved privately. The
 
 **Public JGTC testnet pilot** (Live; closed soak in progress)
 - Consensus V3 and local/container testnet foundation complete
-- Storage hardening and local operations-model evaluation complete; Google
-  Seed A and independent Fly.io Seed B are live
+- Storage hardening and local operations-model evaluation complete; the legacy
+  two-provider pilot is being migrated to three independently operated seeds
+  on owner-controlled and non-Google/non-Fly hosts
 - The repaired zero-premine `jgtc-testnet-v2` explorer/participation chain is
   live; six settlements and exact supply conservation were observed by the
   2026-09-02 UTC snapshot; independent-runner soak evidence follows
@@ -206,9 +227,16 @@ Historical financial and outreach drafts are preserved privately. The
 
 ```bash
 # Join and record participation in the JGTC testnet pilot
+# Set JGC_SEEDS to comma-separated wss:// bootstrap URLs from your operator.
 cd packages/jgc-node
 npm ci
-npm run testnet:participate
+JGC_SEEDS="wss://seed-a.example.net,wss://seed-b.example.org" npm run testnet:participate
+
+# Mainnet readiness (all expect a blocked result today)
+npm run gates:status
+npm run proof:registry
+npm run mainnet:launch -- --assert-blocked
+npm run infra:guard
 
 # Local website development
 cd C:/dev/JunctionGenerator
