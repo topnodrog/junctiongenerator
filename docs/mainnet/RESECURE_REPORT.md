@@ -46,14 +46,18 @@ expected fields, `/status` 404. **Docker Compose testnet smoke now passes in
 CI** (run 41582619326). Runner docs and `docs/PUBLIC_SEED_DEPLOYMENT.md` were
 corrected in the same commit.
 
-**One external check remains failing:** Vercel preview deployments for both
-`75f9f09` and `e0a3970` report `Deployment has failed`, while the equivalent
-GitHub Actions `Website lint and build` job passes (`yarn install
---frozen-lockfile`, `yarn lint`, `yarn build`) and a local `npm install` +
-`npm run lint` + `npm run build` also passes. Vercel build logs are not
+**One external check remains failing:** Vercel preview deployments for all
+three commits (`75f9f09`, `e0a3970`, `563ab33` — including a docs-only commit)
+report `Deployment has failed`, while the equivalent GitHub Actions
+`Website lint and build` job passes (`yarn install --frozen-lockfile`,
+`yarn lint`, `yarn build`) and a local `npm install` + `npm run lint` +
+`npm run build` also passes. Because a docs-only commit fails too, this is not
+attributable to the Node/Worker code changes. Vercel build logs are not
 accessible from this sandbox; the owner needs `npx vercel inspect
-dpl_<id> --logs` or the Vercel dashboard. This is a deployment-platform issue
-to resolve, not a gate waiver.
+dpl_97JUdj5GxhBUJiBExR9jCT9Ppg4z --logs` (or the earlier deployment IDs
+`dpl_G2maGgRMvbZ7ABqCM7MjGGuL9JXH`, `dpl_GeUgimeScikaDBRyrUkoqJrEK9Ya`) or
+the Vercel dashboard. This is a deployment-platform issue to resolve, not a
+gate waiver.
 
 ## 2. New regression coverage
 
