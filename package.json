@@ -10,7 +10,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint src next.config.ts eslint.config.mjs"
+    "lint": "eslint src next.config.ts eslint.config.mjs",
+    "vercel:budget": "node scripts/vercel-function-budget.mjs --max 0"
   },
   "dependencies": {
     "ethers": "^6.16.0",

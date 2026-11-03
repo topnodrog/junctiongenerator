@@ -16,8 +16,8 @@ blocked.** This is engineering verification, not an external security review.
 | Compile | `npm run build` | PASS |
 | Full node suite | `npm test -- --ci` | **57 suites / 496 tests passed** (baseline was 54 / 466; +3 suites, +30 tests) |
 | Release rehearsal | `npm run release:check` | **PASS** — typecheck, full suite (57/496), build, mainnet preflight still blocked, bundle staged + verified, 4 manifest tests |
-| Website/Worker tests | `node --test api/public-write.test.mjs api/legacy-rewards.test.mjs api/rate-limit.test.mjs api/cors.test.mjs scripts/deploy/deployment-safety.test.cjs` | **21 tests passed** |
-| Worker/deploy syntax | `node --check` over `api/*.js`, `api/*.mjs`, `scripts/deploy/*`, `tools/jgt-rescue/*` | PASS |
+| Website/Worker tests | `node --test worker/public-write.test.mjs worker/legacy-rewards.test.mjs worker/rate-limit.test.mjs worker/cors.test.mjs scripts/deploy/deployment-safety.test.cjs` | **21 tests passed** |
+| Worker/deploy syntax | `node --check` over `worker/*.js`, `worker/*.mjs`, `scripts/deploy/*`, `tools/jgt-rescue/*` | PASS |
 | Provider-neutral monitor | `node --test deploy/selfhosted/monitor.test.mjs` | **4 tests passed** |
 | Infrastructure guard | `node scripts/infra-guard.mjs` | `ok: true`, 12 active files checked, 0 findings, no Fly.io / Google Cloud references |
 | Proof registry | `node scripts/proof-registry-check.mjs --assert-blocked` | PASS (blocked as expected; built-in registry has 5 placeholder circuits) |
@@ -46,18 +46,23 @@ expected fields, `/status` 404. **Docker Compose testnet smoke now passes in
 CI** (run 41582619326). Runner docs and `docs/PUBLIC_SEED_DEPLOYMENT.md` were
 corrected in the same commit.
 
-**One external check remains failing:** Vercel preview deployments for all
-three commits (`75f9f09`, `e0a3970`, `563ab33` — including a docs-only commit)
-report `Deployment has failed`, while the equivalent GitHub Actions
-`Website lint and build` job passes (`yarn install --frozen-lockfile`,
-`yarn lint`, `yarn build`) and a local `npm install` + `npm run lint` +
-`npm run build` also passes. Because a docs-only commit fails too, this is not
-attributable to the Node/Worker code changes. Vercel build logs are not
-accessible from this sandbox; the owner needs `npx vercel inspect
-dpl_97JUdj5GxhBUJiBExR9jCT9Ppg4z --logs` (or the earlier deployment IDs
-`dpl_G2maGgRMvbZ7ABqCM7MjGGuL9JXH`, `dpl_GeUgimeScikaDBRyrUkoqJrEK9Ya`) or
-the Vercel dashboard. This is a deployment-platform issue to resolve, not a
-gate waiver.
+**The external Vercel check was root-caused and fixed.** The owner identified
+the Hobby plan's 12-Serverless-Function limit. Vercel auto-deploys every source
+file in the root `api/` directory as a separate function — including helpers,
+`node:test` suites and migration scripts. `main` had 9 such files and just fit;
+PR #66 added `cors.mjs` and `cors.test.mjs` → 11 → over the cap, so every
+commit in the PR (even docs-only) failed while the equivalent GitHub Actions
+website build passed. All Cloudflare Worker source was moved to `worker/` so
+Vercel creates **0** root-`api` functions, and
+`scripts/vercel-function-budget.mjs --max 0` now guards CI. No HTTP route,
+auth rule, CORS behaviour or mainnet gate changed. Full analysis and the
+12-route shortlist: [`../VERCEL_FUNCTION_BUDGET.md`](../VERCEL_FUNCTION_BUDGET.md).
+Preview confirmation after the fix is recorded in §1c.
+
+## 1c. Vercel preview confirmation
+
+Pending: the fix commit is pushed and the Vercel preview status is checked in
+the GitHub PR. This section is updated with the result before handoff.
 
 ## 2. New regression coverage
 
@@ -67,7 +72,7 @@ gate waiver.
 | `src/tests/testnet-options.test.ts` (extended) | `wss://` required for public seeds; credentials/query/fragments/duplicates/32-entry cap rejected; local container `ws://` still allowed; separate public API listener and status token parsed. |
 | `src/tests/proof-registry.test.ts` | Built-in placeholder registry fails; full-length G1/G2 manifest passes; wrong network, missing review, single-participant ceremony, duplicate circuit IDs and bad IC lengths rejected. |
 | `src/tests/mainnet-launch-control.test.ts` | All 12 gate contracts; empty policy/ledger fails closed; a complete independently signed, release-bound evidence set can reach `ready: true` in a synthetic test; tampering, duplicate signers, wrong genesis, expiry, missing artifacts and digest mismatch rejected; canonical signing order-independent. |
-| `api/cors.test.mjs` | No `*.vercel.app` wildcard reflection; exact preview allowlist; malformed entries ignored. |
+| `worker/cors.test.mjs` | No `*.vercel.app` wildcard reflection; exact preview allowlist; malformed entries ignored. |
 | `deploy/selfhosted/monitor.test.mjs` | Clean `wss://`→https origin derivation; healthy/supply-conserving seeds accepted; wrong network, broken supply, unhealthy status and fetch errors fail closed; list bounds. |
 | `src/tests/transport-bounds.test.ts` (extended) | Global inbound socket cap (64 default, injectable override) rejects excess connections before peer state is allocated; invalid bounds rejected. |
 
@@ -93,7 +98,7 @@ H-01 arbitrary-origin CORS/PNA reflection; H-02 private `/status` on a public bi
 3. **The release binary must actually load the reviewed proof registry.** Enforced as `reproducibleArtifacts`/`proofSystem` artifacts, not by the preflight alone.
 4. **No external review exists.** This report is self-verification. [`EXTERNAL_REVIEW_ONBOARDING.md`](EXTERNAL_REVIEW_ONBOARDING.md), [`OUTREACH_PLAN.md`](OUTREACH_PLAN.md), [`REVIEW_PACK.md`](REVIEW_PACK.md) and the public one-pager exist to make one possible.
 5. **Owner decisions recorded:** prepare only (no network started), mixed provider-neutral infrastructure, low-friction public funnel, and a proposed 3–5 week premine that is **not implemented** and must not fund the review that authorizes it ([`PREMINE_FUNDING_DECISION.md`](PREMINE_FUNDING_DECISION.md)).
-6. Website/API still use Vercel, Cloudflare Workers and Turso — third parties, but neither Fly.io nor Google Cloud, and outside consensus trust. Provider/secret rotation remains in the recurring checklist; the Vercel preview deployment check is currently failing (see §1b).
+6. Website/API still use Vercel, Cloudflare Workers and Turso — third parties, but neither Fly.io nor Google Cloud, and outside consensus trust. Provider/secret rotation remains in the recurring checklist. The Vercel Hobby function budget is now guarded in CI (§1b/§1c).
 7. **Dependency alerts are open:** a 2026-11-03 push reported 18 alerts on the default branch (7 critical, 6 high, 5 moderate). `npm audit`, alert triage, Docker image build, Wrangler dry-run, live endpoint check and Solidity compilation have not been run in this pass.
 8. **Documentation was audited on 2026-11-03** (`DOCUMENTATION_AUDIT.md`): 69 Markdown files, all relative links verified, stale provider/test-count/launch claims corrected or bannered as historical.
 

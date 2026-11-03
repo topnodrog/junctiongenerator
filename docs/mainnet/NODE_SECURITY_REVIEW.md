@@ -1,7 +1,7 @@
 # JGC node security review — inside and out
 
 **Reviewed:** 2026-11-02
-**Scope:** `packages/jgc-node/src` (~25,500 lines of TypeScript), `packages/jgc-node/rust`, Dockerfile/Compose, `deploy/`, release scripts, `.github/workflows`, `api/worker.js` + helpers, `src/proxy.ts` CSP, contracts and the mainnet readiness guard.
+**Scope:** `packages/jgc-node/src` (~25,500 lines of TypeScript), `packages/jgc-node/rust`, Dockerfile/Compose, `deploy/`, release scripts, `.github/workflows`, `worker/worker.js` + helpers, `src/proxy.ts` CSP, contracts and the mainnet readiness guard.
 **Method:** manual source review of consensus, crypto, network, storage, wallet, ops and launch paths; validated with the full Jest suite, new adversarial tests, release checks and the new infra/launch guards. No external cryptographic audit was performed. This is **not** the `independentSecurityReview` gate.
 
 ## 1. Executive result
@@ -51,7 +51,7 @@ Any web page could answer a PNA preflight and read `http://127.0.0.1:7777/status
 
 ### M-05 — Any `*.vercel.app` origin was trusted (Medium, fixed)
 
-`api/worker.js` reflected every `https://*.vercel.app` origin, and any Vercel account can host an attacker-controlled page there. Fix: `api/cors.mjs` uses an exact allowlist; previews must be explicitly listed in `ALLOWED_PREVIEW_ORIGINS`. Tests: `api/cors.test.mjs` (added to `website-ci.yml`).
+`worker/worker.js` reflected every `https://*.vercel.app` origin, and any Vercel account can host an attacker-controlled page there. Fix: `worker/cors.mjs` uses an exact allowlist; previews must be explicitly listed in `ALLOWED_PREVIEW_ORIGINS`. Tests: `worker/cors.test.mjs` (added to `website-ci.yml`).
 
 ### M-06 — Unvalidated bootstrap URLs (Medium, fixed)
 
@@ -107,13 +107,13 @@ These map exactly to the ten false gates in `src/config/mainnet-readiness.ts`. T
 | Consensus determinism | `src/consensus/*`, `src/protocol/canonical.ts`, `src/tests/candidate-consensus.test.ts` | Exact proof thresholds, canonical fork ordering, restart revalidation, settlement-ID fix, network identity separation. |
 | Storage | `src/storage/*`, `src/tests/persistence.test.ts` | Exclusive-create + fsync, checksum-linked journal, snapshot quarantine, incompatible-network rejection, torn-tail recovery. |
 | Wallet | `src/wallet/*`, `src/tests/wallet*.test.ts` | No seed phrase handling in P2P; native BTC/ETH regtest round trips with pinned external binaries. Keystores remain local and git-ignored. |
-| Website/API | `src/proxy.ts`, `api/worker.js`, `api/public-write.mjs`, `api/rate-limit.mjs` | Fresh per-request nonce CSP, Turnstile server verification bound to action/hostname, 16 KiB body cap, fail-closed rate limiting and constant-time bearer comparison. Retired airdrop routes return 410. |
+| Website/API | `src/proxy.ts`, `worker/worker.js`, `worker/public-write.mjs`, `worker/rate-limit.mjs` | Fresh per-request nonce CSP, Turnstile server verification bound to action/hostname, 16 KiB body cap, fail-closed rate limiting and constant-time bearer comparison. Retired airdrop routes return 410. |
 | Contracts | `contracts/*.sol`, `README.md` | Known-broken market/staking/dispenser sources are explicitly reference-only; faucet inactive until a reviewed minter is authorized by a clean owner. Original deployer wallet is compromised and blocked. |
 | Supply chain | `.github/workflows/*` | Actions pinned by SHA, minimal `permissions`, release tags must be on `main`, release bundle excludes data/credentials/node_modules. |
 
 ## 5. Accepted residual risks (documented, not hidden)
 
-- `api/worker.js` returns a non-reflecting fallback `Access-Control-Allow-Origin` for unknown origins; browser same-origin policy still blocks reads. Acceptable because no cookies/credentials are used.
+- `worker/worker.js` returns a non-reflecting fallback `Access-Control-Allow-Origin` for unknown origins; browser same-origin policy still blocks reads. Acceptable because no cookies/credentials are used.
 - `GET /api/health` performs an unauthenticated `SELECT 1` and reports only `connected`/`error`. Acceptable liveness probe.
 - The website/API remain on Vercel, Cloudflare Workers and Turso. These are third parties but neither Fly.io nor Google Cloud, and are outside consensus trust.
 - `JGCNode`'s in-memory `mainnetReadiness` override remains for tests (H-04 residual).

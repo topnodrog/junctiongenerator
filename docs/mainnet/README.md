@@ -148,8 +148,9 @@ All 69 Markdown files in the repository were reviewed; see the
 **Authoritative now:** this file, `LAUNCH_PLAN.md`, `GATE_CLOSURE_PROTOCOL.md`,
 `NODE_SECURITY_REVIEW.md`, `RESECURE_REPORT.md`, `REVIEW_PACK.md`,
 `EXTERNAL_REVIEW_ONBOARDING.md`, `OUTREACH_PLAN.md`,
-`PREMINE_FUNDING_DECISION.md`, `gate-status.json`,
-`../public/JGC_INDEPENDENT_REVIEW_PROGRAM.md`, root `README.md`, `SECURITY.md`,
+`PREMINE_FUNDING_DECISION.md`, `DOCUMENTATION_AUDIT.md`, `gate-status.json`,
+`../public/JGC_INDEPENDENT_REVIEW_PROGRAM.md`, `../VERCEL_FUNCTION_BUDGET.md`,
+root `README.md`, `SECURITY.md`, `../../worker/DEPLOY.md`,
 `../../packages/jgc-node/README.md`, `../../packages/jgc-node/docs/RUN-A-NODE.md`
 and `../../packages/jgc-node/deploy/selfhosted/README.md`.
 

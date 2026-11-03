@@ -19,7 +19,7 @@ Three components, one repo. Keep them distinct:
 |---|---|---|
 | **JGC coin** (`packages/jgc-node`) | Sovereign PoUC Layer-1 — the actual product | Retired zero-premine `jgtc-testnet-v2` pilot (archived 2026-11-02); current verification 57 suites / 496 tests; independent soak pending |
 | **JGT token** (`contracts/`) | ERC-20 on Base (legacy) | Deployed; no-sale stance retained; optional 2-JGT/24h minting faucet draft is not yet reviewed, deployed, or authorized |
-| **junctiongenerator.net** (`src/` + `api/`) | Public site + Cloudflare Worker backend | Worker live and verified; community-first site merged to `main` |
+| **junctiongenerator.net** (`src/` + `worker/`) | Public site + Cloudflare Worker backend | Worker live and verified; community-first site merged to `main` |
 
 The strategy on record: fund via grants/donations, never JGT sales. JGC is
 the product; the site is its shop window and node-runner recruiting funnel.

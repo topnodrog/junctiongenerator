@@ -1,3 +1,7 @@
+# Worker source lives in worker/, NOT in a root api/ directory. Vercel Hobby
+# allows 12 Serverless Functions and auto-deploys every source file in root
+# api/ as a function; keeping the Worker here leaves that budget to Next.js.
+# See docs/VERCEL_FUNCTION_BUDGET.md. Run Wrangler from this directory.
 account_id = "14e1784eca55fb28383172384ac8990c"
 name = "jgt-mining-api"
 main = "worker.js"

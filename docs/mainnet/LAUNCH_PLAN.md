@@ -48,7 +48,7 @@ What is true after this pass:
 | H-02 | Binding the status server to `0.0.0.0` (as the old seed deployments did) exposed `/status`, balances and producer diagnostics on the same port as the public explorer. | Private routes now return `404` on a non-loopback bind. Separate `JGC_PUBLIC_API_PORT` listener serves only `/healthz`, `/explorer`, `/balance`. Optional bearer token for explicitly exposed private status. |
 | H-03 | Strict Groth16 verification had a mutable `CIRCUIT_REGISTRY` full of short placeholder points, with no release gate. | `src/crypto/proof-registry.ts` defines a full-length, ceremony-bound, externally reviewed registry manifest; `npm run proof:registry -- --check` fails while placeholders remain; the launcher refuses to start without a reviewed manifest. |
 | H-04 | A caller could pass an unsigned in-memory `mainnetReadiness` object to `JGCNode` and satisfy the guard. | `src/config/mainnet-launch-control.ts` requires an M-of-N Ed25519-signed, expiring, release-specific launch record bound to the evidence ledger, proof registry, artifact digest, compiled chain identity and genesis. |
-| M-05 | Worker API trusted any `https://*.vercel.app` origin. | Exact allowlist in `api/cors.mjs`; preview origins are opt-in via `ALLOWED_PREVIEW_ORIGINS`. |
+| M-05 | Worker API trusted any `https://*.vercel.app` origin. | Exact allowlist in `worker/cors.mjs`; preview origins are opt-in via `ALLOWED_PREVIEW_ORIGINS`. |
 | M-06 | Public bootstrap seeds could be cleartext `ws://`, contain credentials, queries or duplicates. | `validatePeerUrl` in `src/config/testnet-options.ts`; `wss://` required for public hosts; 32-seed bound. |
 | M-07 | A scheduled workflow used a Fly.io organization token; release bundles and runner scripts hard-coded `*.fly.dev`. | Scheduled workflow removed; neutral `infra-guard.yml`, `sign:envelope`, `gates:status`, `mainnet:launch`; provider-neutral `JGC_RELEASE_SEEDS`, `-Seeds`, `JGC_SEEDS`. |
 | M-08 | Hosted soak monitor depended on Cloud Scheduler, GCS and Gemini and could pause itself with a cloud IAM token. | `deploy/selfhosted/monitor.mjs` polls only narrow public endpoints, uses no cloud API and no model decisions, writes local JSON evidence. |
@@ -125,8 +125,8 @@ npm run monitor:test
 Website/Worker checks from the repository root:
 
 ```text
-node --test api/public-write.test.mjs api/legacy-rewards.test.mjs \
-  api/rate-limit.test.mjs api/cors.test.mjs scripts/deploy/deployment-safety.test.cjs
+node --test worker/public-write.test.mjs worker/legacy-rewards.test.mjs \
+  worker/rate-limit.test.mjs worker/cors.test.mjs scripts/deploy/deployment-safety.test.cjs
 yarn lint && yarn build
 ```
 

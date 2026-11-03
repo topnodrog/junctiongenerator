@@ -315,7 +315,7 @@ Exit criteria:
 ## Parallel website security track
 
 The public-form protections and enforced CSP are implemented and merged in
-PR #47; deployment evidence is recorded in `api/DEPLOY.md`. The separate JGT
+PR #47; deployment evidence is recorded in `worker/DEPLOY.md`. The separate JGT
 faucet route now uses a minimal injected-wallet claim flow, but remains inactive
 until a reviewed Base minting dispenser is deployed, authorized by the verified clean current token owner, and configured.
 

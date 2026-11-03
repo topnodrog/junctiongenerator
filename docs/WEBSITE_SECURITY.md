@@ -42,12 +42,12 @@ localhost tokens. Use Cloudflare's documented dummy keys only in local tests.
 
 ## API origin policy
 
-`api/cors.mjs` reflects only an exact allowlist: the production origins, the
+`worker/cors.mjs` reflects only an exact allowlist: the production origins, the
 two loopback development origins, and any explicitly configured
 `ALLOWED_PREVIEW_ORIGINS` entries (exact `https://` origins). The previous
 wildcard trust of any `https://*.vercel.app` origin was removed; an
 unrecognized origin receives a non-reflecting fallback header and cannot read
-cross-origin responses. `api/cors.test.mjs` pins this behavior and runs in
+cross-origin responses. `worker/cors.test.mjs` pins this behavior and runs in
 `website-ci.yml`. Preview origins must be configured in the hosting dashboard,
 never copied into Git with secrets.
 
@@ -104,4 +104,4 @@ or third-party security certification is not claimed.
 Deploy the challenge-bearing frontend before enforcing the new Worker checks.
 After deployment, verify production response headers, challenge rendering,
 health and scoreboard reads, rejection of absent/forged tokens, and retired
-airdrop behavior. Record the deployed Worker version in `api/DEPLOY.md`.
+airdrop behavior. Record the deployed Worker version in `worker/DEPLOY.md`.

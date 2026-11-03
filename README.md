@@ -101,9 +101,19 @@ The optional [`/jgt-faucet`](docs/JGT_FAUCET.md) route stays inactive until the 
 | Turso Database | `jgt-mining-topnodrog.aws-us-east-2.turso.io` | Live |
 | Vercel Frontend | `junctiongenerator.net` | Live |
 
+> **Vercel Hobby function budget:** Cloudflare Worker source lives in
+> [`worker/`](worker/DEPLOY.md), **not** in a root `api/` directory. Vercel
+> auto-deploys every source file in root `api/` as a Serverless Function and
+> the Hobby plan allows 12; the 11 Worker files (helpers, tests and migration
+> scripts included) were silently consuming that budget and caused preview
+> deployments to fail. CI enforces zero root-`api` functions via
+> `scripts/vercel-function-budget.mjs`. See
+> [`docs/VERCEL_FUNCTION_BUDGET.md`](docs/VERCEL_FUNCTION_BUDGET.md). No HTTP
+> route changed.
+
 **Worker API access model (repository code):** The 2026-09-26 security changes
 below have not been deployed. The live Worker was last verified on 2026-09-05;
-see [`api/DEPLOY.md`](api/DEPLOY.md) before relying on production behavior.
+see [`worker/DEPLOY.md`](worker/DEPLOY.md) before relying on production behavior.
 
 - Public writes: `POST /api/subscribe`, `/api/hire-lead`, `/api/community/join`,
   and `/api/community/activate`. These are rate-limited and require server-verified
@@ -121,7 +131,7 @@ live public ad-reward program: `POST /api/ad-view` requires owner authentication
 and `/api/dispense` now returns a read-only legacy preview. It does **not**
 change claim rows, submit a blockchain transaction, or pay JGT. Campaign
 creation is owner-authenticated, not self-serve. Current deployment evidence is
-in [`api/DEPLOY.md`](api/DEPLOY.md).
+in [`worker/DEPLOY.md`](worker/DEPLOY.md).
 
 New newsletter and hire submissions are stored in Turso before owner
 notification is attempted. The midnight-UTC digest provides a fallback. The

@@ -1,6 +1,6 @@
-// One-time migration: creates digest_state table used to track the last
-// time the daily new-signups digest email was sent. Run with:
-//   node api/migrate_digest_state.js
+// One-time migration: creates hire_leads table used by the "hire me" popup
+// to capture email/phone leads. Run with:
+//   node worker/migrate_hire_leads.js
 // Requires .turso-token in repo root.
 const fs = require("fs");
 const path = require("path");
@@ -24,20 +24,17 @@ async function query(sql) {
 }
 
 (async () => {
-  console.log("Creating digest_state table...");
-  let result = await query(`
-    CREATE TABLE IF NOT EXISTS digest_state (
-      id INTEGER PRIMARY KEY CHECK (id = 1),
-      last_sent_at TEXT NOT NULL DEFAULT '1970-01-01 00:00:00'
+  console.log("Creating hire_leads table...");
+  const result = await query(`
+    CREATE TABLE IF NOT EXISTS hire_leads (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      email TEXT,
+      phone TEXT,
+      interest TEXT,
+      message TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `);
   console.log(JSON.stringify(result.results?.[0]?.response ?? result));
-
-  console.log("Seeding initial row...");
-  result = await query(`
-    INSERT OR IGNORE INTO digest_state (id, last_sent_at) VALUES (1, '1970-01-01 00:00:00')
-  `);
-  console.log(JSON.stringify(result.results?.[0]?.response ?? result));
-
   console.log("Done.");
 })();

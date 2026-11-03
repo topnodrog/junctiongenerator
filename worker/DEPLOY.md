@@ -10,6 +10,14 @@ URL: `https://jgt-mining-api.james-gordon.workers.dev`
 
 Current version: `9de91da9-3e77-447e-9bf4-98362650f3d6`
 
+> **Layout (2026-11-03):** Worker source lives in `worker/`, not in a root
+> `api/` directory. Vercel Hobby allows 12 Serverless Functions per deployment
+> and auto-deploys every source file in root `api/` as a separate function —
+> including helpers, tests and migration scripts. Keeping the Worker out of
+> `api/` leaves the whole budget for the Next.js site. See
+> [`../docs/VERCEL_FUNCTION_BUDGET.md`](../docs/VERCEL_FUNCTION_BUDGET.md).
+> All 19 HTTP routes are unchanged.
+
 Website protection merged in PR #47 and deployed through Vercel before the
 Worker update. The production page has its real Turnstile site key and enforced
 CSP; no dummy key is present. See `docs/WEBSITE_SECURITY.md`.
@@ -87,7 +95,8 @@ Apply `db/schema_community_flywheel.sql` to Turso before deploying this Worker.
 The migration is additive and does not alter existing mining or newsletter
 records.
 
-From `C:\dev\JunctionGenerator\api`:
+From the `worker/` directory of your clone (with Wrangler installed from
+`worker/package.json`):
 
 ```powershell
 wrangler deploy --dry-run
