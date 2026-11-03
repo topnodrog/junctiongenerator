@@ -16,23 +16,22 @@ test('blocklist matches the repository-documented compromised original deployer'
   assert.equal(documented[1].toLowerCase(), COMPROMISED_JGT_DEPLOYER.toLowerCase());
 });
 
-test('faucet UI and relayer refuse the compromised wallet for claims and sponsorship', () => {
+test('JGT faucet route is retired from the public site', () => {
   const repoRoot = path.join(scriptsDir, '../..');
-  const faucetUi = fs.readFileSync(path.join(repoRoot, 'src/components/JGTClaimFaucet.tsx'), 'utf8');
   const faucetPage = fs.readFileSync(path.join(repoRoot, 'src/app/jgt-faucet/page.tsx'), 'utf8');
+  const faucetUiPath = path.join(repoRoot, 'src/components/JGTClaimFaucet.tsx');
+  assert.match(faucetPage, /permanentRedirect\("\/"\)/);
+  assert.doesNotMatch(faucetPage, /\bJGT\b/);
+  assert.equal(fs.existsSync(faucetUiPath), false, 'JGT claim UI must be removed');
+});
+
+test('relayer and verifier refuse the compromised wallet for claims and sponsorship', () => {
+  const repoRoot = path.join(scriptsDir, '../..');
   const relayer = fs.readFileSync(path.join(repoRoot, 'scripts/relayer/submit_jgt_claim.mjs'), 'utf8');
   const verifier = fs.readFileSync(path.join(repoRoot, 'tools/jgt-rescue/verify_jgt_state.js'), 'utf8');
-  const uiAddress = faucetUi.match(/COMPROMISED_DEPLOYER_ADDRESS = "([^"]+)"/);
-  assert.ok(uiAddress, 'faucet UI must define the compromised deployer guard');
-  assert.equal(uiAddress[1].toLowerCase(), COMPROMISED_JGT_DEPLOYER.toLowerCase());
   const verifierAddress = verifier.match(/const COMPROMISED_DEPLOYER = getAddress\('([^']+)'\)/);
   assert.ok(verifierAddress, 'read-only verifier must define the compromised deployer address');
   assert.equal(verifierAddress[1].toLowerCase(), COMPROMISED_JGT_DEPLOYER.toLowerCase());
-  assert.match(faucetUi, /assertSafeClaimAccount\(walletAddress\)/);
-  assert.match(faucetUi, /assertSafeClaimAccount\(account\)/);
-  assert.match(faucetUi, /ownerIsCompromised/);
-  assert.match(faucetUi, /currentOwner === getAddress\(configuredExpectedOwner\)/);
-  assert.match(faucetPage, /NEXT_PUBLIC_JGT_CLEAN_OWNER_ADDRESS/);
   assert.match(relayer, /assertNotCompromisedDeployer\(account,/);
   assert.match(relayer, /assertNotCompromisedDeployer\(submitter,/);
   assert.match(relayer, /assertNotCompromisedDeployer\(String\(tokenOwner\)/);
