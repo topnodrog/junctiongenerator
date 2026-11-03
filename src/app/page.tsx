@@ -1,7 +1,6 @@
 import VibePlayground from "@/components/VibePlayground";
 import MiningTelemetry from "@/components/MiningTelemetry";
-import AgentConsole from "@/components/AgentConsole";
-import OSCRPCalculator from "@/components/OSCRPCalculator";
+
 import BackTheProject from "@/components/BackTheProject";
 import NewsletterSignup from "@/components/NewsletterSignup";
 import NodeStatusPanel from "@/components/NodeStatusPanel";
@@ -89,7 +88,7 @@ export default function Home() {
           <a href="#how-it-works">How it works</a>
           <a href="#status">Progress</a>
           <Link href="/testnet">Testnet</Link>
-          <Link href="/jgt-faucet">JGT faucet</Link>
+
           <Link href="/community">Join</Link>
           <Link href="/blog">Field notes</Link>
           <a href="#hire">Hire James</a>
@@ -111,8 +110,8 @@ export default function Home() {
               <Link href="/community" className="jg-button jg-button-primary">Join the JG Founding Community</Link>
               <a href="#status" className="jg-button jg-button-secondary">See what actually works</a>
             </div>
-            <p className="jg-trust-note">No token sale. JGT is a separate legacy Base token; its optional faucet is not part of JGC rewards or the JGTC testnet.</p>
-            <p className="jg-trust-note"><Link href="/jgt-faucet">Check the JGT faucet and on-chain claim status →</Link></p>
+            <p className="jg-trust-note">The code, limits, and progress are open for inspection; the public mainnet is not deployed.</p>
+
           </div>
           <div className="jg-system-map" aria-label="Junction Generator network loop">
             <div className="jg-map-label">The useful-compute loop</div>
@@ -194,9 +193,8 @@ export default function Home() {
           </div>
           <div className="section-grid jg-lab-grid">
             <div className="jg-span-two"><SectionBoundary label="Contract template demo"><VibePlayground /></SectionBoundary></div>
-            <div><SectionBoundary label="Mining simulation"><MiningTelemetry /></SectionBoundary></div>
-            <div><SectionBoundary label="Contribution simulation"><OSCRPCalculator /></SectionBoundary></div>
-            <div className="jg-span-two"><SectionBoundary label="Agent simulation"><AgentConsole /></SectionBoundary></div>
+            <div className="jg-span-two"><SectionBoundary label="Mining simulation"><MiningTelemetry /></SectionBoundary></div>
+
           </div>
         </section>
 
@@ -224,7 +222,7 @@ export default function Home() {
           <a href="#top" className="jg-brand"><span className="jg-mark" aria-hidden="true">JG</span><span><strong>Junction Generator</strong><small>Useful compute, independently verified.</small></span></a>
           <p>Early, valueless JGTC public testnet. No JGC mainnet is deployed.</p>
         </div>
-        <nav aria-label="Footer navigation"><Link href="/community">Join community</Link><Link href="/jgt-faucet">Legacy JGT faucet</Link><Link href="/whitepaper">Concept paper</Link><Link href="/blog">Field notes</Link><a href="https://github.com/topnodrog/junctiongenerator" target="_blank" rel="noopener noreferrer">GitHub</a><a href="#hire">Hire James</a></nav>
+        <nav aria-label="Footer navigation"><Link href="/community">Join community</Link><Link href="/whitepaper">Concept paper</Link><Link href="/blog">Field notes</Link><a href="https://github.com/topnodrog/junctiongenerator" target="_blank" rel="noopener noreferrer">GitHub</a><a href="#hire">Hire James</a></nav>
         <span>© 2026 Junction Generator</span>
       </footer>
     </>

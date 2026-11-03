@@ -104,12 +104,6 @@ export default function WhitepaperPage() {
           Founder James Gordon predicts that intelligence is a force that will resist containment, and that attempts to capture and sell intelligence itself will go badly for those attempting it. This is his philosophical prediction and motivation for helping build a world of abundance. It is not an established scientific finding or a promise of zero-cost infrastructure. Charging for compute and inference is consistent with this vision.
         </p>
 
-        <div style={{ background: "rgba(0,242,254,0.05)", border: "1px solid var(--glass-border)", borderRadius: 8, padding: "16px 20px", marginTop: 16 }}>
-          <strong style={{ color: "var(--color-purple)" }}>JGC vs JGT — not the same thing.</strong>
-          <p style={{ color: "var(--text-secondary)", margin: "8px 0 0" }}>
-            <strong>JGC</strong> is the protocol&apos;s native coin — earned by miners for verified useful compute, and the subject of this paper. It is pre-mainnet and exists today only on the testnet. <strong>JGT</strong> (Junction Generator Token) is a separate ERC-20 on Base, created to help support and promote the project. It is <strong>not</strong> the mining reward, <strong>not</strong> redeemable for JGC, and is not an investment.
-          </p>
-        </div>
 
         <h2 style={{ color: "var(--color-cyan)", marginTop: 32 }}>4. OSCRP — Open-Source Contributor Reward Protocol</h2>
         <p style={{ color: "var(--text-secondary)" }}>
