@@ -43,12 +43,12 @@ const COMMUNITY_PATHS = [
     cta: "Join the community",
   },
   {
-    tag: "For builders",
-    title: "Help shape the protocol",
-    body: "Review the open implementation, test assumptions, improve the node, or help solve verifiable inference.",
-    href: "https://github.com/topnodrog/junctiongenerator",
-    cta: "Explore on GitHub",
-    external: true,
+    tag: "Start with one result",
+    title: "Join the independent review",
+    body: "Rebuild a pinned source revision, reproduce a finding, or prepare to operate an independent seed.",
+    href: "/review",
+    cta: "Open the review program",
+    external: false,
   },
   {
     tag: "Early operators",
@@ -89,11 +89,11 @@ export default function Home() {
           <a href="#status">Progress</a>
           <Link href="/testnet">Testnet</Link>
 
-          <Link href="/community">Join</Link>
+          <Link href="/review">Review</Link>
           <Link href="/blog">Field notes</Link>
           <a href="#hire">Hire James</a>
         </nav>
-        <Link href="/community" className="jg-button jg-button-primary">Join</Link>
+        <Link href="/review" className="jg-button jg-button-primary">Start here</Link>
       </header>
 
       <main id="top" className="jg-page">
@@ -107,7 +107,7 @@ export default function Home() {
               in the value they help create.
             </p>
             <div className="jg-actions">
-              <Link href="/community" className="jg-button jg-button-primary">Join the JG Founding Community</Link>
+              <Link href="/review" className="jg-button jg-button-primary">Try the rebuild challenge</Link>
               <a href="#status" className="jg-button jg-button-secondary">See what actually works</a>
             </div>
             <p className="jg-trust-note">The code, limits, and progress are open for inspection; the public mainnet is not deployed.</p>
@@ -222,7 +222,7 @@ export default function Home() {
           <a href="#top" className="jg-brand"><span className="jg-mark" aria-hidden="true">JG</span><span><strong>Junction Generator</strong><small>Useful compute, independently verified.</small></span></a>
           <p>Early, valueless JGTC public testnet. No JGC mainnet is deployed.</p>
         </div>
-        <nav aria-label="Footer navigation"><Link href="/community">Join community</Link><Link href="/whitepaper">Concept paper</Link><Link href="/blog">Field notes</Link><a href="https://github.com/topnodrog/junctiongenerator" target="_blank" rel="noopener noreferrer">GitHub</a><a href="#hire">Hire James</a></nav>
+        <nav aria-label="Footer navigation"><Link href="/review">Independent review</Link><Link href="/community">Join community</Link><Link href="/whitepaper">Concept paper</Link><Link href="/blog">Field notes</Link><a href="https://github.com/topnodrog/junctiongenerator" target="_blank" rel="noopener noreferrer">GitHub</a><a href="#hire">Hire James</a></nav>
         <span>© 2026 Junction Generator</span>
       </footer>
     </>
