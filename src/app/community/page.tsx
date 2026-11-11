@@ -34,7 +34,7 @@ export default function CommunityPage() {
     <main className="jg-community-page">
       <nav className="jg-simple-nav">
         <Link href="/" className="jg-brand"><span className="jg-mark">JG</span><span><strong>Junction Generator</strong><small>Founding community</small></span></Link>
-        <div><a href="#activate">How activation works</a><a href="#scoreboard">Scoreboard</a><a href="#support">Support</a></div>
+        <div><Link href="/review">Independent review</Link><a href="#activate">How activation works</a><a href="#scoreboard">Scoreboard</a><a href="#support">Support</a></div>
       </nav>
 
       <section className="jg-community-hero">
@@ -44,7 +44,7 @@ export default function CommunityPage() {
           <p>Junction Generator is bringing together the careful builders, researchers, operators, storytellers, connectors, and supporters needed to make useful compute real.</p>
           <div className="jg-actions">
             <a className="jg-button jg-button-primary" href={DISCORD_URL} target="_blank" rel="noopener noreferrer">Join the Discord</a>
-            <a className="jg-button jg-button-secondary" href="#activate">See the three-minute path</a>
+            <Link className="jg-button jg-button-secondary" href="/review">Try the rebuild challenge</Link>
           </div>
           <p className="jg-trust-note">Community roles and recognition do not promise financial rewards.</p>
         </div>
