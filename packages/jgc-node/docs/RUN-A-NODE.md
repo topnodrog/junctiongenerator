@@ -15,14 +15,9 @@ can earn valueless JGTC according to signed pilot receipts, but those
 coins have no cash value and do not promise a future payment. The network may
 be reset while the protocol is under development.
 
-**There are no built-in bootstrap peers.** The retired Google Cloud / Fly.io
-pilot hostnames are no longer used. Ask your operator for at least two
-independent `wss://` seed URLs and supply them through `JGC_SEEDS` (or repeated
-`--seed`):
-
-```text
-JGC_SEEDS="wss://seed-a.example.net,wss://seed-b.example.org" npm run testnet:participate
-```
+For a first run on one machine, use the local rehearsal below. To join an
+operator's testnet, ask for at least two independent `wss://` seed URLs.
+The runner has no built-in peers. The Google Cloud and Fly.io pilot is retired.
 
 The runner dials exactly those seeds and retries them while preserving local
 chain data. Plain `ws://` is accepted only for loopback, single-label hostnames
@@ -41,7 +36,7 @@ provider-neutral seed kit. The old two-seed runbook is
 Native ARM64 execution has not yet been verified in CI. Docker Desktop is an
 alternative if you do not want to install Node.js and Git locally.
 
-## Fastest setup: Node.js
+## Install the node
 
 Open Terminal, PowerShell, or Command Prompt and run:
 
@@ -49,10 +44,34 @@ Open Terminal, PowerShell, or Command Prompt and run:
 git clone https://github.com/topnodrog/junctiongenerator.git
 cd junctiongenerator/packages/jgc-node
 npm ci
-JGC_SEEDS="wss://seed-a.example.net,wss://seed-b.example.org" npm run testnet:participate
 ```
 
-The last command builds the node automatically and starts it. A successful
+### Rehearse on one computer
+
+From `packages/jgc-node`, run:
+
+```text
+npm run solo-soak -- --blocks 20 --nodes 3 --output .tmp/solo-soak/first-run.json
+```
+
+Three nodes connect over loopback. One disconnects while the other two
+advance, then reconnects and catches up. The command exits after the run.
+Open `.tmp/solo-soak/first-run.json` and check that `partition.exercised`,
+`partition.reconnectSynced`, and `allNodesAgree` are all `true`. This tests
+peer recovery using simulated receipts. See the [solo soak guide](SOLO-SOAK.md)
+for longer runs.
+
+### Join an operator's testnet
+
+Replace both example URLs with addresses from your operator. This command
+works in PowerShell, Command Prompt, and POSIX shells:
+
+```text
+npm run testnet:participate -- --seed wss://seed-a.example.net --seed wss://seed-b.example.org
+```
+
+You can also supply the addresses in the comma-separated `JGC_SEEDS`
+environment variable. The command builds the node and starts it. A successful
 startup prints lines like these:
 
 ```text
@@ -76,7 +95,7 @@ it embeds the now-retired Google/Fly seed hostnames and must not be used as the
 current runner path. It is referenced here only so old evidence can be
 reproduced. Download its ZIP and `SHA256SUMS.txt`, verify the archive as
 described in the release notes, extract it, then run `npm ci`. For a current
-node, build from this checkout and supply `JGC_SEEDS` as shown above.
+node, build from this checkout and supply your operator's seed URLs.
 The historical `RELEASE-MANIFEST.json` reports:
 
 - `"version": "0.1.0"`;
@@ -87,11 +106,8 @@ The historical `RELEASE-MANIFEST.json` reports:
 ### Record your participation
 
 The standard owner setup already starts participant mode. To switch an existing
-ordinary validator into participant mode, stop it and run:
-
-```text
-npm run testnet:participate
-```
+ordinary validator into participant mode, stop it and rerun the command under
+[Join an operator's testnet](#join-an-operators-testnet) with your seed URLs.
 
 The first run creates `data/testnet/participant-identity.json`, prints its
 `1QGC...` address, and submits one equal-weight signed pilot receipt for each
@@ -123,7 +139,7 @@ of the current provider-neutral onboarding funnel. Use the
 and [review pack](../../../docs/mainnet/REVIEW_PACK.md) instead.
 
 On Windows, if PowerShell says that `npm.ps1` cannot be loaded because script
-execution is disabled, replace `npm` with `npm.cmd` in the two npm commands.
+execution is disabled, use `npm.cmd` wherever this guide invokes `npm`.
 
 ### Start automatically on Windows
 
