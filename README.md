@@ -68,6 +68,9 @@ multi-host soak gates. No JGC mainnet has been deployed.
 JGTC is valueless. Production rewards and slashing remain disabled until
 mandatory bonded-validator activation and an economics/security review.
 
+Windows participants can [open the guided JGTC wallet](packages/jgc-node/docs/WALLET-RECOVERY.md#create-a-wallet)
+to create a recovery backup or open their existing wallet.
+
 To run a node, follow
 [`packages/jgc-node/docs/RUN-A-NODE.md`](packages/jgc-node/docs/RUN-A-NODE.md).
 For protocol details, see [`packages/jgc-node/README.md`](packages/jgc-node/README.md) and

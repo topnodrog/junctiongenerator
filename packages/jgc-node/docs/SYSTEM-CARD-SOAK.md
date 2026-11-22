@@ -30,6 +30,11 @@ and system memory locally. It starts zero workers and makes no reservation.
 
 ## Collect JGTC in your own recoverable wallet
 
+On Windows, use the [double-click wallet](WALLET-RECOVERY.md#create-a-wallet)
+for steps 1 and 2, then continue at step 3. Substitute your actual wallet path
+for the example. In PowerShell the launcher's default path is
+`"$env:USERPROFILE\jg-pilot.keystore.json"`.
+
 1. Use a private terminal on the machine you control. After building via
    `soak:card`, create a **dedicated testnet** wallet and verify your offline
    backup. The examples use an ignored keystore name in the parent directory.

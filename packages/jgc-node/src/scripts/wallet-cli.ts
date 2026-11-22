@@ -26,7 +26,8 @@
  */
 
 import { closeSync, existsSync, fsyncSync, openSync, readFileSync, writeFileSync } from "fs";
-import { dirname } from "path";
+import { dirname, join } from "path";
+import { homedir } from "node:os";
 import type { NodeConfig } from "../types/index.js";
 import { JGCNode } from "../network/node.js";
 import {
@@ -49,6 +50,7 @@ const DEFAULT_FEE = "0.0001"; // JGC
 const HELP = `jgc-wallet — command-line wallet for the JGC ledger
 
 KEYSTORE (standalone)
+  guide                       guided testnet wallet setup, recovery or unlock
   setup                       create a wallet after verifying its 24-word backup
   restore [--accounts <n>]     restore recovery accounts into a NEW keystore
   verify-backup               check recovery words against every wallet account
@@ -150,7 +152,42 @@ function bootNode(f: Args): JGCNode {
 
 const sleep = (ms: number): Promise<void> => new Promise(r => setTimeout(r, ms));
 
+async function guidedWallet(): Promise<number> {
+  const io = terminalRecoveryPrompts();
+  const path = join(homedir(), "jg-pilot.keystore.json");
+  const existing = existsSync(path);
+  io.show(`JGTC testnet wallet\nWallet file: ${path}\n`);
+  io.show(existing
+    ? "1. Open my wallet and show my receiving address\n2. Check my written backup\n3. Open a wallet file saved elsewhere"
+    : "1. Create my first wallet\n2. Recover a wallet from my 24 words\n3. Open an existing wallet file");
+  let choice: string;
+  do {
+    choice = (await io.acknowledge("Choose 1, 2 or 3 (Enter for 1): ")).trim() || "1";
+  } while (!["1", "2", "3"].includes(choice));
+  const flags: Record<string, string> = { network: "testnet", keystore: path };
+  if (!existing && choice !== "3") {
+    if (choice === "2") {
+      flags.accounts = (await io.acknowledge("Number of JGTC accounts to recover (Enter for 1): ")).trim() || "1";
+    }
+    return run({ cmd: choice === "1" ? "setup" : "restore", pos: [], flags });
+  }
+  if (choice === "3") {
+    flags.keystore = (await io.acknowledge("Paste the path of your encrypted wallet file: ")).trim().replace(/^"(.*)"$/, "$1");
+  }
+  if (!existsSync(flags.keystore)) throw new Error(`Wallet file not found: ${flags.keystore}`);
+  flags.pass = await io.secret("Wallet encryption password (input hidden): ");
+  const { wallet } = loadWallet({ cmd: "guide", pos: [], flags }, true);
+  if (choice === "2") {
+    verifyWalletRecovery(wallet, await io.secret("Enter your 24 recovery words (input hidden): "));
+    io.show("Recovery verified for every account in this wallet.");
+  }
+  io.show(`Wallet opened: ${flags.keystore}`);
+  for (const label of wallet.labels()) io.show(`Public receiving address (${label}): ${wallet.address(label)}`);
+  return 0;
+}
+
 async function run(f: Args): Promise<number> {
+  if (f.cmd === "guide") return guidedWallet();
   if (f.flags.network === "mainnet") assertMainnetLaunchAllowed();
   if (["new", "import", "address", "list", "export", "balance", "utxos", "send", "verify-backup", "btc-address", "btc-balance", "btc-send", "eth-address", "eth-balance", "eth-send"].includes(f.cmd) &&
       !f.flags.pass && !process.env.JGC_WALLET_PASS) {
@@ -225,9 +262,13 @@ async function run(f: Args): Promise<number> {
       const wallet = f.cmd === "setup"
         ? await createVerifiedRecoveryWallet(io, network.chainId)
         : Wallet.fromRecoveryPhrase(await io.secret("Enter your 24 recovery words (input hidden): "), network.chainId, Number(f.flags.accounts ?? "1"));
-      const pass = await io.secret("Choose a local encryption password (at least 12 characters; input hidden): ");
-      if (pass.length < 12) throw new Error("Use a password of at least 12 characters");
-      if (pass !== await io.secret("Repeat the encryption password: ")) throw new Error("Passwords do not match; no wallet saved");
+      let pass: string;
+      while (true) {
+        pass = await io.secret("Choose a local encryption password (at least 12 characters; input hidden): ");
+        if (pass.length < 12) { io.show("Please use at least 12 characters. Try again, or press Ctrl+C to cancel."); continue; }
+        if (pass === await io.secret("Repeat the encryption password: ")) break;
+        io.show("The passwords differed. Choose your password again, or press Ctrl+C to cancel.");
+      }
       const file = wallet.toKeystore(pass);
       const checked = Wallet.fromKeystore(file, pass);
       for (const label of wallet.labels()) {
@@ -237,8 +278,13 @@ async function run(f: Args): Promise<number> {
       try { writeFileSync(fd, JSON.stringify(file, null, 2) + "\n"); fsyncSync(fd); }
       finally { closeSync(fd); }
       syncDirectory(dirname(path));
+      const reopened = Wallet.fromKeystore(JSON.parse(readFileSync(path, "utf8")), pass);
+      for (const label of wallet.labels()) {
+        if (reopened.publicKey(label) !== wallet.publicKey(label)) throw new Error("Saved wallet verification failed; keep your written backup");
+      }
       console.log(`Wallet saved: ${path}\nRecovery scheme: jgc-ml-dsa65-bip39-hkdf-v1\nNetwork: ${network.chainId}\nAccounts: ${wallet.labels().length}`);
       for (const label of wallet.labels()) console.log(`${label}: ${wallet.address(label)}`);
+      console.log("Done. Your encrypted wallet was reopened and its receiving addresses verified.");
       console.log("Keep the recovery scheme, network and account count with your backup. Your local password is not an extra recovery word.");
       return 0;
     }

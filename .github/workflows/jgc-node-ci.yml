@@ -131,6 +131,23 @@ jobs:
         run: node --test deploy/monitor/review.test.mjs
       - name: Consensus and genesis vectors
         run: npm test -- --ci --runTestsByPath src/tests/canonical.test.ts src/tests/network-identity.test.ts
+      - name: Package the offline Windows wallet
+        if: runner.os == 'Windows' && (github.event_name == 'pull_request' || github.ref == 'refs/heads/main')
+        id: wallet
+        shell: pwsh
+        run: |
+          ./scripts/windows/Build-JgtcWallet.ps1
+          $folder = (Get-Item -Path '.tmp/wallet-windows/*/JGTC Wallet').FullName
+          "folder=$folder" >> $env:GITHUB_OUTPUT
+      - name: Upload double-click Windows wallet
+        if: steps.wallet.outcome == 'success'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: JGTC-Wallet-Windows-x64
+          path: ${{ steps.wallet.outputs.folder }}
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14
 
   runner-release-bundle:
     name: Runner release bundle

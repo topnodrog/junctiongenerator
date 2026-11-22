@@ -8,6 +8,26 @@ tokens, other networks, bridges or swaps are enabled. Use valueless test coins.
 
 ## Create a wallet
 
+**Windows:** extract the complete **JGTC-Wallet-Windows-x64.zip** and
+double-click **Open JGTC Wallet.cmd** in the extracted files. The Windows
+node CI job provides the ZIP as the **JGTC-Wallet-Windows-x64** build artifact
+for pull requests and updates to main. The portable
+edition includes Node.js and runs offline. Choose **Create my first wallet**
+or **Recover a wallet from my 24 words**. Setup checks your written words,
+reopens the encrypted file and displays your public receiving address.
+Keep the words and password private. Wait for **Done** before closing the window.
+
+The launcher uses `jg-pilot.keystore.json` in your Windows user folder, so
+extracting another copy of the app keeps the same wallet. Open the launcher
+again to see your address or check your backup. If you saved your wallet
+under another name, choose **Open an existing wallet file** and enter its path.
+
+The [source launcher](../Open%20JGTC%20Wallet.cmd) also runs from an extracted
+source checkout with a supported Node.js and npm installed. It prepares the
+locked dependencies on first use. To build the portable ZIP on Windows, run
+`npm ci` in `packages/jgc-node`, then run
+[`Build-JgtcWallet.ps1`](../scripts/windows/Build-JgtcWallet.ps1).
+
 The [system-card soak](SYSTEM-CARD-SOAK.md) uses the first account in this
 recovery wallet to sign testnet receipts and receive JGTC. The ordinary
 participant launcher generates its own key in `participant-identity.json`.

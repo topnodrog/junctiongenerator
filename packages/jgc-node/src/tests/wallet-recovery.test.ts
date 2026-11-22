@@ -125,4 +125,14 @@ describe("mandatory backup rehearsal", () => {
     io.acknowledge = async () => "no";
     await expect(createVerifiedRecoveryWallet(io, CHAIN)).rejects.toThrow("cancelled");
   });
+  test("retries a mistyped backup without generating another wallet", async () => {
+    const io = prompts(true);
+    const confirm = io.secret;
+    let attempts = 0;
+    io.secret = question => ++attempts === 1 ? Promise.resolve("mistyped") : confirm(question);
+    io.acknowledge = async question => question.includes("RETRY") ? "RETRY" : question.includes("READY") ? "READY" : "";
+    const wallet = await createVerifiedRecoveryWallet(io, CHAIN);
+    expect(attempts).toBe(2);
+    expect(wallet.labels()).toEqual(["account-0"]);
+  });
 });

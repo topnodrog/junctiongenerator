@@ -96,6 +96,7 @@
   },
   "jest": {
     "preset": "ts-jest/presets/default-esm",
+    "roots": ["<rootDir>/src"],
     "testEnvironment": "node",
     "setupFilesAfterEnv": [
       "<rootDir>/src/tests/setup.ts"

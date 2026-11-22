@@ -16,10 +16,15 @@ export async function createVerifiedRecoveryWallet(io: RecoveryPrompts, chainId:
   io.show(phrase.split(" ").map((word, i) => `${i + 1}. ${word}`).join("\n"));
   await io.acknowledge("Press Enter after writing all 24 words down. The words will then be hidden: ");
   io.clear();
-  const confirmation = normalizeRecoveryPhrase(await io.secret("Enter all 24 words from your backup (input hidden): "));
-  if (!safeEqual(confirmation, phrase)) throw new Error("Recovery words do not match. No wallet was saved; start setup again.");
-  // Rebuild from the user's backup, rather than merely accepting a checkbox.
-  return Wallet.fromRecoveryPhrase(confirmation, chainId);
+  while (true) {
+    const input = await io.secret("Enter all 24 words from your backup, separated by spaces (input hidden): ");
+    let confirmation = "";
+    try { confirmation = normalizeRecoveryPhrase(input); } catch { /* Invalid or incomplete backup. */ }
+    if (safeEqual(confirmation, phrase)) return Wallet.fromRecoveryPhrase(confirmation, chainId);
+    if ((await io.acknowledge("The words did not match. Type RETRY to enter the same backup again, or press Enter to cancel: ")).trim().toUpperCase() !== "RETRY") {
+      throw new Error("Recovery words do not match. No wallet was saved.");
+    }
+  }
 }
 
 export function verifyWalletRecovery(wallet: Wallet, phrase: string): void {
