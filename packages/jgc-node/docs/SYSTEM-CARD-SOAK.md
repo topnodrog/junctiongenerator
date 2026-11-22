@@ -5,6 +5,32 @@ signed resource agreement, local hashing and real **testnet** settlement.
 The workload is synthetic. A signed card authorizes a local demonstration and
 records the choice. Participants pay for their own electricity and connectivity.
 
+## Join or pause on Windows
+
+1. Extract the coordinator's **JGTC-Wallet-Windows-x64.zip**. Double-click
+   **Join JGTC Soak.cmd**, paste the coordinator's WSS seed address and click
+   **Join testnet**. If this is your first wallet, the launcher opens the
+   private wallet guide. Use **Browse** if you saved an existing wallet elsewhere.
+2. In the node terminal, unlock the wallet, choose CPU and RAM, review the
+   deadline and type `ACCEPT`. Leave the terminal open for this session.
+   The green play symbol and **Running** mean your local node is working.
+   Watch **Peers** and the block height for a connection and synchronization.
+3. Click **Pause** whenever you need the computer. Once the panel shows the
+   amber pause bars and **Paused**, the participant node, its network links,
+   hashing workers and workload buffers have stopped. Only the local controller
+   and any open panel remain. **Resume** uses the same wallet and chain data.
+4. For an evening break, check **Daily four-hour break from**, choose the start
+   in local time and click **Save break**. For example, 18:00 reserves 18:00
+   through 22:00. Work resumes automatically at the end if the signed session
+   is still valid and manual pause is off. These settings persist between sessions.
+   The signed deadline continues during a break. Closing the node terminal ends
+   the session. Reopening the panel alone lets you check a session already running.
+
+The Windows panel stores the chain, signed cards and observations in
+`%LOCALAPPDATA%\JunctionGenerator\participant-soak`. It uses available local
+ports and prints the actual status URL in the node terminal. Paused time earns
+no new receipts and does not count toward 24 hours of verified connection.
+
 ## Preview on your computer
 
 Use a reviewed commit supplied by the coordinator. From `packages/jgc-node`

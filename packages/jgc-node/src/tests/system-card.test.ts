@@ -3,11 +3,25 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { allocation, DAY, enroll, verifyCard } from "../ops/system-card.js";
 import { bookingRemaining } from "../ops/soak-workload.js";
+import { pauseReason } from "../ops/card-session.js";
 import { Wallet } from "../wallet/wallet.js";
 import { generateRecoveryPhrase } from "../wallet/recovery.js";
 import { TESTNET_NETWORK } from "../config/networks.js";
 
 const caps = { maxWorkers: 4, maxBufferMiB: 512, totalMiB: 16000, availableMiB: 4096, logicalCpus: 12 };
+test("daily local break crosses midnight, with independent manual pause", () => {
+  const settings = { quietStart: "21:30", manual: false };
+  const at = (hour: number, minute: number) => new Date(2026, 10, 23, hour, minute);
+  expect(pauseReason(settings, at(21, 29))).toBeNull();
+  for (const time of [at(21, 30), at(23, 59), at(0, 0), at(1, 29)]) {
+    expect(pauseReason(settings, time)).toBe("Daily four-hour break");
+  }
+  expect(pauseReason(settings, at(1, 30))).toBeNull();
+  expect(pauseReason({ ...settings, manual: true }, at(10, 0))).toBe("Manual pause");
+  expect(pauseReason({ manual: false, quietStart: null }, at(22, 0))).toBeNull();
+  expect(() => pauseReason({ manual: false, quietStart: "25:00" }, at(10, 0))).toThrow();
+});
+
 test("either full selection expires at its original deadline even after a restart", () => {
   for (const [cpu, ram] of [[4, 0], [0, 512]]) {
     const first = allocation(cpu, ram, caps, 1);

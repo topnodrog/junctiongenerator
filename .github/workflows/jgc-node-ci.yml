@@ -129,6 +129,8 @@ jobs:
       - run: npm run build
       - name: Gemini monitor review boundaries
         run: node --test deploy/monitor/review.test.mjs
+      - name: Participant pause, resume and expiry
+        run: node scripts/card-session-smoke.mjs
       - name: Consensus and genesis vectors
         run: npm test -- --ci --runTestsByPath src/tests/canonical.test.ts src/tests/network-identity.test.ts
       - name: Package the offline Windows wallet

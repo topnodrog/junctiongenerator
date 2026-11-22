@@ -12,6 +12,7 @@ export const PILOT_TERMS = [
   "I control this machine and choose the allocation below. Closing this foreground process or pressing Ctrl+C ends the trial.",
   "CPU means local hashing workers. RAM means MiB of touched demonstration buffers. The operating system schedules the workers.",
   "The node also uses ordinary runtime memory, network traffic and disk for chain data. These overheads are outside the selected workload amounts.",
+  "I may pause at any time or reserve a four-hour daily break. Pausing stops the node, its work and new receipts. My signed deadline keeps advancing.",
   "No GPU, disk space or bandwidth is offered for contracts. No customer payload, remote commands or automatic renewal.",
   "In the first full-allocation trial the demonstration uses the selected workload continuously until the deadline or my earlier stop. I may explicitly add one shared day after that deadline.",
   "In shared sessions the demonstration uses the entire signed allocation for the first 15 seconds of each minute and releases it between jobs.",

@@ -20,7 +20,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Could not extract the verified Node.js runtime
 
 $config = @{
     extends = (Join-Path $packageRoot 'tsconfig.json')
-    files = @((Join-Path $packageRoot 'src/scripts/wallet-cli.ts'))
+    files = @((Join-Path $packageRoot 'src/scripts/wallet-cli.ts'), (Join-Path $packageRoot 'src/scripts/testnet-node.ts'))
     include = @()
     compilerOptions = @{ outDir = (Join-Path $runtime 'dist'); declaration = $false; declarationMap = $false; sourceMap = $false }
 }
@@ -29,6 +29,8 @@ $config | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $configPath -Encodi
 & (Join-Path $packageRoot 'node_modules/.bin/tsc.cmd') -p $configPath
 if ($LASTEXITCODE -ne 0) { throw 'Wallet compilation failed.' }
 Copy-Item -LiteralPath (Join-Path $packageRoot 'Open JGTC Wallet.cmd') -Destination $stage
+Copy-Item -LiteralPath (Join-Path $packageRoot 'Join JGTC Soak.cmd') -Destination $stage
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Show-JgtcSoak.ps1') -Destination $runtime
 foreach ($file in @('package.json', 'package-lock.json')) {
     Copy-Item -LiteralPath (Join-Path $packageRoot $file) -Destination $runtime
 }

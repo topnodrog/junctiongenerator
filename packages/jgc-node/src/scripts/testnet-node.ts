@@ -31,6 +31,7 @@ import { diagnose, enroll } from "../ops/system-card.js";
 import { startWorkload } from "../ops/soak-workload.js";
 import { terminalRecoveryPrompts } from "../wallet/terminal-prompts.js";
 import { appendFileSync } from "node:fs";
+import { superviseCard, type Enrollment } from "../ops/card-session.js";
 
 const VERSION = "0.1.0";
 
@@ -49,7 +50,18 @@ async function main(): Promise<void> {
     const keyArg = argv.indexOf("--keystore");
     const keystore = keyArg >= 0 ? argv[keyArg + 1] : undefined;
     if (!keystore || keystore.startsWith("--")) throw new Error("Supply --keystore with your dedicated testnet recovery wallet path");
-    enrollment = await enroll(terminalRecoveryPrompts(), opts.dataDir, keystore, opts.seeds, diagnose());
+    if (argv.includes("--card-session-child")) {
+      if (!process.send) throw new Error("Card worker requires its controller");
+      process.once("disconnect", () => {
+        if (process.listenerCount("SIGTERM")) process.emit("SIGTERM");
+        else process.exit(0);
+      });
+      enrollment = await new Promise<Enrollment>(ok => process.once("message", ok));
+      if (Date.now() >= (enrollment.selected.sharedUntil ?? enrollment.selected.expiresAt)) throw new Error("Card expired");
+    } else {
+      enrollment = await enroll(terminalRecoveryPrompts(), opts.dataDir, keystore, opts.seeds, diagnose());
+      return superviseCard(opts.dataDir, argv, enrollment);
+    }
   }
   // The local testnet currently transports research receipts. Signatures and
   // all non-proof consensus checks remain enforced, while production forbids
@@ -215,6 +227,12 @@ async function main(): Promise<void> {
     if (stopping) return;
     observations = setInterval(() => sample("sample"), 300_000);
     stopWork = startWorkload(enrollment.selected, finish);
+    const report = () => {
+      const chain = node.getChainInfo();
+      if (process.connected) process.send?.({ height: chain.tipHeight, peers: chain.peerCount });
+    };
+    report();
+    setInterval(report, 2000).unref();
   }
 }
 
