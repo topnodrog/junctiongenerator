@@ -37,11 +37,18 @@ and system memory locally. It starts zero workers and makes no reservation.
 
    ```text
    npm run wallet -- setup --keystore ../my-pilot.keystore.json
-   npm run wallet -- verify-backup --keystore ../my-pilot.keystore.json
-   npm run wallet -- list --keystore ../my-pilot.keystore.json
    ```
 
-2. Write the 24 words in order. Keep the words, encrypted file and password
+2. Type `READY` at the wallet prompt. Write the 24 words in order, re-enter
+   them, then choose and repeat the encryption password. Wait for `Wallet saved`
+   and the public address before entering another shell command. To check
+   your written backup against the saved wallet, run this separately:
+
+   ```text
+   npm run wallet -- verify-backup --keystore ../my-pilot.keystore.json
+   ```
+
+   Keep the words, encrypted file and password
    private. Provide only the first public account address to the coordinator.
    With a new wallet its label is `account-0`. Legacy participant addresses
    still require their original identity backups.

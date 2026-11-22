@@ -154,6 +154,7 @@ async function run(f: Args): Promise<number> {
   if (f.flags.network === "mainnet") assertMainnetLaunchAllowed();
   if (["new", "import", "address", "list", "export", "balance", "utxos", "send", "verify-backup", "btc-address", "btc-balance", "btc-send", "eth-address", "eth-balance", "eth-send"].includes(f.cmd) &&
       !f.flags.pass && !process.env.JGC_WALLET_PASS) {
+    if (f.cmd !== "import" && !existsSync(keystorePath(f))) throw new Error(`keystore not found: ${keystorePath(f)}`);
     f.flags.pass = await terminalRecoveryPrompts().secret("Wallet encryption password (input hidden): ");
   }
   switch (f.cmd) {

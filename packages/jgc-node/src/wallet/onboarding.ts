@@ -11,7 +11,7 @@ export interface RecoveryPrompts {
 /** No wallet is returned until the complete backup has been re-entered. */
 export async function createVerifiedRecoveryWallet(io: RecoveryPrompts, chainId: string): Promise<Wallet> {
   io.show("This wallet has no password reset. Anyone with these 24 words can spend its funds. Write them down in order and store them offline. Do not photograph, email, or share them. Use a private terminal with recording disabled.");
-  if (await io.acknowledge('Type READY when you can make a private backup: ') !== "READY") throw new Error("Wallet setup cancelled");
+  if (await io.acknowledge('Type READY when you can make a private backup: ') !== "READY") throw new Error("Wallet setup cancelled. Run setup again and type READY at the first prompt.");
   const phrase = generateRecoveryPhrase();
   io.show(phrase.split(" ").map((word, i) => `${i + 1}. ${word}`).join("\n"));
   await io.acknowledge("Press Enter after writing all 24 words down. The words will then be hidden: ");
