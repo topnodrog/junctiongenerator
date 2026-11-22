@@ -27,7 +27,7 @@ import {
   TestnetParticipant,
 } from "../miner/testnet-participant.js";
 import { prepareTestnetGenesisReset } from "../config/testnet-reset.js";
-import { enroll } from "../ops/system-card.js";
+import { diagnose, enroll } from "../ops/system-card.js";
 import { startWorkload } from "../ops/soak-workload.js";
 import { terminalRecoveryPrompts } from "../wallet/terminal-prompts.js";
 import { appendFileSync } from "node:fs";
@@ -49,7 +49,7 @@ async function main(): Promise<void> {
     const keyArg = argv.indexOf("--keystore");
     const keystore = keyArg >= 0 ? argv[keyArg + 1] : undefined;
     if (!keystore || keystore.startsWith("--")) throw new Error("Supply --keystore with your dedicated testnet recovery wallet path");
-    enrollment = await enroll(terminalRecoveryPrompts(), opts.dataDir, keystore, opts.seeds);
+    enrollment = await enroll(terminalRecoveryPrompts(), opts.dataDir, keystore, opts.seeds, diagnose());
   }
   // The local testnet currently transports research receipts. Signatures and
   // all non-proof consensus checks remain enforced, while production forbids

@@ -26,6 +26,8 @@ test("either full selection expires at its original deadline even after a restar
     expect(bookingRemaining(shared, shared.startsAt + 60000)).toBe(15000);
   }
   expect(allocation(1, 32, caps, 1).mode).toBe("shared");
+  expect(allocation(1, 0, { ...caps, maxBufferMiB: 0 }, 1).workers).toBe(1);
+  expect(() => allocation(0, 1, { ...caps, maxBufferMiB: 0 }, 1)).toThrow();
   for (const [cpu, ram] of [[0, 0], [-1, 0], [1, 513], [4.5, 0]]) {
     expect(() => allocation(cpu, ram, caps, 1)).toThrow();
   }
@@ -39,11 +41,11 @@ test("only explicit consent signs a card that verifies against a restored reward
     const wallet = Wallet.fromRecoveryPhrase(phrase, TESTNET_NETWORK.chainId);
     const key = join(dir, "test.keystore.json");
     writeFileSync(key, JSON.stringify(wallet.toKeystore("only for this test")));
-    // Use 1 MiB and no CPU workers so this test also works on single-core CI.
+    // Enrollment tests use an explicit diagnostic snapshot, independent of CI load.
     const run = (confirm: string) => {
       const answers = ["0", "1", confirm];
       return enroll({ clear() {}, show() {}, secret: async () => "only for this test",
-        acknowledge: async () => answers.shift()! }, dir, key, ["ws://127.0.0.1:19444"]);
+        acknowledge: async () => answers.shift()! }, dir, key, ["ws://127.0.0.1:19444"], caps);
     };
     await expect(run("")).rejects.toThrow("cancelled");
     expect(readdirSync(dir)).toEqual(["test.keystore.json"]);

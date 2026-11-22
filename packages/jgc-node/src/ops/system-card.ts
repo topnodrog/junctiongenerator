@@ -56,13 +56,13 @@ export function verifyCard(record: { card: { version: number; network: string; a
     quantumAddressFromPublicKey(publicKey) === card.address;
 }
 
-export async function enroll(io: RecoveryPrompts, directory: string, keystore: string, seeds: string[]) {
+export async function enroll(io: RecoveryPrompts, directory: string, keystore: string, seeds: string[],
+  caps: ReturnType<typeof diagnose>) {
   const wallet = Wallet.fromKeystore(JSON.parse(readFileSync(keystore, "utf8")),
     await io.secret("Dedicated testnet wallet password (hidden): "));
   if (wallet.recoveryNetwork() !== TESTNET_NETWORK.chainId) throw new Error("A testnet recovery wallet is required");
   const label = wallet.labels()[0];
   const address = wallet.address(label);
-  const caps = diagnose();
   io.show(JSON.stringify(caps, null, 2));
   io.show(PILOT_TERMS);
   const choose = async (question: string) => {

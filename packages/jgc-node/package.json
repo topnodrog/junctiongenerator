@@ -91,7 +91,7 @@
     "typescript": "^5.4.5"
   },
   "overrides": {
-    "brace-expansion": "1.1.18",
+    "brace-expansion": "1.1.21",
     "js-yaml": "3.15.2"
   },
   "jest": {
