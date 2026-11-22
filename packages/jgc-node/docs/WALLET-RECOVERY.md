@@ -8,6 +8,11 @@ tokens, other networks, bridges or swaps are enabled. Use valueless test coins.
 
 ## Create a wallet
 
+The [system-card soak](SYSTEM-CARD-SOAK.md) uses the first account in this
+recovery wallet to sign testnet receipts and receive JGTC. The ordinary
+participant launcher generates its own key in `participant-identity.json`.
+Creating a new wallet does not recover balances from that older identity.
+
 From `packages/jgc-node`, build with `npm run build`, then use a private terminal:
 
 ```text

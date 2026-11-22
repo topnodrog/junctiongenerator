@@ -27,11 +27,30 @@ import {
   TestnetParticipant,
 } from "../miner/testnet-participant.js";
 import { prepareTestnetGenesisReset } from "../config/testnet-reset.js";
+import { enroll } from "../ops/system-card.js";
+import { startWorkload } from "../ops/soak-workload.js";
+import { terminalRecoveryPrompts } from "../wallet/terminal-prompts.js";
+import { appendFileSync } from "node:fs";
 
 const VERSION = "0.1.0";
 
 async function main(): Promise<void> {
-  const opts = parseTestnetOptions(process.argv.slice(2));
+  const argv = process.argv.slice(2);
+  const withCard = argv.includes("--system-card");
+  const opts = parseTestnetOptions(argv, withCard ? { ...process.env,
+    JGC_DATA_DIR: process.env.JGC_DATA_DIR ?? "./data/card-soak" } : process.env);
+  let enrollment: Awaited<ReturnType<typeof enroll>> | undefined;
+  if (withCard) {
+    if (!opts.participate || opts.produce || !opts.seeds.length || opts.host !== "127.0.0.1" ||
+        opts.statusHost !== "127.0.0.1" || opts.publicApiPort !== undefined || opts.advertiseUrl ||
+        process.env.JGC_RESET_TO_GENESIS || process.env.JGC_RESET_ID) {
+      throw new Error("System-card enrollment requires seeds, a loopback participant, and no producer, public API or reset");
+    }
+    const keyArg = argv.indexOf("--keystore");
+    const keystore = keyArg >= 0 ? argv[keyArg + 1] : undefined;
+    if (!keystore || keystore.startsWith("--")) throw new Error("Supply --keystore with your dedicated testnet recovery wallet path");
+    enrollment = await enroll(terminalRecoveryPrompts(), opts.dataDir, keystore, opts.seeds);
+  }
   // The local testnet currently transports research receipts. Signatures and
   // all non-proof consensus checks remain enforced, while production forbids
   // enabling this simulation-only proof mode.
@@ -67,7 +86,7 @@ async function main(): Promise<void> {
   const participant = opts.participate
     ? new TestnetParticipant(
       node,
-      loadOrCreateTestnetParticipantIdentity(join(opts.dataDir, "participant-identity.json")),
+      enrollment?.identity ?? loadOrCreateTestnetParticipantIdentity(join(opts.dataDir, "participant-identity.json")),
     )
     : undefined;
   const role = opts.produce ? "designated-producer" : participant ? "participant" : "back-checker";
@@ -158,9 +177,21 @@ async function main(): Promise<void> {
   }
 
   let stopping = false;
+  let stopWork: (() => void) | undefined;
+  let observations: NodeJS.Timeout | undefined;
+  function observe(event: "start" | "sample" | "stop"): void {
+    if (!enrollment) return;
+    const { tipHeight, tipHash, peerCount } = node.getChainInfo();
+    const sample = { cardId: enrollment.id, event, at: new Date().toISOString(), network: TESTNET_NETWORK.chainId,
+      genesisHash, address: enrollment.identity.address, height: tipHeight, tipHash, peerCount };
+    appendFileSync(join(opts.dataDir, `observations-${enrollment.id}.jsonl`), JSON.stringify(sample) + "\n", { mode: 0o600 });
+  }
   const shutdown = async (): Promise<void> => {
     if (stopping) return;
     stopping = true;
+    stopWork?.();
+    clearInterval(observations);
+    try { observe("stop"); } catch { console.error("Could not save the final soak observation"); }
     console.log("\n[testnet] shutting down...");
     participant?.stop();
     producer.stop();
@@ -172,6 +203,19 @@ async function main(): Promise<void> {
 
   process.once("SIGINT", () => void shutdown().then(() => process.exit(0)));
   process.once("SIGTERM", () => void shutdown().then(() => process.exit(0)));
+  if (enrollment) {
+    const finish = (error?: Error) => {
+      if (error) console.error(error.message);
+      void shutdown().then(() => process.exit(error ? 1 : 0));
+    };
+    const sample = (event: "start" | "sample") => {
+      try { observe(event); } catch { finish(new Error("Could not record soak evidence")); }
+    };
+    sample("start");
+    if (stopping) return;
+    observations = setInterval(() => sample("sample"), 300_000);
+    stopWork = startWorkload(enrollment.selected, finish);
+  }
 }
 
 main().catch((error: unknown) => {
