@@ -1,0 +1,17 @@
+.downloads { padding-block: clamp(3rem, 8vw, 7rem); }
+.downloads h1 { font-size: clamp(2.8rem, 7vw, 5.5rem); line-height: 1.02; letter-spacing: -.06em; }
+.downloads h2 { font-size: clamp(1.5rem, 3vw, 2.25rem); line-height: 1.15; letter-spacing: -.035em; }
+.downloads p, .setup ol { color: #b4c7be; line-height: 1.65; }
+.downloads p { margin: .8rem 0 1.35rem; max-width: 57ch; }
+.release { display: grid; grid-template-columns: 1.2fr 1fr; gap: 2rem 3rem; margin: 2rem 0; padding: clamp(1.25rem, 4vw, 3rem); border: 1px solid #325749; border-radius: 1rem; background: #101c18; }
+.release small { display: block; margin-top: .65rem; color: #abc0b6; }
+.setup h3 { font-size: 1.2rem; font-weight: 650; }
+.setup ol { list-style: decimal; padding-left: 1.4rem; margin-top: .7rem; }
+.setup li + li { margin-top: .5rem; }
+.release details { grid-column: 1 / -1; border-top: 1px solid #325749; padding-top: 1.1rem; }
+.release summary { color: #9fedd0; cursor: pointer; width: fit-content; }
+.release code { display: block; overflow-wrap: anywhere; margin-bottom: .75rem; }
+.mainnet { padding: 1rem 0; }
+@media (max-width: 700px) {
+  .release { grid-template-columns: 1fr; gap: 1.5rem; }
+}
