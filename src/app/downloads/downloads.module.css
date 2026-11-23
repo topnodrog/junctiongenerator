@@ -10,7 +10,7 @@
 .setup li + li { margin-top: .5rem; }
 .release details { grid-column: 1 / -1; border-top: 1px solid #325749; padding-top: 1.1rem; }
 .release summary { color: #9fedd0; cursor: pointer; width: fit-content; }
-.release code { display: block; overflow-wrap: anywhere; margin-bottom: .75rem; }
+.release details code { display: block; overflow-wrap: anywhere; margin-bottom: .75rem; }
 .mainnet { padding: 1rem 0; }
 @media (max-width: 700px) {
   .release { grid-template-columns: 1fr; gap: 1.5rem; }
