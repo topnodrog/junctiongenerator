@@ -36,8 +36,20 @@ export default function DownloadsPage() {
             <h3>Join the soak</h3>
             <ol>
               <li>Extract the entire ZIP to a folder.</li>
-              <li>Open <strong>Join JGTC Soak.cmd</strong>.</li>
-              <li>Paste the seed address from your coordinator, then choose the CPU and memory you want to share.</li>
+              <li>
+                If you need a wallet, double-click <strong>Open JGTC Wallet.cmd</strong> and choose{" "}
+                <strong>Create my first wallet</strong>. Write down and verify your 24 recovery words,
+                set a password, and wait for <strong>Done</strong>. Keep your words and password private.
+              </li>
+              <li>
+                Double-click <strong>Join JGTC Soak.cmd</strong>. If your existing JGTC testnet wallet
+                is saved elsewhere, use <strong>Browse</strong> to select its encrypted wallet file.
+                Paste the seed address from your coordinator and click <strong>Join testnet</strong>.
+              </li>
+              <li>
+                In the terminal, unlock your wallet, choose the CPU and memory you want to share,
+                and type <code>ACCEPT</code> after reviewing the system card.
+              </li>
             </ol>
           </div>
           <details>
