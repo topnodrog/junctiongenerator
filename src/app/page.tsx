@@ -54,8 +54,8 @@ const COMMUNITY_PATHS = [
     tag: "Early operators",
     title: "Join the live testnet",
     body: "Run a participant node, create signed on-chain records, and inspect the pilot as it advances.",
-    href: "/testnet",
-    cta: "Open the explorer",
+    href: "/downloads",
+    cta: "Download the node",
   },
   {
     tag: "Keep it moving",
@@ -88,6 +88,7 @@ export default function Home() {
           <a href="#how-it-works">How it works</a>
           <a href="#status">Progress</a>
           <Link href="/testnet">Testnet</Link>
+          <Link href="/downloads">Downloads</Link>
 
           <Link href="/community">Join</Link>
           <Link href="/blog">Field notes</Link>

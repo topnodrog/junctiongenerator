@@ -23,6 +23,7 @@ export default function TestnetPage() {
           <span className="jg-eyebrow">Zero-premine public pilot · real chain records</span>
           <h1>The testnet is where participation becomes <span>evidence.</span></h1>
           <p>Watch ten-minute blocks arrive, inspect network health, and see signed participant identities accumulate their share of JGTC created at each 144-block settlement.</p>
+          <div className="jg-actions"><Link href="/downloads" className="jg-button jg-button-primary">Download the testnet node</Link></div>
         </section>
         <SectionBoundary label="Testnet explorer"><TestnetDashboard /></SectionBoundary>
       </main>

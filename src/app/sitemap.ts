@@ -37,5 +37,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.8,
     },
     ...posts,
+    { url: `${SITE}/downloads`, changeFrequency: "monthly", priority: 0.9 },
   ];
 }
