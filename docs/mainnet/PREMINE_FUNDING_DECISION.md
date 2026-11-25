@@ -1,5 +1,12 @@
 # Funding decision record: proposed 3–5 week premine
 
+**2026-11-22 follow-up.** The owner proposed a separate participant allocation
+based on verified days connected to the working testnet. The
+[system-card soak and allocation worksheet](../../packages/jgc-node/docs/SYSTEM-CARD-SOAK.md#proposed-launch-allocation)
+describe the full daily pool, equal shares, conditional one-for-one redemption
+and proposed buyback and burn after expenses. The pilot records evidence for
+review. Issuance, redemption and treasury changes require a separate launch decision.
+
 **Raised by owner:** 2026-11-02 — *"When the mainnet is deployed I am hoping about 3–5 weeks can be pre-mined; some of the premine will go for this [reviewer/operator onboarding] and some held in case future bug bounties need to be paid."*
 
 **Decision for this pass:** **not implemented, not approved, not encoded in consensus.** This pass was explicitly scoped to *prepare only*, and a premine is a consensus/economics change with security, governance and disclosure consequences. It is recorded here as an open decision that must be resolved before `validatorEconomics` or `governance` can close.

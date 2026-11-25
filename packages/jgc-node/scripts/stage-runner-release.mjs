@@ -30,6 +30,8 @@ const paths = [
   ".dockerignore",
   "Dockerfile",
   "README.md",
+  "Open JGTC Wallet.cmd",
+  "Join JGTC Soak.cmd",
   "RELEASE_NOTES.md",
   "compose.runner.yml",
   "docs",

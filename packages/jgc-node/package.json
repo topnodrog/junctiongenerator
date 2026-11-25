@@ -27,6 +27,11 @@
     "testnet:public": "node dist/scripts/testnet-node.js",
     "pretestnet:participate": "npm run build",
     "testnet:participate": "node dist/scripts/testnet-node.js --participate",
+    "presoak:card": "npm run build",
+    "soak:card": "node dist/scripts/system-card.js",
+    "soak:estimate": "node dist/scripts/soak-allocation.js",
+    "presoak:participate": "npm run build",
+    "soak:participate": "node dist/scripts/testnet-node.js --system-card --participate",
     "pretestnet:producer": "npm run build",
     "testnet:producer": "node dist/scripts/testnet-node.js --produce",
     "test:compose": "node scripts/compose-smoke.mjs",
@@ -86,11 +91,12 @@
     "typescript": "^5.4.5"
   },
   "overrides": {
-    "brace-expansion": "1.1.18",
+    "brace-expansion": "1.1.21",
     "js-yaml": "3.15.2"
   },
   "jest": {
     "preset": "ts-jest/presets/default-esm",
+    "roots": ["<rootDir>/src"],
     "testEnvironment": "node",
     "setupFilesAfterEnv": [
       "<rootDir>/src/tests/setup.ts"

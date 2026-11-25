@@ -233,6 +233,9 @@ export class JGCNode extends EventEmitter {
   private readonly audits = new AuditLifecycle();
   private auditStore?: AuditStore;
   private readonly peerGuard: PeerGuard;
+  private readonly headerSync = new Map<PeerConnection, {
+    remaining: Hash256[]; cursor: Hash256; waitingFor?: Hash256; timer?: NodeJS.Timeout;
+  }>();
   private readonly peerAuthenticationRequired: boolean;
   private readonly authSessions = new Map<string, { session: AuthSession; timer: ReturnType<typeof setTimeout> }>();
 
@@ -532,6 +535,8 @@ export class JGCNode extends EventEmitter {
     const peer = this.peers.get(peerId);
     if (!peer) return;
     this.peers.delete(peerId);
+    clearTimeout(this.headerSync.get(peer)?.timer);
+    this.headerSync.delete(peer);
     const auth = this.authSessions.get(peerId);
     if (auth) clearTimeout(auth.timer);
     this.authSessions.delete(peerId);
@@ -604,9 +609,21 @@ export class JGCNode extends EventEmitter {
         await this.handleVersion(peer, msg.payload as Partial<PeerInfo>);
         break;
 
-      case MT.BLOCK:
-        await this.handleBlock(peer, msg.payload as Block);
+      case MT.BLOCK: {
+        const block = msg.payload as Block;
+        await this.handleBlock(peer, block);
+        const sync = this.headerSync.get(peer);
+        if (sync?.waitingFor && sync.waitingFor === hashBlockHeader(block.header) && this.chain.blocks.has(sync.waitingFor)) {
+          sync.waitingFor = undefined;
+          // Leave room for live blocks, receipts and handshake traffic in each peer window.
+          const windowMs = this.config.peerMessageWindowMs ?? DEFAULT_PEER_GUARD_POLICY.messageWindowMs;
+          sync.timer = setTimeout(() => {
+            void this.requestSyncBatch(peer).catch(() => this.disconnectPeer(peerId));
+          }, Math.ceil(windowMs / 2) + 50);
+          sync.timer.unref();
+        }
         break;
+      }
 
       case MT.TX:
         await this.handleTransaction(peer, msg.payload as Transaction);
@@ -1117,14 +1134,33 @@ export class JGCNode extends EventEmitter {
     peer:    PeerConnection,
     payload: { headers: BlockHeader[] },
   ): Promise<void> {
+    if (this.headerSync.has(peer)) return;
     const wanted: Hash256[] = [];
     for (const header of payload.headers) {
       const hash = hashBlockHeader(header);
       if (!this.chain.blocks.has(hash)) wanted.push(hash);
     }
     if (wanted.length > 0) {
-      await peer.send(this.buildMessage(MT.GETDATA, { hashes: wanted }));
+      this.headerSync.set(peer, { remaining: wanted, cursor: hashBlockHeader(payload.headers[payload.headers.length - 1]) });
+      await this.requestSyncBatch(peer);
     }
+  }
+
+  private async requestSyncBatch(peer: PeerConnection): Promise<void> {
+    const sync = this.headerSync.get(peer);
+    if (!sync) return;
+    sync.remaining = sync.remaining.filter(hash => !this.chain.blocks.has(hash));
+    if (!sync.remaining.length) {
+      this.headerSync.delete(peer);
+      // The peer may hold more history than fits in one HEADERS response.
+      await peer.send(this.buildMessage(MT.GETHEADERS, { fromHashes: [sync.cursor] }));
+      return;
+    }
+    const budget = this.config.peerMessagesPerWindow ?? DEFAULT_PEER_GUARD_POLICY.messagesPerWindow;
+    const batchSize = Math.max(1, Math.min(48, Math.floor((budget - 5) / 2)));
+    const batch = sync.remaining.splice(0, batchSize);
+    sync.waitingFor = batch[batch.length - 1];
+    await peer.send(this.buildMessage(MT.GETDATA, { hashes: batch }));
   }
 
   /** Request full blocks for any announced inventory we don't have yet. */

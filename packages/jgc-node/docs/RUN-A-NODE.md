@@ -1,5 +1,9 @@
 # Run a JGTC Testnet Node
 
+For the opt-in hardware trial with a 24-word reward wallet, follow the
+[system card and participant soak](SYSTEM-CARD-SOAK.md). The ordinary
+participant flow below uses a separate, file-backed identity.
+
 This guide is for anyone who wants to run the JGTC network: JGC monetary and
 settlement rules with valueless test coins. The
 safest owner-operated default is an outbound-only participant: it contributes
