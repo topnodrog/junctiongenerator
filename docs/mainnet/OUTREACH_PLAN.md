@@ -23,6 +23,7 @@
 
 | Asset | Location | Purpose |
 | --- | --- | --- |
+| Website entry point | [junctiongenerator.net/review](https://junctiongenerator.net/review) | Pinned local source checks, dated gate snapshot, and direct links to contribution forms. |
 | Public one-pager (shareable verbatim) | [`docs/public/JGC_INDEPENDENT_REVIEW_PROGRAM.md`](../public/JGC_INDEPENDENT_REVIEW_PROGRAM.md) | Stage 1: honest, no-hype description anyone can forward. |
 | Review pack index | [`REVIEW_PACK.md`](REVIEW_PACK.md) | Stage 2–3: exact commands, files and the 10-minute first win. |
 | GitHub issue form | `.github/ISSUE_TEMPLATE/join-independent-review.yml` | Self-serve application for all four tracks with COI declaration. |

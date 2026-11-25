@@ -1,12 +1,12 @@
 name: Reproducible build challenge
-description: Publish two SHA-256 digests for a pinned jgc-node release. About ten minutes; a mismatch is a useful finding.
+description: Report a pinned source check or compare a published release. Mismatches and incomplete builds are useful.
 title: "[Rebuild] "
 labels: ["rebuild-attestation"]
 body:
   - type: markdown
     attributes:
       value: |
-        Reproduce a pinned `jgc-node` release on your own machine and post the digests below. A **mismatch is a finding**, not a failure — we will log it publicly. Two independent matches are needed before we can call the artifacts reproducible.
+        Run the [pinned source challenge](https://junctiongenerator.net/review) or reproduce a published `jgc-node` release. Record the exact commit and the result below. A **mismatch is a finding**, not a failure. A source check without a matching published reference is a starting contribution, not an independent release match. Setup and full checks may take longer than ten minutes.
 
         ```text
         cd packages/jgc-node
@@ -36,21 +36,24 @@ body:
     id: tree-digest
     attributes:
       label: RELEASE-MANIFEST.json treeSha256
+      description: "Include this for a completed bundle check; leave blank if the build failed before the manifest was produced."
     validations:
-      required: true
+      required: false
   - type: input
     id: archive-digest
     attributes:
-      label: Release archive SHA-256
+      label: Release archive SHA-256 (when available)
+      description: "Leave blank if no reference archive exists for your pinned commit. This records a source check, not a matching release attestation."
     validations:
-      required: true
+      required: false
   - type: dropdown
     id: matched
     attributes:
-      label: Did your digests match the published values?
+      label: What result are you reporting?
       options:
         - "Yes — both matched"
         - "No — one or both differ (finding)"
+        - "Source checks completed; no matching reference archive is published"
         - "I could not complete the build"
     validations:
       required: true
@@ -58,4 +61,4 @@ body:
     id: notes
     attributes:
       label: Notes / mismatch details
-      description: "If it did not match, include the command output and the first point of divergence. No secrets."
+      description: "For a mismatch or incomplete build, include the first failing command and relevant output. Remove secrets and personal file paths."
